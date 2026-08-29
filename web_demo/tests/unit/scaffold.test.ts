@@ -165,6 +165,7 @@ describe('frontend scaffold', () => {
     });
 
     expect(html).toContain('WebGPU adapter</dt><dd>Unknown');
+    expect(html).toContain('Retry model');
   });
 
   it('clears the native file input so reset can select the same file again', () => {

@@ -236,6 +236,7 @@ async function releaseModel(model: LoadedModelSession): Promise<void> {
 }
 
 type Listener = () => void;
+type ModelErrorState = Extract<DetectorState, { phase: 'error'; kind: 'model' }>;
 
 export class DetectorController {
   private state: DetectorState = createInitialDetectorState();
@@ -268,6 +269,26 @@ export class DetectorController {
     }
   }
 
+  private collectModelEnvironment(
+    operation: DetectorOperation,
+    failedState: ModelErrorState,
+  ): void {
+    void Promise.resolve()
+      .then(() => this.dependencies.collectEnvironment())
+      .then((environment) => {
+        if (
+          this.gate.isCurrent(operation) &&
+          !this.disposed &&
+          this.state === failedState
+        ) {
+          this.publish({ type: 'model-environment-collected', environment });
+        }
+      })
+      .catch(() => {
+        // Adapter probing is optional diagnostics. Keep the synchronous snapshot on failure.
+      });
+  }
+
   private async performModelLoad(): Promise<void> {
     const operation = this.gate.begin();
     try {
@@ -289,21 +310,22 @@ export class DetectorController {
       if (!this.gate.isCurrent(operation) || this.disposed) {
         return;
       }
-      let environment: RuntimeEnvironmentSnapshot;
-      try {
-        environment = await this.dependencies.collectEnvironment();
-      } catch {
-        environment = {
+      this.publish({
+        type: 'model-failed',
+        ...modelFailureDetails(error),
+        environment: {
           ...this.dependencies.inspectEnvironment(),
           webGpuAdapterAvailable: null,
-        };
-      }
-      if (this.gate.isCurrent(operation) && !this.disposed) {
-        this.publish({
-          type: 'model-failed',
-          ...modelFailureDetails(error),
-          environment,
-        });
+        },
+      });
+      const failedState = this.state;
+      if (
+        this.gate.isCurrent(operation) &&
+        !this.disposed &&
+        failedState.phase === 'error' &&
+        failedState.kind === 'model'
+      ) {
+        this.collectModelEnvironment(operation, failedState);
       }
     }
   }

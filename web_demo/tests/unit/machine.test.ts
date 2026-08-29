@@ -41,6 +41,11 @@ const environmentInspection: RuntimeEnvironmentInspection = {
   hardwareConcurrency: 8,
 };
 
+const unknownAdapterEnvironment: RuntimeEnvironmentSnapshot = {
+  ...environmentInspection,
+  webGpuAdapterAvailable: null,
+};
+
 function loadedModel(overrides: Partial<LoadedModelSession> = {}): LoadedModelSession {
   return {
     session: {
@@ -230,6 +235,38 @@ describe('detectorReducer', () => {
     expect(detectorReducer(failed, { type: 'retry-model' })).toEqual(
       createInitialDetectorState(),
     );
+  });
+
+  it('updates only the environment of an active model error', () => {
+    const failed = detectorReducer(createInitialDetectorState(), {
+      type: 'model-failed',
+      message: 'Both local execution providers failed to initialize. Retry the model load.',
+      environment: {
+        ...environmentInspection,
+        webGpuAdapterAvailable: null,
+      },
+      providerDiagnostics: [{ provider: 'wasm', message: 'WASM failed locally' }],
+    });
+    const resolvedEnvironment: RuntimeEnvironmentSnapshot = {
+      ...environmentSnapshot,
+      webGpuAdapterAvailable: true,
+    };
+
+    const updated = detectorReducer(failed, {
+      type: 'model-environment-collected',
+      environment: resolvedEnvironment,
+    });
+
+    expect(updated).toEqual({
+      ...failed,
+      environment: resolvedEnvironment,
+    });
+    expect(
+      detectorReducer(createInitialDetectorState(), {
+        type: 'model-environment-collected',
+        environment: resolvedEnvironment,
+      }),
+    ).toEqual(createInitialDetectorState());
   });
 });
 
@@ -536,6 +573,69 @@ describe('DetectorController', () => {
     expect(wasmMessage).toHaveLength(300);
   });
 
+  it('settles model loading and publishes provider diagnostics without waiting for the adapter probe', async () => {
+    const providerMessage = 'WASM session creation failed locally';
+    const collectEnvironment = vi.fn(
+      () => new Promise<RuntimeEnvironmentSnapshot>(() => undefined),
+    );
+    const controller = new DetectorController(
+      controllerDependencies({
+        loadModel: vi.fn().mockRejectedValue(
+          new ModelSessionInitializationError([
+            { provider: 'wasm', message: providerMessage },
+          ]),
+        ),
+        collectEnvironment,
+      }),
+    );
+
+    const outcome = await Promise.race([
+      controller.start().then(() => 'settled' as const),
+      new Promise<'timed-out'>((resolve) => {
+        setTimeout(() => resolve('timed-out'), 50);
+      }),
+    ]);
+
+    expect(outcome).toBe('settled');
+    expect(controller.getSnapshot()).toEqual({
+      phase: 'error',
+      kind: 'model',
+      message: 'The attempted WASM provider failed to initialize. Retry the model load.',
+      environment: unknownAdapterEnvironment,
+      providerDiagnostics: [{ provider: 'wasm', message: providerMessage }],
+    });
+    expect(collectEnvironment).toHaveBeenCalledTimes(1);
+  });
+
+  it('updates only the environment when a later adapter probe resolves', async () => {
+    const diagnostics = deferred<RuntimeEnvironmentSnapshot>();
+    const controller = new DetectorController(
+      controllerDependencies({
+        loadModel: vi.fn().mockRejectedValue(new Error('manifest unavailable')),
+        collectEnvironment: vi.fn(() => diagnostics.promise),
+      }),
+    );
+
+    await controller.start();
+    const initialError = controller.getSnapshot();
+    expect(initialError).toMatchObject({
+      phase: 'error',
+      kind: 'model',
+      environment: unknownAdapterEnvironment,
+      providerDiagnostics: [],
+    });
+
+    diagnostics.resolve(environmentSnapshot);
+    await vi.waitFor(() =>
+      expect(controller.getSnapshot()).toMatchObject({ environment: environmentSnapshot }),
+    );
+
+    expect(controller.getSnapshot()).toEqual({
+      ...initialError,
+      environment: environmentSnapshot,
+    });
+  });
+
   it('names only the provider that was actually attempted in forced-provider mode', async () => {
     const wasmMessage = 'WASM session creation failed locally';
     const controller = new DetectorController(
@@ -559,31 +659,30 @@ describe('DetectorController', () => {
     });
   });
 
-  it('falls back to synchronous facts when asynchronous capability collection fails', async () => {
+  it('keeps synchronous facts and handles a rejected background capability probe', async () => {
+    const collectEnvironment = vi.fn().mockRejectedValue(new Error('adapter probe failed'));
     const controller = new DetectorController(
       controllerDependencies({
         loadModel: vi.fn().mockRejectedValue(new Error('manifest unavailable')),
-        collectEnvironment: vi.fn().mockRejectedValue(new Error('adapter probe failed')),
+        collectEnvironment,
         inspectEnvironment: vi.fn().mockReturnValue(environmentInspection),
       }),
     );
 
     await controller.start();
+    await vi.waitFor(() => expect(collectEnvironment).toHaveBeenCalledTimes(1));
 
     expect(controller.getSnapshot()).toEqual({
       phase: 'error',
       kind: 'model',
       message:
         'The local FP32 model could not be initialized. manifest unavailable Retry the model load.',
-      environment: {
-        ...environmentInspection,
-        webGpuAdapterAvailable: null,
-      },
+      environment: unknownAdapterEnvironment,
       providerDiagnostics: [],
     });
   });
 
-  it('does not publish asynchronous diagnostics after the model operation becomes stale', async () => {
+  it('does not publish asynchronous diagnostics after reset cancels the operation', async () => {
     const diagnostics = deferred<RuntimeEnvironmentSnapshot>();
     const collectEnvironment = vi.fn(() => diagnostics.promise);
     const controller = new DetectorController(
@@ -593,13 +692,15 @@ describe('DetectorController', () => {
       }),
     );
 
-    const loading = controller.start();
+    await controller.start();
     await vi.waitFor(() => expect(collectEnvironment).toHaveBeenCalledTimes(1));
+    const failed = controller.getSnapshot();
     controller.reset();
     diagnostics.resolve(environmentSnapshot);
-    await loading;
+    await Promise.resolve();
+    await Promise.resolve();
 
-    expect(controller.getSnapshot()).toEqual(createInitialDetectorState());
+    expect(controller.getSnapshot()).toBe(failed);
   });
 
   it('does not publish asynchronous diagnostics after disposal', async () => {
@@ -612,13 +713,61 @@ describe('DetectorController', () => {
       }),
     );
 
-    const loading = controller.start();
+    await controller.start();
     await vi.waitFor(() => expect(collectEnvironment).toHaveBeenCalledTimes(1));
+    const failed = controller.getSnapshot();
     await controller.dispose();
     diagnostics.resolve(environmentSnapshot);
-    await loading;
+    await Promise.resolve();
+    await Promise.resolve();
 
-    expect(controller.getSnapshot()).toEqual(createInitialDetectorState());
+    expect(controller.getSnapshot()).toBe(failed);
+  });
+
+  it('does not let an old probe overwrite a newer retry generation', async () => {
+    const oldDiagnostics = deferred<RuntimeEnvironmentSnapshot>();
+    const newDiagnostics = deferred<RuntimeEnvironmentSnapshot>();
+    const collectEnvironment = vi
+      .fn()
+      .mockReturnValueOnce(oldDiagnostics.promise)
+      .mockReturnValueOnce(newDiagnostics.promise);
+    const loadModel = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('first manifest failed'))
+      .mockRejectedValueOnce(new Error('second manifest failed'));
+    const controller = new DetectorController(
+      controllerDependencies({ loadModel, collectEnvironment }),
+    );
+
+    await controller.start();
+    await vi.waitFor(() => expect(collectEnvironment).toHaveBeenCalledTimes(1));
+    await controller.retryModel();
+    await vi.waitFor(() => expect(collectEnvironment).toHaveBeenCalledTimes(2));
+
+    const newEnvironment: RuntimeEnvironmentSnapshot = {
+      ...environmentSnapshot,
+      userAgent: 'New retry generation',
+    };
+    newDiagnostics.resolve(newEnvironment);
+    await vi.waitFor(() =>
+      expect(controller.getSnapshot()).toMatchObject({ environment: newEnvironment }),
+    );
+    const currentError = controller.getSnapshot();
+
+    oldDiagnostics.resolve({
+      ...environmentSnapshot,
+      userAgent: 'Stale first generation',
+      webGpuAdapterAvailable: true,
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(controller.getSnapshot()).toBe(currentError);
+    expect(controller.getSnapshot()).toMatchObject({
+      message:
+        'The local FP32 model could not be initialized. second manifest failed Retry the model load.',
+      environment: newEnvironment,
+    });
   });
 
   it('does not swallow a retry fired before the failed active load reaches its finally cleanup', async () => {

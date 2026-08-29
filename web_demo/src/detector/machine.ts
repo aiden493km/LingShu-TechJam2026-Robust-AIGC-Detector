@@ -75,6 +75,10 @@ export type DetectorEvent =
       readonly environment: RuntimeEnvironmentSnapshot;
       readonly providerDiagnostics: readonly ProviderDiagnostic[];
     }
+  | {
+      readonly type: 'model-environment-collected';
+      readonly environment: RuntimeEnvironmentSnapshot;
+    }
   | { readonly type: 'file-selected'; readonly fileName: string }
   | { readonly type: 'validation-succeeded'; readonly previewUrl: string }
   | { readonly type: 'preprocessing-succeeded'; readonly image: ImageDetails }
@@ -124,6 +128,10 @@ export function detectorReducer(state: DetectorState, event: DetectorEvent): Det
             environment: event.environment,
             providerDiagnostics: event.providerDiagnostics,
           }
+        : state;
+    case 'model-environment-collected':
+      return state.phase === 'error' && state.kind === 'model'
+        ? { ...state, environment: event.environment }
         : state;
     case 'file-selected': {
       const model = stateModel(state);
