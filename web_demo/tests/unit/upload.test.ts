@@ -2,7 +2,11 @@ import { readFile } from 'node:fs/promises';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { validateImageFile } from '../../src/runtime/upload';
+import {
+  MAX_IMAGE_DIMENSION,
+  MAX_IMAGE_PIXELS,
+  validateImageFile,
+} from '../../src/runtime/upload';
 
 const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
 const encoder = new TextEncoder();
@@ -34,8 +38,26 @@ function jpegSegment(marker: number, payload = new Uint8Array()): Uint8Array {
   return concatBytes(Uint8Array.of(0xff, marker, length >> 8, length & 0xff), payload);
 }
 
-function jpegFrame(marker: 0xc0 | 0xc2): Uint8Array {
-  return jpegSegment(marker, Uint8Array.of(8, 0, 1, 0, 1, 1, 1, 0x11, 0));
+function jpegFrame(
+  marker: 0xc0 | 0xc1 | 0xc2,
+  width = 1,
+  height = 1,
+  precision = 8,
+): Uint8Array {
+  return jpegSegment(
+    marker,
+    Uint8Array.of(
+      precision,
+      (height >> 8) & 0xff,
+      height & 0xff,
+      (width >> 8) & 0xff,
+      width & 0xff,
+      1,
+      1,
+      0x11,
+      0,
+    ),
+  );
 }
 
 function jpegScanHeader(): Uint8Array {
@@ -75,11 +97,15 @@ function pngChunk(type: string, data = new Uint8Array()): Uint8Array {
   );
 }
 
-function pngBytes(...extraChunks: Uint8Array[]): Uint8Array {
+function pngBytesWithDimensions(
+  width: number,
+  height: number,
+  ...extraChunks: Uint8Array[]
+): Uint8Array {
   const ihdr = new Uint8Array(13);
   const view = new DataView(ihdr.buffer);
-  view.setUint32(0, 1, false);
-  view.setUint32(4, 1, false);
+  view.setUint32(0, width, false);
+  view.setUint32(4, height, false);
   ihdr.set([8, 6, 0, 0, 0], 8);
   return concatBytes(
     Uint8Array.of(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a),
@@ -87,6 +113,10 @@ function pngBytes(...extraChunks: Uint8Array[]): Uint8Array {
     ...extraChunks,
     pngChunk('IEND'),
   );
+}
+
+function pngBytes(...extraChunks: Uint8Array[]): Uint8Array {
+  return pngBytesWithDimensions(1, 1, ...extraChunks);
 }
 
 function exactSizePng(size: number): Uint8Array {
@@ -110,12 +140,47 @@ function webpBytes(...chunks: Uint8Array[]): Uint8Array {
   return concatBytes(encoder.encode('RIFF'), uint32LittleEndian(body.length), body);
 }
 
+function setUint24LittleEndian(bytes: Uint8Array, offset: number, value: number): void {
+  bytes[offset] = value & 0xff;
+  bytes[offset + 1] = (value >> 8) & 0xff;
+  bytes[offset + 2] = (value >> 16) & 0xff;
+}
+
+function vp8Data(width = 1, height = 1): Uint8Array {
+  const data = Uint8Array.of(0x10, 0, 0, 0x9d, 0x01, 0x2a, 0, 0, 0, 0);
+  const view = new DataView(data.buffer);
+  view.setUint16(6, width & 0x3fff, true);
+  view.setUint16(8, height & 0x3fff, true);
+  return data;
+}
+
+function vp8lData(width = 1, height = 1): Uint8Array {
+  const data = new Uint8Array(5);
+  data[0] = 0x2f;
+  const packed = ((width - 1) & 0x3fff) | (((height - 1) & 0x3fff) << 14);
+  new DataView(data.buffer).setUint32(1, packed, true);
+  return data;
+}
+
+function vp8xData(width: number, height: number, flags = 0): Uint8Array {
+  const data = new Uint8Array(10);
+  data[0] = flags;
+  setUint24LittleEndian(data, 4, width - 1);
+  setUint24LittleEndian(data, 7, height - 1);
+  return data;
+}
+
 function imageFile(bytes: Uint8Array, name = 'fixture.bin', type = ''): File {
   const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
   return new File([buffer], name, { type });
 }
 
 describe('validateImageFile', () => {
+  it('publishes the bounded raw RGBA geometry contract', () => {
+    expect(MAX_IMAGE_DIMENSION).toBe(16_384);
+    expect(MAX_IMAGE_PIXELS).toBe(32 * 1024 * 1024);
+  });
+
   it('accepts a structurally valid image at the exact 25 MiB boundary', async () => {
     const file = imageFile(exactSizePng(MAX_IMAGE_BYTES), 'boundary.dat', 'text/plain');
 
@@ -151,7 +216,7 @@ describe('validateImageFile', () => {
   it.each([
     ['jpeg', baselineJpegBytes()],
     ['png', pngBytes()],
-    ['webp', webpBytes(webpChunk('VP8 ', Uint8Array.of(0, 0)))],
+    ['webp', webpBytes(webpChunk('VP8 ', vp8Data()))],
   ] as const)('detects %s from bytes regardless of filename or MIME', async (format, bytes) => {
     const file = imageFile(bytes, 'misleading.txt', 'application/octet-stream');
 
@@ -179,6 +244,71 @@ describe('validateImageFile', () => {
     );
 
     await expect(validateImageFile(imageFile(filledMarker))).resolves.toBe('jpeg');
+  });
+
+  it('accepts an image exactly at the pixel and dimension caps', async () => {
+    const boundary = pngBytesWithDimensions(MAX_IMAGE_DIMENSION, 2_048);
+
+    await expect(validateImageFile(imageFile(boundary))).resolves.toBe('png');
+  });
+
+  it.each([
+    ['PNG', pngBytesWithDimensions(MAX_IMAGE_DIMENSION + 1, 1)],
+    [
+      'JPEG',
+      concatBytes(
+        Uint8Array.of(0xff, 0xd8),
+        jpegFrame(0xc0, MAX_IMAGE_DIMENSION, 2_049),
+        jpegScanHeader(),
+        Uint8Array.of(0x12, 0xff, 0xd9),
+      ),
+    ],
+    ['VP8', webpBytes(webpChunk('VP8 ', vp8Data(8_192, 4_097)))],
+    ['VP8L', webpBytes(webpChunk('VP8L', vp8lData(16_384, 16_384)))],
+    [
+      'VP8X',
+      webpBytes(
+        webpChunk('VP8X', vp8xData(MAX_IMAGE_DIMENSION + 1, 1)),
+        webpChunk('VP8 ', vp8Data()),
+      ),
+    ],
+  ])('rejects tiny %s containers that declare unsafe geometry', async (_label, bytes) => {
+    const error = await validateImageFile(imageFile(bytes, '<unsafe>.bin')).catch(
+      (reason: unknown) => reason,
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/dimensions|safe limit|megapixels/i);
+    expect((error as Error).message).not.toContain('<');
+  });
+
+  it.each([
+    ['PNG', pngBytesWithDimensions(0, 1)],
+    [
+      'JPEG',
+      concatBytes(
+        Uint8Array.of(0xff, 0xd8),
+        jpegFrame(0xc0, 0, 1),
+        jpegScanHeader(),
+        Uint8Array.of(0x12, 0xff, 0xd9),
+      ),
+    ],
+  ])('rejects zero %s dimensions with the fixed geometry error', async (_label, bytes) => {
+    await expect(validateImageFile(imageFile(bytes))).rejects.toThrow(
+      /dimensions|safe limit|megapixels/i,
+    );
+  });
+
+  it('rejects inconsistent dimensions across multiple JPEG frame headers', async () => {
+    const jpeg = concatBytes(
+      Uint8Array.of(0xff, 0xd8),
+      jpegFrame(0xc0, 4, 3),
+      jpegFrame(0xc1, 5, 3),
+      jpegScanHeader(),
+      Uint8Array.of(0x12, 0xff, 0xd9),
+    );
+
+    await expect(validateImageFile(imageFile(jpeg))).rejects.toThrow(/malformed|truncated/i);
   });
 
   it('accepts the committed EXIF orientation fixture as a structural JPEG', async () => {
@@ -285,11 +415,40 @@ describe('validateImageFile', () => {
   });
 
   it('rejects a WebP whose VP8X feature flags declare animation', async () => {
-    const flags = new Uint8Array(10);
-    flags[0] = 0x02;
+    const flags = vp8xData(1, 1, 0x02);
     const file = imageFile(webpBytes(webpChunk('VP8X', flags)), 'animated.webp');
 
     await expect(validateImageFile(file)).rejects.toThrow(/animated/i);
+  });
+
+  it.each([
+    ['VP8', webpBytes(webpChunk('VP8 ', vp8Data(17, 23)))],
+    ['VP8L', webpBytes(webpChunk('VP8L', vp8lData(17, 23)))],
+    [
+      'matching VP8X and VP8',
+      webpBytes(
+        webpChunk('VP8X', vp8xData(17, 23)),
+        webpChunk('VP8 ', vp8Data(17, 23)),
+      ),
+    ],
+  ])('accepts a structurally valid WebP %s image header', async (_label, bytes) => {
+    await expect(validateImageFile(imageFile(bytes))).resolves.toBe('webp');
+  });
+
+  it.each([
+    ['VP8X without an image chunk', webpBytes(webpChunk('VP8X', vp8xData(1, 1)))],
+    ['metadata without an image chunk', webpBytes(webpChunk('EXIF', Uint8Array.of(1, 2)))],
+    [
+      'VP8X dimensions inconsistent with VP8',
+      webpBytes(
+        webpChunk('VP8X', vp8xData(17, 23)),
+        webpChunk('VP8 ', vp8Data(16, 23)),
+      ),
+    ],
+    ['invalid VP8 start code', webpBytes(webpChunk('VP8 ', new Uint8Array(10)))],
+    ['invalid VP8L signature', webpBytes(webpChunk('VP8L', new Uint8Array(5)))],
+  ])('rejects %s', async (_label, bytes) => {
+    await expect(validateImageFile(imageFile(bytes))).rejects.toThrow(/malformed|truncated/i);
   });
 
   it.each([
@@ -315,7 +474,7 @@ describe('validateImageFile', () => {
   });
 
   it('rejects inconsistent RIFF bounds, WebP chunk overflow, and missing odd-byte padding', async () => {
-    const inconsistentRiff = webpBytes(webpChunk('VP8 ', Uint8Array.of(0, 0)));
+    const inconsistentRiff = webpBytes(webpChunk('VP8 ', vp8Data()));
     new DataView(inconsistentRiff.buffer).setUint32(4, inconsistentRiff.length, true);
     const overflowingChunk = concatBytes(
       encoder.encode('RIFF'),

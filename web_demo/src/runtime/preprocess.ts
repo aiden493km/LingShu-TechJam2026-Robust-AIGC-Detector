@@ -4,7 +4,12 @@ import resize from '@jsquash/resize';
 import decodeWebp from '@jsquash/webp/decode.js';
 
 import { applyExifOrientation, readJpegOrientation } from './exif';
-import { readAndValidateImageFile, type SupportedImageFormat } from './upload';
+import {
+  assertSafeImageGeometry,
+  IMAGE_GEOMETRY_ERROR,
+  readAndValidateImageFile,
+  type SupportedImageFormat,
+} from './upload';
 
 const TARGET_SIZE = 384;
 const RED_MEAN = 0.485;
@@ -31,7 +36,20 @@ export interface PreprocessedImage {
   orientedHeight: number;
 }
 
+function assertValidImageData(image: ImageData, requireTargetSize = false): void {
+  assertSafeImageGeometry(image.width, image.height);
+  const expectedByteLength = image.width * image.height * 4;
+  if (
+    image.data === undefined ||
+    image.data.length !== expectedByteLength ||
+    (requireTargetSize && (image.width !== TARGET_SIZE || image.height !== TARGET_SIZE))
+  ) {
+    throw new Error(IMAGE_GEOMETRY_ERROR);
+  }
+}
+
 export function imageDataToNormalizedChw(image: ImageData): Float32Array {
+  assertValidImageData(image);
   const pixelCount = image.width * image.height;
   const tensor = new Float32Array(pixelCount * 3);
 
@@ -64,15 +82,18 @@ export async function preprocessImage(file: File): Promise<PreprocessedImage> {
   const { buffer, format } = await readAndValidateImageFile(file);
   const orientation = format === 'jpeg' ? readJpegOrientation(buffer) : 1;
   const decoded = await decodeImage(format, buffer);
+  assertValidImageData(decoded);
   const originalWidth = decoded.width;
   const originalHeight = decoded.height;
   const oriented = format === 'jpeg' ? applyExifOrientation(decoded, orientation) : decoded;
+  assertValidImageData(oriented);
   const orientedWidth = oriented.width;
   const orientedHeight = oriented.height;
   const prepared =
     orientedWidth === TARGET_SIZE && orientedHeight === TARGET_SIZE
       ? oriented
       : await resize(oriented, RESIZE_OPTIONS);
+  assertValidImageData(prepared, true);
 
   return {
     tensor: imageDataToNormalizedChw(prepared),

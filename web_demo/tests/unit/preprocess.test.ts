@@ -70,7 +70,8 @@ function pngBytes(): Uint8Array {
 }
 
 function webpBytes(): Uint8Array {
-  const chunk = concatBytes(encoder.encode('VP8 '), uint32(2, true), Uint8Array.of(0, 0));
+  const frame = Uint8Array.of(0x10, 0, 0, 0x9d, 0x01, 0x2a, 1, 0, 1, 0);
+  const chunk = concatBytes(encoder.encode('VP8 '), uint32(frame.length, true), frame);
   const body = concatBytes(encoder.encode('WEBP'), chunk);
   return concatBytes(encoder.encode('RIFF'), uint32(body.length, true), body);
 }
@@ -117,6 +118,15 @@ function solidImage(width: number, height: number, rgba: readonly number[]): Ima
     data.set(rgba, offset);
   }
   return new ImageData(data, width, height);
+}
+
+function uncheckedImage(width: number, height: number, dataLength: number): ImageData {
+  return {
+    colorSpace: 'srgb',
+    data: new Uint8ClampedArray(dataLength),
+    width,
+    height,
+  } as ImageData;
 }
 
 function fileWithBytes(bytes: Uint8Array, name: string): {
@@ -173,6 +183,12 @@ describe('imageDataToNormalizedChw', () => {
     const opaque = new ImageData(Uint8ClampedArray.of(17, 83, 241, 255), 1, 1);
 
     expect(imageDataToNormalizedChw(transparent)).toEqual(imageDataToNormalizedChw(opaque));
+  });
+
+  it('rejects an ImageData payload whose byte length disagrees with its geometry', () => {
+    expect(() => imageDataToNormalizedChw(uncheckedImage(2, 2, 15))).toThrow(
+      /dimensions|safe limit|megapixels/i,
+    );
   });
 });
 
@@ -296,6 +312,46 @@ describe('preprocessImage', () => {
     await expect(preprocessImage(fixture.file)).rejects.toBe(decodeError);
     expect(fixture.read).toHaveBeenCalledTimes(1);
     expect(resize).not.toHaveBeenCalled();
+  });
+
+  it('rejects a decoder result whose RGBA byte length is inconsistent', async () => {
+    const fixture = fileWithBytes(pngBytes(), 'mismatched.png');
+    vi.mocked(decodePng).mockResolvedValue(uncheckedImage(2, 2, 15));
+
+    await expect(preprocessImage(fixture.file)).rejects.toThrow(
+      /dimensions|safe limit|megapixels/i,
+    );
+    expect(resize).not.toHaveBeenCalled();
+  });
+
+  it('rejects an oversized decoder result before allocating or resizing it', async () => {
+    const fixture = fileWithBytes(pngBytes(), 'oversized.png');
+    vi.mocked(decodePng).mockResolvedValue(uncheckedImage(16_384, 2_049, 4));
+
+    await expect(preprocessImage(fixture.file)).rejects.toThrow(
+      /dimensions|safe limit|megapixels/i,
+    );
+    expect(resize).not.toHaveBeenCalled();
+  });
+
+  it('rejects a resize result that is not exactly 384 by 384', async () => {
+    const fixture = fileWithBytes(pngBytes(), 'wrong-resize-size.png');
+    vi.mocked(decodePng).mockResolvedValue(solidImage(2, 2, [1, 2, 3, 4]));
+    vi.mocked(resize).mockResolvedValue(solidImage(383, 384, [1, 2, 3, 4]));
+
+    await expect(preprocessImage(fixture.file)).rejects.toThrow(
+      /dimensions|safe limit|megapixels/i,
+    );
+  });
+
+  it('rejects a resize result whose RGBA byte length is inconsistent', async () => {
+    const fixture = fileWithBytes(pngBytes(), 'wrong-resize-data.png');
+    vi.mocked(decodePng).mockResolvedValue(solidImage(2, 2, [1, 2, 3, 4]));
+    vi.mocked(resize).mockResolvedValue(uncheckedImage(384, 384, 384 * 384 * 4 - 1));
+
+    await expect(preprocessImage(fixture.file)).rejects.toThrow(
+      /dimensions|safe limit|megapixels/i,
+    );
   });
 
   it('propagates resize errors after one decode and one file read', async () => {
