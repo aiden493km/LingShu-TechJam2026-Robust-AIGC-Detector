@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import { validateImageFile } from '../../src/runtime/upload';
@@ -25,6 +27,43 @@ function uint32LittleEndian(value: number): Uint8Array {
   const bytes = new Uint8Array(4);
   new DataView(bytes.buffer).setUint32(0, value, true);
   return bytes;
+}
+
+function jpegSegment(marker: number, payload = new Uint8Array()): Uint8Array {
+  const length = payload.length + 2;
+  return concatBytes(Uint8Array.of(0xff, marker, length >> 8, length & 0xff), payload);
+}
+
+function jpegFrame(marker: 0xc0 | 0xc2): Uint8Array {
+  return jpegSegment(marker, Uint8Array.of(8, 0, 1, 0, 1, 1, 1, 0x11, 0));
+}
+
+function jpegScanHeader(): Uint8Array {
+  return jpegSegment(0xda, Uint8Array.of(1, 1, 0, 0, 63, 0));
+}
+
+function baselineJpegBytes(): Uint8Array {
+  return concatBytes(
+    Uint8Array.of(0xff, 0xd8),
+    jpegSegment(0xe0, Uint8Array.of(0x4a, 0x46, 0x49, 0x46, 0)),
+    jpegFrame(0xc0),
+    jpegScanHeader(),
+    Uint8Array.of(0x12, 0xff, 0x00, 0x34, 0xff, 0xd0, 0x56),
+    Uint8Array.of(0xff, 0xd9),
+  );
+}
+
+function progressiveJpegBytes(): Uint8Array {
+  return concatBytes(
+    Uint8Array.of(0xff, 0xd8),
+    jpegFrame(0xc2),
+    jpegScanHeader(),
+    Uint8Array.of(0x11, 0xff, 0x00, 0x22, 0xff, 0xd1),
+    jpegSegment(0xc4, Uint8Array.of(0)),
+    jpegScanHeader(),
+    Uint8Array.of(0x33, 0xff, 0x00, 0x44, 0xff, 0xd7),
+    Uint8Array.of(0xff, 0xd9),
+  );
 }
 
 function pngChunk(type: string, data = new Uint8Array()): Uint8Array {
@@ -110,13 +149,121 @@ describe('validateImageFile', () => {
   });
 
   it.each([
-    ['jpeg', Uint8Array.of(0xff, 0xd8, 0xff, 0xd9)],
+    ['jpeg', baselineJpegBytes()],
     ['png', pngBytes()],
     ['webp', webpBytes(webpChunk('VP8 ', Uint8Array.of(0, 0)))],
   ] as const)('detects %s from bytes regardless of filename or MIME', async (format, bytes) => {
     const file = imageFile(bytes, 'misleading.txt', 'application/octet-stream');
 
     await expect(validateImageFile(file)).resolves.toBe(format);
+  });
+
+  it('accepts bounded baseline entropy with FF00 stuffing and restart markers', async () => {
+    await expect(validateImageFile(imageFile(baselineJpegBytes(), 'baseline.bin'))).resolves.toBe(
+      'jpeg',
+    );
+  });
+
+  it('accepts a progressive-style stream with markers and a later scan', async () => {
+    await expect(
+      validateImageFile(imageFile(progressiveJpegBytes(), 'progressive.bin')),
+    ).resolves.toBe('jpeg');
+  });
+
+  it('accepts marker fill bytes outside entropy-coded data', async () => {
+    const filledMarker = concatBytes(
+      Uint8Array.of(0xff, 0xd8, 0xff, 0xff, 0xff, 0xe0, 0, 2),
+      jpegFrame(0xc0),
+      jpegScanHeader(),
+      Uint8Array.of(0x12, 0xff, 0xd9),
+    );
+
+    await expect(validateImageFile(imageFile(filledMarker))).resolves.toBe('jpeg');
+  });
+
+  it('accepts the committed EXIF orientation fixture as a structural JPEG', async () => {
+    const fixture = await readFile(
+      new URL('../fixtures/exif-orientation-6.jpg', import.meta.url),
+    );
+    const bytes = fixture.buffer.slice(
+      fixture.byteOffset,
+      fixture.byteOffset + fixture.byteLength,
+    ) as ArrayBuffer;
+
+    await expect(
+      validateImageFile(new File([bytes], 'exif-orientation-6.jpg')),
+    ).resolves.toBe('jpeg');
+  });
+
+  it.each([
+    ['four-byte SOI/EOI junk', Uint8Array.of(0xff, 0xd8, 0xff, 0xd9)],
+    ['truncated marker', Uint8Array.of(0xff, 0xd8, 0xff)],
+    ['truncated segment length', Uint8Array.of(0xff, 0xd8, 0xff, 0xe1, 0)],
+    [
+      'segment length below two',
+      Uint8Array.of(0xff, 0xd8, 0xff, 0xe1, 0, 1, 0xff, 0xd9),
+    ],
+    [
+      'overflowing APP payload',
+      Uint8Array.of(0xff, 0xd8, 0xff, 0xe1, 0, 16, 1, 2, 0xff, 0xd9),
+    ],
+    ['stuffed FF00 outside entropy', Uint8Array.of(0xff, 0xd8, 0xff, 0x00)],
+    [
+      'reserved marker code',
+      Uint8Array.of(0xff, 0xd8, 0xff, 0x02, 0, 2, 0xff, 0xd9),
+    ],
+    [
+      'restart marker outside entropy',
+      concatBytes(
+        Uint8Array.of(0xff, 0xd8, 0xff, 0xd0),
+        jpegFrame(0xc0),
+        jpegScanHeader(),
+        Uint8Array.of(0xff, 0xd9),
+      ),
+    ],
+    [
+      'SOS before a frame',
+      concatBytes(
+        Uint8Array.of(0xff, 0xd8),
+        jpegScanHeader(),
+        Uint8Array.of(1, 0xff, 0xd9),
+      ),
+    ],
+    [
+      'frame without a scan',
+      concatBytes(Uint8Array.of(0xff, 0xd8), jpegFrame(0xc0), Uint8Array.of(0xff, 0xd9)),
+    ],
+  ])('rejects %s', async (_label, bytes) => {
+    await expect(validateImageFile(imageFile(bytes))).rejects.toThrow(/malformed|truncated/i);
+  });
+
+  it('rejects a JPEG missing EOI', async () => {
+    const complete = baselineJpegBytes();
+    const missingEoi = complete.subarray(0, complete.length - 2);
+
+    await expect(validateImageFile(imageFile(missingEoi))).rejects.toThrow(/malformed|truncated/i);
+  });
+
+  it('rejects a truncated SOS header payload', async () => {
+    const truncated = concatBytes(
+      Uint8Array.of(0xff, 0xd8),
+      jpegFrame(0xc0),
+      Uint8Array.of(0xff, 0xda, 0, 8, 1, 1),
+    );
+
+    await expect(validateImageFile(imageFile(truncated))).rejects.toThrow(/malformed|truncated/i);
+  });
+
+  it('uses a strict policy that rejects every byte after EOI', async () => {
+    const trailing = concatBytes(baselineJpegBytes(), encoder.encode('<script>'));
+    const error = await validateImageFile(imageFile(trailing, '<hostile>.jpg')).catch(
+      (reason: unknown) => reason,
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/malformed|truncated/i);
+    expect((error as Error).message).not.toContain('<');
+    expect((error as Error).message).not.toContain('script');
   });
 
   it('rejects a spoofed supported extension and MIME type', async () => {

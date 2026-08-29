@@ -46,6 +46,117 @@ function asciiEqualAt(bytes: Uint8Array, offset: number, expected: string): bool
   return true;
 }
 
+function isStartOfFrameMarker(marker: number): boolean {
+  return (
+    marker >= 0xc0 &&
+    marker <= 0xcf &&
+    marker !== 0xc4 &&
+    marker !== 0xc8 &&
+    marker !== 0xcc
+  );
+}
+
+function validateJpegStructure(bytes: Uint8Array): void {
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) {
+    throw new Error(MALFORMED_ERROR);
+  }
+
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let offset = 2;
+  let inEntropy = false;
+  let sawFrame = false;
+  let sawScan = false;
+
+  while (offset < bytes.length) {
+    let marker: number | undefined;
+
+    if (inEntropy) {
+      while (offset < bytes.length) {
+        if (bytes[offset] !== 0xff) {
+          offset += 1;
+          continue;
+        }
+
+        offset += 1;
+        while (offset < bytes.length && bytes[offset] === 0xff) {
+          offset += 1;
+        }
+        if (offset >= bytes.length) {
+          throw new Error(MALFORMED_ERROR);
+        }
+
+        const entropyMarker = bytes[offset]!;
+        offset += 1;
+        if (entropyMarker === 0x00 || (entropyMarker >= 0xd0 && entropyMarker <= 0xd7)) {
+          continue;
+        }
+
+        marker = entropyMarker;
+        inEntropy = false;
+        break;
+      }
+    } else {
+      if (bytes[offset] !== 0xff) {
+        throw new Error(MALFORMED_ERROR);
+      }
+      while (offset < bytes.length && bytes[offset] === 0xff) {
+        offset += 1;
+      }
+      if (offset >= bytes.length) {
+        throw new Error(MALFORMED_ERROR);
+      }
+      marker = bytes[offset]!;
+      offset += 1;
+    }
+
+    if (marker === undefined || marker === 0x00 || (marker > 0x01 && marker < 0xc0)) {
+      throw new Error(MALFORMED_ERROR);
+    }
+    if (marker === 0xd8 || (marker >= 0xd0 && marker <= 0xd7)) {
+      throw new Error(MALFORMED_ERROR);
+    }
+    if (marker === 0xd9) {
+      // Strict policy: EOI must be the final two-byte marker; trailing data is rejected.
+      if (!sawFrame || !sawScan || offset !== bytes.length) {
+        throw new Error(MALFORMED_ERROR);
+      }
+      return;
+    }
+    if (marker === 0x01) {
+      continue;
+    }
+
+    if (offset + 2 > bytes.length) {
+      throw new Error(MALFORMED_ERROR);
+    }
+    const segmentLength = view.getUint16(offset, false);
+    if (segmentLength < 2) {
+      throw new Error(MALFORMED_ERROR);
+    }
+    const payloadStart = offset + 2;
+    const payloadLength = segmentLength - 2;
+    if (payloadLength > bytes.length - payloadStart) {
+      throw new Error(MALFORMED_ERROR);
+    }
+    offset = payloadStart + payloadLength;
+
+    if (isStartOfFrameMarker(marker)) {
+      if (segmentLength < 8) {
+        throw new Error(MALFORMED_ERROR);
+      }
+      sawFrame = true;
+    } else if (marker === 0xda) {
+      if (!sawFrame || segmentLength < 6) {
+        throw new Error(MALFORMED_ERROR);
+      }
+      sawScan = true;
+      inEntropy = true;
+    }
+  }
+
+  throw new Error(MALFORMED_ERROR);
+}
+
 function validatePngStructure(bytes: Uint8Array): void {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let offset = PNG_SIGNATURE.length;
@@ -150,12 +261,8 @@ function validateWebpStructure(bytes: Uint8Array): void {
 export function validateImageBytes(bytes: Uint8Array): SupportedImageFormat {
   assertAllowedSize(bytes.byteLength);
 
-  if (
-    bytes.length >= 4 &&
-    bytes[0] === 0xff &&
-    bytes[1] === 0xd8 &&
-    bytes[2] === 0xff
-  ) {
+  if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+    validateJpegStructure(bytes);
     return 'jpeg';
   }
 

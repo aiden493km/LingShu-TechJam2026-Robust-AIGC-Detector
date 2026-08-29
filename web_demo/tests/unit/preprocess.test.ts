@@ -75,9 +75,22 @@ function webpBytes(): Uint8Array {
   return concatBytes(encoder.encode('RIFF'), uint32(body.length, true), body);
 }
 
+function jpegSegment(marker: number, payload: Uint8Array): Uint8Array {
+  const length = payload.length + 2;
+  return concatBytes(Uint8Array.of(0xff, marker, length >> 8, length & 0xff), payload);
+}
+
+function jpegImageStream(): Uint8Array {
+  return concatBytes(
+    jpegSegment(0xc0, Uint8Array.of(8, 0, 2, 0, 3, 1, 1, 0x11, 0)),
+    jpegSegment(0xda, Uint8Array.of(1, 1, 0, 0, 63, 0)),
+    Uint8Array.of(0x12, 0xff, 0x00, 0x34, 0xff, 0xd9),
+  );
+}
+
 function jpegBytes(orientation?: number): Uint8Array {
   if (orientation === undefined) {
-    return Uint8Array.of(0xff, 0xd8, 0xff, 0xd9);
+    return concatBytes(Uint8Array.of(0xff, 0xd8), jpegImageStream());
   }
   const tiff = new Uint8Array(26);
   const view = new DataView(tiff.buffer);
@@ -94,7 +107,7 @@ function jpegBytes(orientation?: number): Uint8Array {
   return concatBytes(
     Uint8Array.of(0xff, 0xd8, 0xff, 0xe1, length >> 8, length & 0xff),
     payload,
-    Uint8Array.of(0xff, 0xd9),
+    jpegImageStream(),
   );
 }
 
