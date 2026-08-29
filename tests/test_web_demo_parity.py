@@ -237,6 +237,49 @@ class ParityReferenceUnitTests(unittest.TestCase):
             with symlink_context, self.assertRaisesRegex(ValueError, "symlink.*escapes"):
                 _validated_output_path(repository.resolve(), linked_parent / "parity", [])
 
+    def test_rejects_a_generated_tests_root_redirected_to_a_tracked_directory(self):
+        with TemporaryDirectory() as temporary_directory:
+            repository = (Path(temporary_directory) / "repo").resolve()
+            tracked_directory = repository / "web_demo" / "src"
+            tracked_directory.mkdir(parents=True)
+            generated_tests = repository / "web_demo" / ".generated-tests"
+
+            try:
+                generated_tests.symlink_to(tracked_directory, target_is_directory=True)
+            except OSError:
+                real_resolve = Path.resolve
+
+                def simulate_redirected_root(path: Path, strict: bool = False) -> Path:
+                    if path == generated_tests:
+                        return tracked_directory
+                    return real_resolve(path, strict=strict)
+
+                redirect_context = patch.object(Path, "resolve", simulate_redirected_root)
+            else:
+                redirect_context = nullcontext()
+
+            with redirect_context, self.assertRaisesRegex(
+                ValueError,
+                "[.]generated-tests.*redirected",
+            ):
+                _validated_output_path(repository, generated_tests / "parity", [])
+
+    def test_rejects_a_generated_tests_junction_even_without_resolve_drift(self):
+        with TemporaryDirectory() as temporary_directory:
+            repository = (Path(temporary_directory) / "repo").resolve()
+            generated_tests = repository / "web_demo" / ".generated-tests"
+            generated_tests.mkdir(parents=True)
+            real_is_junction = Path.is_junction
+
+            def mark_generated_tests_as_junction(path: Path) -> bool:
+                return path == generated_tests or real_is_junction(path)
+
+            with patch.object(Path, "is_junction", mark_generated_tests_as_junction), self.assertRaisesRegex(
+                ValueError,
+                "[.]generated-tests.*redirected",
+            ):
+                _validated_output_path(repository, generated_tests / "parity", [])
+
     def test_rejects_an_external_output_that_contains_a_protected_file(self):
         with TemporaryDirectory() as temporary_directory:
             output = Path(temporary_directory) / "output"

@@ -193,9 +193,27 @@ def _validated_output_path(
     if candidate.is_symlink():
         raise ValueError(f"output directory must not be a symlink: {candidate}")
 
+    lexical_is_in_repository = candidate.is_relative_to(resolved_repository)
+    resolved_generated_tests: Path | None = None
+    if lexical_is_in_repository:
+        lexical_generated_tests = (
+            resolved_repository / "web_demo" / ".generated-tests"
+        )
+        resolved_generated_tests = lexical_generated_tests.resolve(strict=False)
+        is_junction = getattr(lexical_generated_tests, "is_junction", None)
+        generated_tests_is_junction = bool(is_junction and is_junction())
+        if (
+            lexical_generated_tests.is_symlink()
+            or generated_tests_is_junction
+            or resolved_generated_tests != lexical_generated_tests
+        ):
+            raise ValueError(
+                "web_demo/.generated-tests output root is redirected by a symlink or junction: "
+                f"{lexical_generated_tests} -> {resolved_generated_tests}"
+            )
+
     candidate_parent = candidate.parent.resolve(strict=False)
     resolved = candidate_parent / candidate.name
-    lexical_is_in_repository = candidate.is_relative_to(resolved_repository)
     resolved_is_in_repository = resolved.is_relative_to(resolved_repository)
     if lexical_is_in_repository != resolved_is_in_repository:
         raise ValueError(
@@ -205,10 +223,11 @@ def _validated_output_path(
     if resolved == resolved_repository or resolved_repository.is_relative_to(resolved):
         raise ValueError(f"output directory must not contain the repository: {resolved}")
     if resolved_is_in_repository:
-        generated_tests = (
-            resolved_repository / "web_demo" / ".generated-tests"
-        ).resolve(strict=False)
-        if resolved == generated_tests or not resolved.is_relative_to(generated_tests):
+        if resolved_generated_tests is None:
+            raise ValueError(f"output directory resolves unexpectedly inside repository: {resolved}")
+        if resolved == resolved_generated_tests or not resolved.is_relative_to(
+            resolved_generated_tests
+        ):
             raise ValueError(
                 "repository output must be strictly below web_demo/.generated-tests: "
                 f"{resolved}"
