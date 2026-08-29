@@ -14,13 +14,23 @@ export interface CapabilityEnvironment {
   readonly webAssembly: unknown;
 }
 
-export interface RuntimeCapabilities {
+export interface RuntimeEnvironmentInspection {
   readonly userAgent: string;
   readonly crossOriginIsolated: boolean;
   readonly webGpuApiAvailable: boolean;
-  readonly webGpuAdapterAvailable: boolean;
   readonly wasmAvailable: boolean;
   readonly hardwareConcurrency: number;
+}
+
+export interface RuntimeEnvironmentSnapshot extends RuntimeEnvironmentInspection {
+  readonly webGpuAdapterAvailable: boolean | null;
+}
+
+export interface ResolvedRuntimeEnvironmentSnapshot extends RuntimeEnvironmentInspection {
+  readonly webGpuAdapterAvailable: boolean;
+}
+
+export interface RuntimeCapabilities extends ResolvedRuntimeEnvironmentSnapshot {
   readonly actualProvider: ExecutionProvider;
 }
 
@@ -37,10 +47,25 @@ function currentEnvironment(): CapabilityEnvironment {
   };
 }
 
-export async function collectRuntimeCapabilities(
-  actualProvider: ExecutionProvider,
+export function inspectRuntimeEnvironment(
   environment: CapabilityEnvironment = currentEnvironment(),
-): Promise<RuntimeCapabilities> {
+): RuntimeEnvironmentInspection {
+  const gpu = environment.navigator.gpu;
+  return {
+    userAgent: environment.navigator.userAgent,
+    crossOriginIsolated: environment.crossOriginIsolated,
+    webGpuApiAvailable: gpu !== undefined,
+    wasmAvailable:
+      typeof environment.webAssembly === 'object' ||
+      typeof environment.webAssembly === 'function',
+    hardwareConcurrency: environment.navigator.hardwareConcurrency,
+  };
+}
+
+export async function collectRuntimeEnvironment(
+  environment: CapabilityEnvironment = currentEnvironment(),
+): Promise<ResolvedRuntimeEnvironmentSnapshot> {
+  const inspection = inspectRuntimeEnvironment(environment);
   const gpu = environment.navigator.gpu;
   let webGpuAdapterAvailable = false;
   if (gpu !== undefined) {
@@ -53,14 +78,17 @@ export async function collectRuntimeCapabilities(
   }
 
   return {
-    userAgent: environment.navigator.userAgent,
-    crossOriginIsolated: environment.crossOriginIsolated,
-    webGpuApiAvailable: gpu !== undefined,
+    ...inspection,
     webGpuAdapterAvailable,
-    wasmAvailable:
-      typeof environment.webAssembly === 'object' ||
-      typeof environment.webAssembly === 'function',
-    hardwareConcurrency: environment.navigator.hardwareConcurrency,
+  };
+}
+
+export async function collectRuntimeCapabilities(
+  actualProvider: ExecutionProvider,
+  environment: CapabilityEnvironment = currentEnvironment(),
+): Promise<RuntimeCapabilities> {
+  return {
+    ...(await collectRuntimeEnvironment(environment)),
     actualProvider,
   };
 }

@@ -1,6 +1,11 @@
 import { MODEL_BYTES } from '../runtime/contract';
+import type { RuntimeEnvironmentSnapshot } from '../runtime/capabilities';
 import type { DetectionResult } from '../runtime/infer';
-import type { LoadedModelSession, ModelLoadProgress } from '../runtime/model-session';
+import type {
+  LoadedModelSession,
+  ModelLoadProgress,
+  ProviderDiagnostic,
+} from '../runtime/model-session';
 
 export interface PreviewImage {
   readonly fileName: string;
@@ -50,6 +55,8 @@ export type DetectorState =
       readonly phase: 'error';
       readonly kind: 'model';
       readonly message: string;
+      readonly environment: RuntimeEnvironmentSnapshot;
+      readonly providerDiagnostics: readonly ProviderDiagnostic[];
     }
   | {
       readonly phase: 'error';
@@ -62,7 +69,12 @@ export type DetectorState =
 export type DetectorEvent =
   | { readonly type: 'model-progressed'; readonly progress: ModelLoadProgress }
   | { readonly type: 'model-ready'; readonly model: LoadedModelSession }
-  | { readonly type: 'model-failed'; readonly message: string }
+  | {
+      readonly type: 'model-failed';
+      readonly message: string;
+      readonly environment: RuntimeEnvironmentSnapshot;
+      readonly providerDiagnostics: readonly ProviderDiagnostic[];
+    }
   | { readonly type: 'file-selected'; readonly fileName: string }
   | { readonly type: 'validation-succeeded'; readonly previewUrl: string }
   | { readonly type: 'preprocessing-succeeded'; readonly image: ImageDetails }
@@ -105,7 +117,13 @@ export function detectorReducer(state: DetectorState, event: DetectorEvent): Det
       return state.phase === 'booting' ? { phase: 'ready', model: event.model } : state;
     case 'model-failed':
       return state.phase === 'booting'
-        ? { phase: 'error', kind: 'model', message: event.message }
+        ? {
+            phase: 'error',
+            kind: 'model',
+            message: event.message,
+            environment: event.environment,
+            providerDiagnostics: event.providerDiagnostics,
+          }
         : state;
     case 'file-selected': {
       const model = stateModel(state);

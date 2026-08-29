@@ -4,7 +4,17 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { APP_NAME, consumeSelectedFiles, DetectorScreen } from '../../src/App';
 import type { DetectorState } from '../../src/detector/machine';
+import type { RuntimeEnvironmentSnapshot } from '../../src/runtime/capabilities';
 import type { LoadedModelSession } from '../../src/runtime/model-session';
+
+const runtimeEnvironment: RuntimeEnvironmentSnapshot = {
+  userAgent: 'Judge Browser 1.0 (Local)',
+  crossOriginIsolated: false,
+  webGpuApiAvailable: true,
+  webGpuAdapterAvailable: false,
+  wasmAvailable: true,
+  hardwareConcurrency: 8,
+};
 
 function model(): LoadedModelSession {
   return {
@@ -95,7 +105,9 @@ describe('frontend scaffold', () => {
     const modelError = render({
       phase: 'error',
       kind: 'model',
-      message: 'The model could not be initialized. Retry the model load.',
+      message: 'The model manifest could not be downloaded. Retry the model load.',
+      environment: runtimeEnvironment,
+      providerDiagnostics: [],
     });
     const workflowError = render({
       phase: 'error',
@@ -106,7 +118,53 @@ describe('frontend scaffold', () => {
     });
 
     expect(modelError).toContain('Retry model');
+    expect(modelError).toContain('The model manifest could not be downloaded');
+    expect(modelError).toContain('Judge Browser 1.0 (Local)');
+    expect(modelError).toContain('Cross-origin isolation');
+    expect(modelError).toContain('WebGPU API');
+    expect(modelError).toContain('WebGPU adapter');
+    expect(modelError).toContain('WebAssembly');
+    expect(modelError).toContain('Hardware concurrency');
+    expect(modelError).not.toContain('Provider initialization');
     expect(workflowError).toContain('Reset detector');
+  });
+
+  it('renders complete, separate uppercase provider diagnostics without a classification result', () => {
+    const webGpuMessage = `WebGPU ${'w'.repeat(293)}`;
+    const wasmMessage = `WASM ${'a'.repeat(295)}`;
+    const html = render({
+      phase: 'error',
+      kind: 'model',
+      message: 'Both local execution providers failed to initialize. Retry the model load.',
+      environment: runtimeEnvironment,
+      providerDiagnostics: [
+        { provider: 'webgpu', message: webGpuMessage },
+        { provider: 'wasm', message: wasmMessage },
+      ],
+    });
+
+    expect(html).toContain('Provider initialization');
+    expect(html).toContain('WEBGPU');
+    expect(html).toContain('WASM');
+    expect(html).toContain(webGpuMessage);
+    expect(html).toContain(wasmMessage);
+    expect(html).not.toContain('AIGC confidence');
+    expect(html).not.toContain('Frozen threshold');
+  });
+
+  it('labels an uncompleted adapter probe as unknown instead of unavailable', () => {
+    const html = render({
+      phase: 'error',
+      kind: 'model',
+      message: 'The local FP32 model could not be initialized. Retry the model load.',
+      environment: {
+        ...runtimeEnvironment,
+        webGpuAdapterAvailable: null,
+      },
+      providerDiagnostics: [],
+    });
+
+    expect(html).toContain('WebGPU adapter</dt><dd>Unknown');
   });
 
   it('clears the native file input so reset can select the same file again', () => {

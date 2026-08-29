@@ -14,8 +14,32 @@ import {
   requireSingleFile,
   type DetectorDependencies,
 } from '../../src/detector/use-detector';
+import type {
+  RuntimeEnvironmentInspection,
+  RuntimeEnvironmentSnapshot,
+} from '../../src/runtime/capabilities';
 import type { DetectionResult } from '../../src/runtime/infer';
-import type { LoadedModelSession } from '../../src/runtime/model-session';
+import {
+  ModelSessionInitializationError,
+  type LoadedModelSession,
+} from '../../src/runtime/model-session';
+
+const environmentSnapshot: RuntimeEnvironmentSnapshot = {
+  userAgent: 'Judge Browser 1.0',
+  crossOriginIsolated: true,
+  webGpuApiAvailable: true,
+  webGpuAdapterAvailable: false,
+  wasmAvailable: true,
+  hardwareConcurrency: 8,
+};
+
+const environmentInspection: RuntimeEnvironmentInspection = {
+  userAgent: environmentSnapshot.userAgent,
+  crossOriginIsolated: true,
+  webGpuApiAvailable: true,
+  wasmAvailable: true,
+  hardwareConcurrency: 8,
+};
 
 function loadedModel(overrides: Partial<LoadedModelSession> = {}): LoadedModelSession {
   return {
@@ -191,12 +215,16 @@ describe('detectorReducer', () => {
     const failed = detectorReducer(createInitialDetectorState(), {
       type: 'model-failed',
       message: 'The local FP32 model could not be initialized. Retry the model load.',
+      environment: environmentSnapshot,
+      providerDiagnostics: [],
     });
 
     expect(failed).toEqual({
       phase: 'error',
       kind: 'model',
       message: 'The local FP32 model could not be initialized. Retry the model load.',
+      environment: environmentSnapshot,
+      providerDiagnostics: [],
     });
 
     expect(detectorReducer(failed, { type: 'retry-model' })).toEqual(
@@ -333,6 +361,8 @@ function controllerDependencies(
 ): DetectorDependencies {
   return {
     loadModel: vi.fn().mockResolvedValue(loadedModel()),
+    collectEnvironment: vi.fn().mockReturnValue(environmentSnapshot),
+    inspectEnvironment: vi.fn().mockReturnValue(environmentInspection),
     readAndValidate: vi.fn().mockResolvedValue({
       buffer: new ArrayBuffer(8),
       format: 'png' as const,
@@ -380,6 +410,7 @@ describe('DetectorController', () => {
     await controller.selectFile([{ name: 'second.png' } as File]);
     expect(controller.getSnapshot()).toMatchObject({ phase: 'success', result });
     expect(dependencies.loadModel).toHaveBeenCalledTimes(1);
+    expect(dependencies.collectEnvironment).not.toHaveBeenCalled();
     expect(dependencies.readAndValidate).toHaveBeenCalledTimes(2);
     expect(dependencies.preprocess).toHaveBeenNthCalledWith(1, bytes, 'png');
     expect(dependencies.detect).toHaveBeenCalledTimes(2);
@@ -464,11 +495,130 @@ describe('DetectorController', () => {
       kind: 'model',
       message:
         'The local FP32 model could not be initialized. runtime unavailable Retry the model load.',
+      environment: environmentSnapshot,
+      providerDiagnostics: [],
     });
 
     await controller.retryModel();
     expect(controller.getSnapshot()).toEqual({ phase: 'ready', model });
     expect(loadModel).toHaveBeenCalledTimes(2);
+  });
+
+  it('preserves separate full WebGPU and WASM diagnostics from a typed initialization failure', async () => {
+    const webGpuMessage = `WebGPU ${'w'.repeat(293)}`;
+    const wasmMessage = `WASM ${'a'.repeat(295)}`;
+    const error = new ModelSessionInitializationError([
+      { provider: 'webgpu', message: webGpuMessage },
+      { provider: 'wasm', message: wasmMessage },
+    ]);
+    const collectEnvironment = vi.fn().mockReturnValue(environmentSnapshot);
+    const controller = new DetectorController(
+      controllerDependencies({
+        loadModel: vi.fn().mockRejectedValue(error),
+        collectEnvironment,
+      }),
+    );
+
+    await controller.start();
+
+    expect(controller.getSnapshot()).toEqual({
+      phase: 'error',
+      kind: 'model',
+      message: 'Both local execution providers failed to initialize. Retry the model load.',
+      environment: environmentSnapshot,
+      providerDiagnostics: [
+        { provider: 'webgpu', message: webGpuMessage },
+        { provider: 'wasm', message: wasmMessage },
+      ],
+    });
+    expect(collectEnvironment).toHaveBeenCalledTimes(1);
+    expect(webGpuMessage).toHaveLength(300);
+    expect(wasmMessage).toHaveLength(300);
+  });
+
+  it('names only the provider that was actually attempted in forced-provider mode', async () => {
+    const wasmMessage = 'WASM session creation failed locally';
+    const controller = new DetectorController(
+      controllerDependencies({
+        loadModel: vi.fn().mockRejectedValue(
+          new ModelSessionInitializationError([
+            { provider: 'wasm', message: wasmMessage },
+          ]),
+        ),
+      }),
+    );
+
+    await controller.start();
+
+    expect(controller.getSnapshot()).toEqual({
+      phase: 'error',
+      kind: 'model',
+      message: 'The attempted WASM provider failed to initialize. Retry the model load.',
+      environment: environmentSnapshot,
+      providerDiagnostics: [{ provider: 'wasm', message: wasmMessage }],
+    });
+  });
+
+  it('falls back to synchronous facts when asynchronous capability collection fails', async () => {
+    const controller = new DetectorController(
+      controllerDependencies({
+        loadModel: vi.fn().mockRejectedValue(new Error('manifest unavailable')),
+        collectEnvironment: vi.fn().mockRejectedValue(new Error('adapter probe failed')),
+        inspectEnvironment: vi.fn().mockReturnValue(environmentInspection),
+      }),
+    );
+
+    await controller.start();
+
+    expect(controller.getSnapshot()).toEqual({
+      phase: 'error',
+      kind: 'model',
+      message:
+        'The local FP32 model could not be initialized. manifest unavailable Retry the model load.',
+      environment: {
+        ...environmentInspection,
+        webGpuAdapterAvailable: null,
+      },
+      providerDiagnostics: [],
+    });
+  });
+
+  it('does not publish asynchronous diagnostics after the model operation becomes stale', async () => {
+    const diagnostics = deferred<RuntimeEnvironmentSnapshot>();
+    const collectEnvironment = vi.fn(() => diagnostics.promise);
+    const controller = new DetectorController(
+      controllerDependencies({
+        loadModel: vi.fn().mockRejectedValue(new Error('manifest failed')),
+        collectEnvironment,
+      }),
+    );
+
+    const loading = controller.start();
+    await vi.waitFor(() => expect(collectEnvironment).toHaveBeenCalledTimes(1));
+    controller.reset();
+    diagnostics.resolve(environmentSnapshot);
+    await loading;
+
+    expect(controller.getSnapshot()).toEqual(createInitialDetectorState());
+  });
+
+  it('does not publish asynchronous diagnostics after disposal', async () => {
+    const diagnostics = deferred<RuntimeEnvironmentSnapshot>();
+    const collectEnvironment = vi.fn(() => diagnostics.promise);
+    const controller = new DetectorController(
+      controllerDependencies({
+        loadModel: vi.fn().mockRejectedValue(new Error('model download failed')),
+        collectEnvironment,
+      }),
+    );
+
+    const loading = controller.start();
+    await vi.waitFor(() => expect(collectEnvironment).toHaveBeenCalledTimes(1));
+    await controller.dispose();
+    diagnostics.resolve(environmentSnapshot);
+    await loading;
+
+    expect(controller.getSnapshot()).toEqual(createInitialDetectorState());
   });
 
   it('does not swallow a retry fired before the failed active load reaches its finally cleanup', async () => {

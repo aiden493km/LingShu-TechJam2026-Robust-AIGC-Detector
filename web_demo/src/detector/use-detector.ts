@@ -7,11 +7,19 @@ import {
   type ImageDetails,
   type WorkflowStage,
 } from './machine';
+import {
+  collectRuntimeEnvironment,
+  inspectRuntimeEnvironment,
+  type RuntimeEnvironmentInspection,
+  type RuntimeEnvironmentSnapshot,
+} from '../runtime/capabilities';
 import { runDetection, type DetectionResult } from '../runtime/infer';
 import {
   loadModelSession,
   type LoadModelSessionOptions,
   type LoadedModelSession,
+  ModelSessionInitializationError,
+  type ProviderDiagnostic,
 } from '../runtime/model-session';
 import {
   preprocessValidatedImage,
@@ -136,6 +144,10 @@ export async function prepareSelectedImage(
 
 export interface DetectorDependencies {
   readonly loadModel: (options: LoadModelSessionOptions) => Promise<LoadedModelSession>;
+  readonly collectEnvironment: () =>
+    | RuntimeEnvironmentSnapshot
+    | Promise<RuntimeEnvironmentSnapshot>;
+  readonly inspectEnvironment: () => RuntimeEnvironmentInspection;
   readonly readAndValidate: (file: File) => Promise<ValidatedImageBytes>;
   readonly preprocess: (
     buffer: ArrayBuffer,
@@ -154,6 +166,8 @@ export interface DetectorDependencies {
 function browserDependencies(): DetectorDependencies {
   return {
     loadModel: loadModelSession,
+    collectEnvironment: collectRuntimeEnvironment,
+    inspectEnvironment: inspectRuntimeEnvironment,
     readAndValidate: readAndValidateImageFile,
     preprocess: preprocessValidatedImage,
     detect: runDetection,
@@ -168,11 +182,37 @@ function sanitizedDetail(error: unknown): string {
     .replace(/[\u0000-\u001f\u007f]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  return (normalized || 'Unknown local runtime failure').slice(0, 220);
+  return (normalized || 'Unknown local runtime failure').slice(0, 300);
 }
 
-function modelErrorMessage(error: unknown): string {
-  return `The local FP32 model could not be initialized. ${sanitizedDetail(error)} Retry the model load.`;
+interface ModelFailureDetails {
+  readonly message: string;
+  readonly providerDiagnostics: readonly ProviderDiagnostic[];
+}
+
+function modelFailureDetails(error: unknown): ModelFailureDetails {
+  if (error instanceof ModelSessionInitializationError) {
+    const attemptedProviders = new Set(
+      error.diagnostics.map(({ provider }) => provider),
+    );
+    const message =
+      attemptedProviders.has('webgpu') && attemptedProviders.has('wasm')
+        ? 'Both local execution providers failed to initialize. Retry the model load.'
+        : attemptedProviders.size === 1
+          ? `The attempted ${[...attemptedProviders][0]!.toUpperCase()} provider failed to initialize. Retry the model load.`
+          : 'Local execution provider initialization failed. Retry the model load.';
+    return {
+      message,
+      providerDiagnostics: error.diagnostics.map(({ provider, message }) => ({
+        provider,
+        message,
+      })),
+    };
+  }
+  return {
+    message: `The local FP32 model could not be initialized. ${sanitizedDetail(error)} Retry the model load.`,
+    providerDiagnostics: [],
+  };
 }
 
 function workflowErrorMessage(stage: WorkflowStage, error: unknown): string {
@@ -246,8 +286,24 @@ export class DetectorController {
       this.model = model;
       this.publish({ type: 'model-ready', model });
     } catch (error) {
+      if (!this.gate.isCurrent(operation) || this.disposed) {
+        return;
+      }
+      let environment: RuntimeEnvironmentSnapshot;
+      try {
+        environment = await this.dependencies.collectEnvironment();
+      } catch {
+        environment = {
+          ...this.dependencies.inspectEnvironment(),
+          webGpuAdapterAvailable: null,
+        };
+      }
       if (this.gate.isCurrent(operation) && !this.disposed) {
-        this.publish({ type: 'model-failed', message: modelErrorMessage(error) });
+        this.publish({
+          type: 'model-failed',
+          ...modelFailureDetails(error),
+          environment,
+        });
       }
     }
   }

@@ -57,6 +57,67 @@ function formatBytes(bytes: number): string {
   return new Intl.NumberFormat('en-US').format(bytes);
 }
 
+type ModelErrorState = Extract<DetectorState, { phase: 'error'; kind: 'model' }>;
+
+function availability(available: boolean | null): string {
+  if (available === null) {
+    return 'Unknown';
+  }
+
+  return available ? 'Available' : 'Unavailable';
+}
+
+function ModelRuntimeDiagnostics({ state }: { readonly state: ModelErrorState }) {
+  const environment = state.environment;
+  return (
+    <div className="runtime-diagnostics" aria-label="Local runtime diagnostics">
+      <section className="diagnostic-group" aria-labelledby="browser-environment-heading">
+        <h4 id="browser-environment-heading">Browser environment</h4>
+        <dl className="diagnostic-list">
+          <div>
+            <dt>User agent</dt>
+            <dd>{environment.userAgent || 'Unavailable'}</dd>
+          </div>
+          <div>
+            <dt>Cross-origin isolation</dt>
+            <dd>{environment.crossOriginIsolated ? 'Enabled' : 'Disabled'}</dd>
+          </div>
+          <div>
+            <dt>WebGPU API</dt>
+            <dd>{availability(environment.webGpuApiAvailable)}</dd>
+          </div>
+          <div>
+            <dt>WebGPU adapter</dt>
+            <dd>{availability(environment.webGpuAdapterAvailable)}</dd>
+          </div>
+          <div>
+            <dt>WebAssembly</dt>
+            <dd>{availability(environment.wasmAvailable)}</dd>
+          </div>
+          <div>
+            <dt>Hardware concurrency</dt>
+            <dd>{environment.hardwareConcurrency}</dd>
+          </div>
+        </dl>
+      </section>
+
+      {state.providerDiagnostics.length > 0 ? (
+        <section className="diagnostic-group" aria-labelledby="provider-diagnostics-heading">
+          <h4 id="provider-diagnostics-heading">Provider initialization</h4>
+          <dl className="diagnostic-list provider-diagnostics">
+            {state.providerDiagnostics.map(({ provider, message }) => (
+              <div key={provider}>
+                <dt>{provider.toUpperCase()}</dt>
+                <dd>{message}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
 function PhaseStatus({ state }: { readonly state: DetectorState }) {
   switch (state.phase) {
     case 'booting': {
@@ -155,11 +216,17 @@ function PhaseStatus({ state }: { readonly state: DetectorState }) {
       );
     }
     case 'error':
-      return (
+      return state.kind === 'model' ? (
+        <div className="phase-content model-error-content">
+          <div className="error-state" role="alert">
+            <p className="phase-name">Model initialization failed</p>
+            <p>{state.message}</p>
+          </div>
+          <ModelRuntimeDiagnostics state={state} />
+        </div>
+      ) : (
         <div className="phase-content error-state" role="alert">
-          <p className="phase-name">
-            {state.kind === 'model' ? 'Model initialization failed' : 'Image workflow stopped'}
-          </p>
+          <p className="phase-name">Image workflow stopped</p>
           <p>{state.message}</p>
         </div>
       );
