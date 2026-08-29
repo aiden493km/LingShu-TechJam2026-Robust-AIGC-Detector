@@ -177,6 +177,20 @@ describe('frozen model contract', () => {
     );
   });
 
+  it('rejects sparse numeric tensor shapes', () => {
+    const sparseShape = new Array<number>(4);
+    sparseShape[0] = 1;
+    sparseShape[2] = 384;
+    sparseShape[3] = 384;
+
+    expectContractError(
+      mutated((manifest) => {
+        manifest.model.input.shape = sparseShape;
+      }),
+      /model\.input\.shape\[1\].*finite/i,
+    );
+  });
+
   it('rejects output name, dtype, and shape mutations', () => {
     expectContractError(
       mutated((manifest) => {
@@ -252,6 +266,21 @@ describe('frozen model contract', () => {
         ];
       }),
       /preprocessing\.order.*exif_transpose.*rgb.*bicubic_384.*to_tensor.*imagenet_normalize/i,
+    );
+  });
+
+  it('rejects sparse preprocessing order arrays', () => {
+    const sparseOrder = new Array<string>(5);
+    sparseOrder[0] = 'exif_transpose';
+    sparseOrder[2] = 'bicubic_384';
+    sparseOrder[3] = 'to_tensor';
+    sparseOrder[4] = 'imagenet_normalize';
+
+    expectContractError(
+      mutated((manifest) => {
+        manifest.preprocessing.order = sparseOrder;
+      }),
+      /preprocessing\.order.*exactly equal/i,
     );
   });
 

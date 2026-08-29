@@ -172,7 +172,10 @@ function expectExactStringArray(
   if (
     !Array.isArray(value) ||
     value.length !== expected.length ||
-    value.some((item, index) => item !== expected[index])
+    expected.some(
+      (item, index) =>
+        !Object.prototype.hasOwnProperty.call(value, index) || value[index] !== item,
+    )
   ) {
     throw new ModelContractError(
       `${path} must exactly equal ${describe(expected)}; received ${describe(value)}`,
