@@ -2,9 +2,11 @@ import contextlib
 import http.client
 import io
 import os
+import socket
 import subprocess
 import threading
 import unittest
+from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
@@ -80,6 +82,32 @@ def _request(
         return response.status, response_headers, response_body
     finally:
         connection.close()
+
+
+def _raw_request(
+    server: ExclusiveThreadingHTTPServer,
+    request: bytes,
+) -> tuple[int, dict[str, str], bytes]:
+    host, port = server.server_address[:2]
+    response_bytes = bytearray()
+    with socket.create_connection((host, port), timeout=5) as connection:
+        connection.sendall(request)
+        while True:
+            chunk = connection.recv(64 * 1024)
+            if not chunk:
+                break
+            response_bytes.extend(chunk)
+
+    raw_headers, separator, body = bytes(response_bytes).partition(b"\r\n\r\n")
+    if not separator:
+        raise AssertionError(f"HTTP response had no header terminator: {response_bytes!r}")
+    lines = raw_headers.decode("iso-8859-1").split("\r\n")
+    status = int(lines[0].split(" ", 2)[1])
+    headers: dict[str, str] = {}
+    for line in lines[1:]:
+        name, value = line.split(":", 1)
+        headers[name.lower()] = value.strip()
+    return status, headers, body
 
 
 class LiveServerTestCase(unittest.TestCase):
@@ -224,6 +252,49 @@ class RequestRoutingTests(LiveServerTestCase):
                 self.assertEqual(status, 404)
 
 
+class HostHeaderTests(LiveServerTestCase):
+    def _raw_get(self, host_headers: tuple[str, ...]) -> tuple[int, dict[str, str], bytes]:
+        header_lines = b"".join(
+            f"Host: {value}\r\n".encode("ascii") for value in host_headers
+        )
+        return _raw_request(
+            self.server,
+            b"GET / HTTP/1.1\r\n"
+            + header_lines
+            + b"Connection: close\r\n\r\n",
+        )
+
+    def test_accepts_exact_bound_loopback_host_authority(self):
+        port = self.server.server_address[1]
+
+        status, _, body = self._raw_get((f"127.0.0.1:{port}",))
+
+        self.assertEqual(status, 200)
+        self.assertEqual(body, b"<!doctype html><title>demo</title>\n")
+
+    def test_rejects_missing_duplicate_attacker_and_wrong_port_hosts(self):
+        port = self.server.server_address[1]
+        wrong_port = port - 1 if port == 65535 else port + 1
+        cases = {
+            "missing": (),
+            "duplicate": (f"127.0.0.1:{port}", f"127.0.0.1:{port}"),
+            "attacker": (f"attacker.invalid:{port}",),
+            "localhost alias": (f"localhost:{port}",),
+            "wrong port": (f"127.0.0.1:{wrong_port}",),
+            "missing port": ("127.0.0.1",),
+            "userinfo": (f"attacker@127.0.0.1:{port}",),
+            "internal whitespace": (f"127.0.0.1 :{port}",),
+            "nonnumeric port": ("127.0.0.1:not-a-port",),
+        }
+        for label, host_headers in cases.items():
+            with self.subTest(label=label):
+                status, headers, body = self._raw_get(host_headers)
+                self.assertEqual(status, 421)
+                self.assertIn(b"Invalid Host header", body)
+                for name, expected_value in EXPECTED_SECURITY_HEADERS.items():
+                    self.assertEqual(headers.get(name), expected_value, name)
+
+
 class ResponseBehaviorTests(LiveServerTestCase):
     def test_streams_onnx_with_octet_stream_mime(self):
         status, headers, body = _request(
@@ -285,6 +356,24 @@ class ResponseBehaviorTests(LiveServerTestCase):
                 status, headers, _ = _request(self.server, method, "/")
                 self.assertEqual(status, 405)
                 self.assertEqual(headers.get("allow"), "GET, HEAD")
+
+    def test_success_responses_close_the_connection(self):
+        status, headers, _ = _request(self.server, "GET", "/")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(headers.get("connection"), "close")
+
+    def test_send_error_contains_client_abort_exceptions(self):
+        handler = object.__new__(DemoRequestHandler)
+        for error in (BrokenPipeError(), ConnectionResetError(), OSError("aborted")):
+            with self.subTest(error=type(error).__name__):
+                with mock.patch.object(
+                    BaseHTTPRequestHandler,
+                    "send_error",
+                    side_effect=error,
+                ):
+                    handler.send_error(404)
+                self.assertTrue(handler.close_connection)
 
     def test_streaming_copy_uses_a_bounded_chunk_size(self):
         content = bytes(range(256)) * 2048

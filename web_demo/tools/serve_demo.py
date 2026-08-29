@@ -167,6 +167,17 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
             return self._method_not_allowed
         raise AttributeError(name)
 
+    def send_error(
+        self,
+        code: int,
+        message: str | None = None,
+        explain: str | None = None,
+    ) -> None:
+        try:
+            super().send_error(code, message, explain)
+        except OSError:
+            self.close_connection = True
+
     def end_headers(self) -> None:
         for name, value in SECURITY_HEADERS.items():
             self.send_header(name, value)
@@ -178,7 +189,28 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
     def do_HEAD(self) -> None:
         self._serve(send_body=False)
 
+    def _has_exact_loopback_host(self) -> bool:
+        host_headers = self.headers.get_all("Host", [])
+        if len(host_headers) != 1:
+            return False
+
+        bound_host, bound_port = self.server.server_address[:2]
+        if bound_host != "127.0.0.1":
+            return False
+        accepted_authorities = {f"127.0.0.1:{bound_port}"}
+        if bound_port == 80:
+            accepted_authorities.add("127.0.0.1")
+        return host_headers[0] in accepted_authorities
+
     def _serve(self, *, send_body: bool) -> None:
+        if not self._has_exact_loopback_host():
+            self.send_error(
+                HTTPStatus.MISDIRECTED_REQUEST,
+                "Invalid Host header",
+                "Host must exactly match this server's bound 127.0.0.1 authority.",
+            )
+            return
+
         repository_root = Path(self.server.repository_root)
         target = resolve_request_target(self.path, repository_root)
         if target is None:
@@ -201,6 +233,8 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(byte_count))
+            self.send_header("Connection", "close")
+            self.close_connection = True
             self.end_headers()
             if send_body:
                 try:
@@ -219,7 +253,7 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
         self.close_connection = True
         try:
             self.wfile.write(body)
-        except (BrokenPipeError, ConnectionResetError):
+        except OSError:
             return
 
     def log_message(self, format: str, *args: object) -> None:
