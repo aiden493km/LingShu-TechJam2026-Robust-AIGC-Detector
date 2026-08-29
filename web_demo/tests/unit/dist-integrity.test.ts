@@ -171,6 +171,49 @@ describe('dist integrity writer', () => {
     expect(swapped).toBe(true);
   });
 
+  it('rejects a requested root swapped before realpath resolution', async (context) => {
+    const root = await makeTemporaryDirectory();
+    const dist = join(root, 'dist');
+    const moved = join(root, 'moved-dist');
+    const outside = join(root, 'outside');
+    await mkdir(dist);
+    await mkdir(outside);
+    await writeFile(join(dist, 'asset.txt'), 'asset', 'utf8');
+    let swapped = false;
+    let unsupportedCode = '';
+    let observedError: unknown;
+
+    try {
+      await buildIntegrityManifest(dist, {
+        afterRootLstat: async () => {
+          await rename(dist, moved);
+          try {
+            await symlink(outside, dist, process.platform === 'win32' ? 'junction' : 'dir');
+            swapped = true;
+          } catch (error) {
+            unsupportedCode =
+              error !== null && typeof error === 'object' && 'code' in error
+                ? String(error.code)
+                : '';
+            await rename(moved, dist);
+          }
+        },
+      });
+    } catch (error) {
+      observedError = error;
+    }
+
+    if (['EACCES', 'EPERM', 'ENOTSUP'].includes(unsupportedCode)) {
+      context.skip(`symlinks are unavailable on this host (${unsupportedCode})`);
+      return;
+    }
+
+    expect(swapped).toBe(true);
+    expect(observedError).toBeInstanceOf(Error);
+    expect((observedError as Error).message).toMatch(/dist root.*(changed|identity)/i);
+    await expect(lstat(join(outside, 'integrity.json'))).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
   it('rejects a junction or symlink escape without traversing it', async (context) => {
     const root = await makeTemporaryDirectory();
     const dist = join(root, 'dist');

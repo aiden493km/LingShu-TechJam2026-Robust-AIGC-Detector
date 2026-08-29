@@ -68,7 +68,18 @@ function isSameEntry(left, right) {
   );
 }
 
-async function resolveDistRoot(distDirectory) {
+function isSameDirectoryIdentity(left, right) {
+  return (
+    left.dev === right.dev &&
+    left.ino === right.ino &&
+    left.isDirectory() &&
+    right.isDirectory() &&
+    !left.isSymbolicLink() &&
+    !right.isSymbolicLink()
+  );
+}
+
+async function resolveDistRoot(distDirectory, hooks) {
   if (typeof distDirectory !== 'string' || distDirectory.trim() === '') {
     throw new TypeError('An explicit dist directory path is required');
   }
@@ -90,12 +101,38 @@ async function resolveDistRoot(distDirectory) {
     throw new Error(`Dist path must be a directory: ${requestedRoot}`);
   }
 
+  await hooks.afterRootLstat?.({ requestedRoot });
   const root = await realpath(requestedRoot);
   const resolvedStats = await lstat(root, { bigint: true });
-  if (resolvedStats.isSymbolicLink() || !resolvedStats.isDirectory()) {
-    throw new Error(`Resolved dist path must be a real directory: ${root}`);
+  const requestedAfter = await lstat(requestedRoot, { bigint: true });
+  if (
+    !isSameDirectoryIdentity(stats, resolvedStats) ||
+    !isSameDirectoryIdentity(stats, requestedAfter)
+  ) {
+    throw new Error('Dist root identity changed during resolution');
   }
-  return root;
+  return { identity: stats, requestedRoot, resolvedRoot: root };
+}
+
+async function assertRootGuard(rootGuard, phase) {
+  let requestedStats;
+  let resolvedStats;
+  let currentRealPath;
+  try {
+    requestedStats = await lstat(rootGuard.requestedRoot, { bigint: true });
+    currentRealPath = await realpath(rootGuard.requestedRoot);
+    resolvedStats = await lstat(rootGuard.resolvedRoot, { bigint: true });
+  } catch (error) {
+    throw new Error(`Dist root changed ${phase}: ${errorMessage(error)}`);
+  }
+
+  if (
+    currentRealPath !== rootGuard.resolvedRoot ||
+    !isSameDirectoryIdentity(rootGuard.identity, requestedStats) ||
+    !isSameDirectoryIdentity(rootGuard.identity, resolvedStats)
+  ) {
+    throw new Error(`Dist root identity changed ${phase}`);
+  }
 }
 
 async function realPathWithin(root, candidate, label, { allowRoot = false } = {}) {
@@ -284,7 +321,9 @@ async function hashFile(root, file, hooks) {
   }
 }
 
-async function writeManifestAtomically(root, contents) {
+async function writeManifestAtomically(rootGuard, contents) {
+  await assertRootGuard(rootGuard, 'before temporary output creation');
+  const root = rootGuard.resolvedRoot;
   const output = join(root, MANIFEST_NAME);
   containedRelativePath(root, output);
   const temporary = join(
@@ -320,6 +359,7 @@ async function writeManifestAtomically(root, contents) {
       }
     }
 
+    await assertRootGuard(rootGuard, 'before integrity output rename');
     await rename(temporary, output);
     temporaryExists = false;
   } catch (error) {
@@ -352,12 +392,14 @@ async function writeManifestAtomically(root, contents) {
  * Concurrent writers targeting the same dist directory are unsupported.
  *
  * @param {string} distDirectory explicit path to the dist directory
- * @param {{afterDirectoryRead?: Function, afterFileOpen?: Function}} [testHooks]
+ * @param {{afterRootLstat?: Function, afterDirectoryRead?: Function, afterFileOpen?: Function}} [testHooks]
  * internal hooks used only for deterministic filesystem-race tests
  * @returns {Promise<{schema_version: 1, files: Array<{path: string, bytes: number, sha256: string}>}>}
  */
 export async function buildIntegrityManifest(distDirectory, testHooks = {}) {
-  const root = await resolveDistRoot(distDirectory);
+  const rootGuard = await resolveDistRoot(distDirectory, testHooks);
+  await assertRootGuard(rootGuard, 'before stale temporary cleanup');
+  const root = rootGuard.resolvedRoot;
   await removeStaleWriterTemps(root);
   const files = await enumerateFiles(root, testHooks);
   const entries = [];
@@ -366,7 +408,7 @@ export async function buildIntegrityManifest(distDirectory, testHooks = {}) {
   }
 
   const manifest = { schema_version: 1, files: entries };
-  await writeManifestAtomically(root, `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeManifestAtomically(rootGuard, `${JSON.stringify(manifest, null, 2)}\n`);
   return manifest;
 }
 
