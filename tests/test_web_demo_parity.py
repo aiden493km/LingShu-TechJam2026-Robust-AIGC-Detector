@@ -1,0 +1,270 @@
+import hashlib
+import json
+import math
+import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
+
+import numpy as np
+
+import inference
+from web_demo.tools.generate_parity_references import (
+    EXPECTED_TENSOR_BYTES,
+    EXPECTED_TENSOR_FLOATS,
+    EXPECTED_TENSOR_SHAPE,
+    collect_parity_inputs,
+    generate_parity_references,
+    stable_sigmoid,
+)
+
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+EXPECTED_SOURCES = [
+    "demo_images/f1.png",
+    "demo_images/f2.png",
+    "demo_images/f3.png",
+    "demo_images/f4.png",
+    "demo_images/f5.png",
+    "demo_images/r1.png",
+    "demo_images/r2.png",
+    "demo_images/r3.png",
+    "demo_images/r4.png",
+    "demo_images/r5.png",
+    "web_demo/tests/fixtures/exif-orientation-6.jpg",
+    "web_demo/tests/fixtures/grayscale.png",
+    "web_demo/tests/fixtures/near-threshold-synthetic.png",
+    "web_demo/tests/fixtures/non-square.png",
+    "web_demo/tests/fixtures/rgba-hidden-rgb.png",
+]
+
+
+class DeterministicFakeRunner:
+    def __init__(self) -> None:
+        self.calls: list[np.ndarray] = []
+
+    def run(self, tensor: np.ndarray) -> float:
+        self.calls.append(tensor)
+        return float(np.mean(tensor, dtype=np.float64))
+
+
+class FailingRunner:
+    def run(self, tensor: np.ndarray) -> float:
+        raise RuntimeError("intentional inference failure")
+
+
+def _relative_sources(paths: list[Path]) -> list[str]:
+    return [path.relative_to(REPOSITORY_ROOT).as_posix() for path in paths]
+
+
+def _tree_snapshot(root: Path) -> dict[str, bytes]:
+    return {
+        path.relative_to(root).as_posix(): path.read_bytes()
+        for path in sorted(candidate for candidate in root.rglob("*") if candidate.is_file())
+    }
+
+
+class ParityReferenceUnitTests(unittest.TestCase):
+    def test_collects_all_fifteen_inputs_in_stable_repo_relative_order(self):
+        paths = collect_parity_inputs(REPOSITORY_ROOT)
+
+        self.assertEqual(_relative_sources(paths), EXPECTED_SOURCES)
+
+    def test_stable_sigmoid_handles_extreme_logits_without_overflow(self):
+        self.assertEqual(stable_sigmoid(-1000.0), 0.0)
+        self.assertEqual(stable_sigmoid(1000.0), 1.0)
+        self.assertEqual(stable_sigmoid(0.0), 0.5)
+
+    def test_writes_little_endian_chw_tensors_and_complete_metadata(self):
+        runner = DeterministicFakeRunner()
+        real_preprocess = inference.preprocess_image
+        preprocess_calls: list[Path] = []
+
+        def tracked_preprocess(path: Path):
+            preprocess_calls.append(path)
+            return real_preprocess(path)
+
+        with TemporaryDirectory() as temporary_directory, patch.object(
+            inference,
+            "preprocess_image",
+            side_effect=tracked_preprocess,
+        ), patch.object(
+            inference,
+            "load_model",
+            side_effect=AssertionError("the PyTorch checkpoint must not be loaded"),
+        ):
+            output = Path(temporary_directory) / "parity"
+            manifest = generate_parity_references(
+                REPOSITORY_ROOT,
+                output,
+                runner=runner,
+            )
+
+            on_disk = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(on_disk, manifest)
+            self.assertEqual(manifest["schema_version"], 1)
+            self.assertEqual(manifest["tensor"]["shape"], list(EXPECTED_TENSOR_SHAPE))
+            self.assertEqual(manifest["tensor"]["dtype"], "float32")
+            self.assertEqual(manifest["tensor"]["byte_order"], "little-endian")
+            self.assertEqual(manifest["tensor"]["layout"], "NCHW")
+            self.assertEqual(manifest["model"]["input_name"], "input")
+            self.assertEqual(manifest["model"]["output_name"], "logits")
+            self.assertEqual(
+                manifest["model"]["sha256"],
+                "e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69",
+            )
+            self.assertEqual(manifest["threshold"], 0.55657113)
+            self.assertEqual(len(manifest["images"]), 15)
+            self.assertEqual([row["source"] for row in manifest["images"]], EXPECTED_SOURCES)
+            self.assertEqual(_relative_sources(preprocess_calls), EXPECTED_SOURCES)
+            self.assertEqual(len(runner.calls), 15)
+
+            for row, observed_tensor in zip(manifest["images"], runner.calls):
+                reference_path = output / row["reference"]
+                reference_bytes = reference_path.read_bytes()
+                self.assertEqual(row["tensor"]["shape"], list(EXPECTED_TENSOR_SHAPE))
+                self.assertEqual(row["tensor"]["float_count"], EXPECTED_TENSOR_FLOATS)
+                self.assertEqual(row["tensor"]["bytes"], EXPECTED_TENSOR_BYTES)
+                self.assertEqual(len(reference_bytes), EXPECTED_TENSOR_BYTES)
+                self.assertEqual(
+                    row["tensor"]["sha256"],
+                    hashlib.sha256(reference_bytes).hexdigest(),
+                )
+                self.assertEqual(observed_tensor.shape, EXPECTED_TENSOR_SHAPE)
+                self.assertEqual(observed_tensor.dtype, np.dtype("<f4"))
+                reconstructed = np.frombuffer(reference_bytes, dtype="<f4")
+                self.assertEqual(reconstructed.size, EXPECTED_TENSOR_FLOATS)
+                self.assertTrue(np.array_equal(reconstructed, observed_tensor.reshape(-1)))
+                self.assertTrue(math.isfinite(row["logit"]))
+                self.assertGreaterEqual(row["probability"], 0.0)
+                self.assertLessEqual(row["probability"], 1.0)
+                self.assertEqual(
+                    row["label"],
+                    "AIGC" if row["probability"] >= manifest["threshold"] else "Real",
+                )
+
+            exif_row = next(
+                row for row in manifest["images"] if row["source"].endswith("exif-orientation-6.jpg")
+            )
+            self.assertEqual(exif_row["original_dimensions"], {"width": 120, "height": 80})
+            self.assertEqual(exif_row["oriented_dimensions"], {"width": 80, "height": 120})
+
+    def test_generating_twice_is_byte_identical(self):
+        source = REPOSITORY_ROOT / EXPECTED_SOURCES[0]
+        with TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            first = temporary_root / "first"
+            second = temporary_root / "second"
+
+            generate_parity_references(
+                REPOSITORY_ROOT,
+                first,
+                source_paths=[source],
+                runner=DeterministicFakeRunner(),
+            )
+            generate_parity_references(
+                REPOSITORY_ROOT,
+                second,
+                source_paths=[source],
+                runner=DeterministicFakeRunner(),
+            )
+
+            self.assertEqual(_tree_snapshot(first), _tree_snapshot(second))
+
+    def test_creates_missing_output_parent_directories(self):
+        source = REPOSITORY_ROOT / EXPECTED_SOURCES[0]
+        with TemporaryDirectory() as temporary_directory:
+            output = Path(temporary_directory) / "new" / "nested" / "parity"
+
+            manifest = generate_parity_references(
+                REPOSITORY_ROOT,
+                output,
+                source_paths=[source],
+                runner=DeterministicFakeRunner(),
+            )
+
+            self.assertEqual(len(manifest["images"]), 1)
+            self.assertTrue((output / "manifest.json").is_file())
+
+    def test_rejects_a_source_path_that_escapes_the_repository(self):
+        with TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            outside = temporary_root / "outside.png"
+            outside.write_bytes(b"not read because containment validation runs first")
+
+            with self.assertRaisesRegex(ValueError, "escapes repository root"):
+                generate_parity_references(
+                    REPOSITORY_ROOT,
+                    temporary_root / "output",
+                    source_paths=[outside],
+                    runner=DeterministicFakeRunner(),
+                )
+
+    def test_rejects_duplicate_source_ids_before_writing(self):
+        source = REPOSITORY_ROOT / EXPECTED_SOURCES[0]
+        with TemporaryDirectory() as temporary_directory:
+            output = Path(temporary_directory) / "output"
+
+            with self.assertRaisesRegex(ValueError, "duplicate parity source id"):
+                generate_parity_references(
+                    REPOSITORY_ROOT,
+                    output,
+                    source_paths=[source, source],
+                    runner=DeterministicFakeRunner(),
+                )
+
+            self.assertFalse(output.exists())
+
+    def test_failed_generation_does_not_publish_a_partial_manifest(self):
+        source = REPOSITORY_ROOT / EXPECTED_SOURCES[0]
+        with TemporaryDirectory() as temporary_directory:
+            output = Path(temporary_directory) / "output"
+            output.mkdir()
+            sentinel = b'{"previous":"complete"}\n'
+            (output / "manifest.json").write_bytes(sentinel)
+
+            with self.assertRaisesRegex(RuntimeError, "intentional inference failure"):
+                generate_parity_references(
+                    REPOSITORY_ROOT,
+                    output,
+                    source_paths=[source],
+                    runner=FailingRunner(),
+                )
+
+            self.assertEqual((output / "manifest.json").read_bytes(), sentinel)
+            self.assertEqual(_tree_snapshot(output), {"manifest.json": sentinel})
+
+
+class ParityReferenceOnnxIntegrationTests(unittest.TestCase):
+    def test_deployed_onnx_generates_fifteen_scores_including_near_threshold_case(self):
+        model = REPOSITORY_ROOT / "web_demo" / "models" / "baseline2_njr_fp32.onnx"
+        self.assertTrue(model.is_file(), f"deployed ONNX model is missing: {model}")
+
+        with TemporaryDirectory() as temporary_directory:
+            output = Path(temporary_directory) / "parity"
+            manifest = generate_parity_references(REPOSITORY_ROOT, output)
+
+            self.assertEqual(len(manifest["images"]), 15)
+            self.assertEqual([row["source"] for row in manifest["images"]], EXPECTED_SOURCES)
+            for row in manifest["images"]:
+                self.assertTrue(math.isfinite(row["logit"]))
+                self.assertGreaterEqual(row["probability"], 0.0)
+                self.assertLessEqual(row["probability"], 1.0)
+
+            near_threshold = next(
+                row
+                for row in manifest["images"]
+                if row["source"].endswith("near-threshold-synthetic.png")
+            )
+            self.assertLessEqual(
+                abs(near_threshold["probability"] - manifest["threshold"]),
+                0.05,
+            )
+            self.assertEqual(
+                near_threshold["label"],
+                "AIGC" if near_threshold["probability"] >= manifest["threshold"] else "Real",
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()
