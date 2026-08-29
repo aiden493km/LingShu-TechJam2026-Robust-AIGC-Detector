@@ -4,7 +4,12 @@ import resize from '@jsquash/resize';
 import decodeWebp from '@jsquash/webp/decode.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { imageDataToNormalizedChw, preprocessImage } from '../../src/runtime/preprocess';
+import {
+  imageDataToNormalizedChw,
+  preprocessImage,
+  preprocessValidatedImage,
+} from '../../src/runtime/preprocess';
+import { readAndValidateImageFile } from '../../src/runtime/upload';
 
 vi.mock('@jsquash/jpeg/decode.js', () => ({ default: vi.fn() }));
 vi.mock('@jsquash/png/decode.js', () => ({ default: vi.fn() }));
@@ -193,6 +198,18 @@ describe('imageDataToNormalizedChw', () => {
 });
 
 describe('preprocessImage', () => {
+  it('reuses one validated byte buffer across the validation and preprocessing boundary', async () => {
+    const fixture = fileWithBytes(pngBytes(), 'one-read.png');
+    vi.mocked(decodePng).mockResolvedValue(solidImage(384, 384, [10, 20, 30, 255]));
+
+    const validated = await readAndValidateImageFile(fixture.file);
+    const result = await preprocessValidatedImage(validated.buffer, validated.format);
+
+    expect(fixture.read).toHaveBeenCalledTimes(1);
+    expect(decodePng).toHaveBeenCalledWith(fixture.buffer, { bitDepth: 8 });
+    expect(result.tensor).toHaveLength(3 * 384 * 384);
+  });
+
   it('routes JPEG bytes to the deep decoder with orientation disabled, then applies EXIF once', async () => {
     const fixture = fileWithBytes(jpegBytes(6), 'misleading.png');
     const decoded = new ImageData(

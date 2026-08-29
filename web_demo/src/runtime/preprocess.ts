@@ -78,8 +78,10 @@ async function decodeImage(format: SupportedImageFormat, buffer: ArrayBuffer): P
   }
 }
 
-export async function preprocessImage(file: File): Promise<PreprocessedImage> {
-  const { buffer, format } = await readAndValidateImageFile(file);
+export async function preprocessValidatedImage(
+  buffer: ArrayBuffer,
+  format: SupportedImageFormat,
+): Promise<PreprocessedImage> {
   const orientation = format === 'jpeg' ? readJpegOrientation(buffer) : 1;
   const decoded = await decodeImage(format, buffer);
   assertValidImageData(decoded);
@@ -102,4 +104,9 @@ export async function preprocessImage(file: File): Promise<PreprocessedImage> {
     orientedWidth,
     orientedHeight,
   };
+}
+
+export async function preprocessImage(file: File): Promise<PreprocessedImage> {
+  const { buffer, format } = await readAndValidateImageFile(file);
+  return preprocessValidatedImage(buffer, format);
 }
