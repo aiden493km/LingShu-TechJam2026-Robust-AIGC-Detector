@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved architecture, awaiting written-spec review before implementation planning.
+Approved written specification. Implementation planning and execution are authorized.
 
 ## Objective
 
