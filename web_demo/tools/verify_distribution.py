@@ -244,29 +244,27 @@ def _parse_integrity_entries(
             valid_entry = False
         else:
             pure_path = PurePosixPath(relative_path)
-            if (
+            path_is_normalized = not (
                 "\\" in relative_path
                 or pure_path.is_absolute()
                 or relative_path != pure_path.as_posix()
                 or any(part in {"", ".", ".."} for part in pure_path.parts)
                 or (pure_path.parts and ":" in pure_path.parts[0])
-            ):
-                if ".." not in pure_path.parts:
+            )
+            candidate = dist_directory.joinpath(*pure_path.parts)
+            resolved_candidate = _resolve_within(
+                candidate,
+                resolved_dist,
+                f'dist integrity path "{relative_path}"',
+                errors,
+            )
+            if not path_is_normalized:
+                valid_entry = False
+                if resolved_candidate is not None:
                     errors.append(
                         f'{label}.path must be a normalized relative path; found "{relative_path}"'
                     )
-                valid_entry = False
-
-            candidate = dist_directory.joinpath(*pure_path.parts)
-            if (
-                _resolve_within(
-                    candidate,
-                    resolved_dist,
-                    f'dist integrity path "{relative_path}"',
-                    errors,
-                )
-                is None
-            ):
+            if resolved_candidate is None:
                 valid_entry = False
 
         if type(byte_count) is not int or byte_count < 0:

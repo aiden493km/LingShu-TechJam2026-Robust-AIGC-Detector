@@ -214,6 +214,27 @@ class VerifyDistributionTests(unittest.TestCase):
 
         self.assertTrue(any("../outside.js" in error and "escapes" in error for error in errors), errors)
 
+    def test_rejects_non_normalized_integrity_paths_that_stay_within_dist(self):
+        with TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            contract = _write_valid_tree(root)
+            dist = root / "web_demo" / "dist"
+            integrity = json.loads((dist / "integrity.json").read_text(encoding="utf-8"))
+            integrity["files"].append(
+                {"path": "assets/../ghost.js", "bytes": 0, "sha256": "0" * 64}
+            )
+            _write_json(dist / "integrity.json", integrity)
+
+            errors = verify_distribution(root, contract=contract)
+
+        self.assertTrue(
+            any(
+                "assets/../ghost.js" in error and "normalized relative path" in error
+                for error in errors
+            ),
+            errors,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
