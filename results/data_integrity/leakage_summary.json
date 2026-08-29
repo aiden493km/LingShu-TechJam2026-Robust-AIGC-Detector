@@ -1,0 +1,18 @@
+{
+  "selected_train_root": "<local-path-redacted>/clean",
+  "selected_official_real_root": "<local-path-redacted>/val2017",
+  "selected_official_fake_root": "<local-path-redacted>/dalle3",
+  "train_clean_images": 20930,
+  "official_real_images": 4998,
+  "official_fake_images": 8843,
+  "official_total_images": 13841,
+  "filename_overlap_pairs": 0,
+  "sha256_exact_overlap_pairs": 0,
+  "sha256_exact_overlap_real_pairs": 0,
+  "sha256_exact_overlap_fake_pairs": 0,
+  "near_duplicate_threshold": 6,
+  "near_duplicate_candidate_pairs": 465,
+  "hash_failures": 0,
+  "manual_review_required": true,
+  "final_status": "PENDING_MANUAL_REVIEW"
+}

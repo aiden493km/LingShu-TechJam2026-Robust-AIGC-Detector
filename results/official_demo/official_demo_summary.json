@@ -1,0 +1,105 @@
+{
+  "benchmark": "Official demonstration benchmark",
+  "usage": "report-only; not used for training or tuning",
+  "samples": {
+    "real_coco_val2017": 4998,
+    "fake_dalle_advanced": 8843,
+    "total": 13841
+  },
+  "input_preprocessing": "EXIF transpose -> RGB -> resize to 384x384 with bicubic if needed -> ToTensor -> ImageNet Normalize",
+  "thresholds": {
+    "baseline0": 0.0758147,
+    "baseline1": 0.59710413,
+    "baseline2_njr": 0.55657113
+  },
+  "metrics": {
+    "baseline0": {
+      "model": "baseline0",
+      "samples": 13841,
+      "threshold": 0.0758147,
+      "accuracy": 0.8292030922621197,
+      "balanced_accuracy": 0.8636815689749834,
+      "auc": 0.9802123495559029,
+      "precision": 0.9907589759127405,
+      "recall": 0.7395680199027479,
+      "f1": 0.8469308469308469,
+      "real_accuracy": 0.9877951180472189,
+      "fake_accuracy": 0.7395680199027479,
+      "mean_prob_real": 0.00594575236889837,
+      "mean_prob_fake": 0.5399157329187488,
+      "tp": 6540,
+      "tn": 4937,
+      "fp": 61,
+      "fn": 2303
+    },
+    "baseline1": {
+      "model": "baseline1",
+      "samples": 13841,
+      "threshold": 0.59710413,
+      "accuracy": 0.8271078679286179,
+      "balanced_accuracy": 0.8636947824476392,
+      "auc": 0.9858857486226426,
+      "precision": 0.9964593596059114,
+      "recall": 0.7319914056315729,
+      "f1": 0.843992437577417,
+      "real_accuracy": 0.9953981592637055,
+      "fake_accuracy": 0.7319914056315729,
+      "mean_prob_real": 0.00633767744977426,
+      "mean_prob_fake": 0.7398447296356263,
+      "tp": 6473,
+      "tn": 4975,
+      "fp": 23,
+      "fn": 2370
+    },
+    "baseline2_njr": {
+      "model": "baseline2_njr",
+      "samples": 13841,
+      "threshold": 0.55657113,
+      "accuracy": 0.9198757315222889,
+      "balanced_accuracy": 0.9356856052383635,
+      "auc": 0.9931236205892512,
+      "precision": 0.9952612704918032,
+      "recall": 0.878774171661201,
+      "f1": 0.9333973935499369,
+      "real_accuracy": 0.9925970388155262,
+      "fake_accuracy": 0.878774171661201,
+      "mean_prob_real": 0.009116174037859123,
+      "mean_prob_fake": 0.8804908429494548,
+      "tp": 7771,
+      "tn": 4961,
+      "fp": 37,
+      "fn": 1072
+    }
+  },
+  "comparisons": [
+    {
+      "comparison": "B1_minus_B0",
+      "delta_accuracy": -0.002095224333501844,
+      "delta_balanced_accuracy": 1.3213472655815295e-05,
+      "delta_auc": 0.005673399066739693,
+      "delta_f1": -0.002938409353429816,
+      "delta_real_accuracy": 0.0076030412164865835,
+      "delta_fake_accuracy": -0.007576614271174953
+    },
+    {
+      "comparison": "B2_minus_B1",
+      "delta_accuracy": 0.09276786359367095,
+      "delta_balanced_accuracy": 0.07199082279072433,
+      "delta_auc": 0.007237871966608633,
+      "delta_f1": 0.08940495597251985,
+      "delta_real_accuracy": -0.0028011204481792618,
+      "delta_fake_accuracy": 0.14678276602962803
+    },
+    {
+      "comparison": "B2_minus_B0",
+      "delta_accuracy": 0.09067263926016911,
+      "delta_balanced_accuracy": 0.07200403626338014,
+      "delta_auc": 0.012911271033348326,
+      "delta_f1": 0.08646654661909003,
+      "delta_real_accuracy": 0.004801920768307322,
+      "delta_fake_accuracy": 0.13920615175845308
+    }
+  ],
+  "inference_seconds": 232.16469502449036,
+  "image_errors": 0
+}

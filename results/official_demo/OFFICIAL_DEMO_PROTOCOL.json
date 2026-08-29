@@ -1,0 +1,18 @@
+{
+  "status": "FROZEN_BEFORE_OFFICIAL_DEMO",
+  "benchmark_role": "Official demonstration/reference benchmark; report-only",
+  "training_contamination_audit": "PASS - no confirmed overlap detected before evaluation",
+  "models": {
+    "baseline0": "OwensLab/commfor-model-384",
+    "baseline1_checkpoint": "<local-path-redacted>/baseline1_clean_best.pt",
+    "baseline2_njr_checkpoint": "<local-path-redacted>/baseline2_ab_noise_jpeg_resize_best.pt"
+  },
+  "frozen_thresholds": {
+    "baseline0": 0.0758147,
+    "baseline1": 0.59710413,
+    "baseline2_njr": 0.55657113
+  },
+  "threshold_source": "Previous clean validation only. No threshold selection on official demo.",
+  "model_selection": "B2-NJR recipe/checkpoint selected before official demo evaluation.",
+  "no_post_demo_tuning": true
+}

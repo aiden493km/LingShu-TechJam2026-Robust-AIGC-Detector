@@ -1,0 +1,17 @@
+{
+  "candidate_pairs": 465,
+  "manual_review_same": 0,
+  "manual_review_different": 465,
+  "manual_review_uncertain": 0,
+  "review_method": "bulk_visual_screening",
+  "risk_buckets": {
+    "A": 0,
+    "B": 6,
+    "C": 0,
+    "D": 459,
+    "UNKNOWN": 0
+  },
+  "confirmed_perceptual_duplicates": 0,
+  "final_manual_review_status": "PASS",
+  "statement": "All perceptual-hash candidate pairs were visually screened. No pair was judged to represent the same source image."
+}

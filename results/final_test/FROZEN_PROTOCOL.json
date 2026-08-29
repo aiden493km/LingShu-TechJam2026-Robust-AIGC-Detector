@@ -1,0 +1,18 @@
+{
+  "status": "FROZEN_BEFORE_TEST",
+  "model": "B2-NJR",
+  "model_name": "OwensLab/commfor-model-384",
+  "checkpoint": "<local-path-redacted>/baseline2_ab_noise_jpeg_resize_best.pt",
+  "checkpoint_selection": "best clean validation AUC; epoch 4",
+  "augmentations": [
+    "gaussian_noise",
+    "jpeg",
+    "resize"
+  ],
+  "excluded_from_final_recipe": [
+    "gaussian_blur"
+  ],
+  "frozen_threshold": 0.55657113,
+  "threshold_selection": "clean validation only; maximize balanced accuracy; tie-break accuracy then F1",
+  "test_policy": "held-out test used once for final reporting only; no tuning"
+}

@@ -1,0 +1,16 @@
+OFFICIAL BENCHMARK PERCEPTUAL DUPLICATE MANUAL REVIEW
+================================================================
+Candidate pairs: 465
+Risk buckets: {'A': 0, 'B': 6, 'C': 0, 'D': 459, 'UNKNOWN': 0}
+
+SAME: 0
+DIFFERENT: 465
+UNCERTAIN: 0
+
+Review method: bulk visual screening
+
+FINAL STATUS:
+PASS - No confirmed perceptual duplicate was identified.
+
+Recommended wording:
+All perceptual-hash candidate pairs were visually screened; no matching source-image pair was identified.

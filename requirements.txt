@@ -1,0 +1,16 @@
+# Portable runtime / experiment dependencies
+# Tested experiment environment:
+# Python 3.12.8
+# PyTorch 2.10.0+cu126
+# torchvision 0.25.0+cu126
+# timm 0.9.16
+
+torch
+torchvision
+timm==0.9.16
+huggingface-hub
+Pillow
+numpy
+pandas
+scikit-learn
+ImageHash

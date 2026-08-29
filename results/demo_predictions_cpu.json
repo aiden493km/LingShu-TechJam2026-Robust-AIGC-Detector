@@ -1,0 +1,42 @@
+[
+  {
+    "image_path": "f1.png",
+    "pred": 0.9999985694885254
+  },
+  {
+    "image_path": "f2.png",
+    "pred": 0.9999996423721313
+  },
+  {
+    "image_path": "f3.png",
+    "pred": 0.9999998807907104
+  },
+  {
+    "image_path": "f4.png",
+    "pred": 0.999998927116394
+  },
+  {
+    "image_path": "f5.png",
+    "pred": 0.9999974966049194
+  },
+  {
+    "image_path": "r1.png",
+    "pred": 0.9982048273086548
+  },
+  {
+    "image_path": "r2.png",
+    "pred": 2.4952137778200267e-07
+  },
+  {
+    "image_path": "r3.png",
+    "pred": 3.5798055364466563e-07
+  },
+  {
+    "image_path": "r4.png",
+    "pred": 6.592869681298907e-07
+  },
+  {
+    "image_path": "r5.png",
+    "pred": 1.7951260815607384e-06
+  }
+]

@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# IDE
+.idea/
+.vscode/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local datasets
+data/
+datasets/
+
+# Large model files: publish final checkpoint via GitHub Release
+*.pt
+*.pth
+*.ckpt
+
+# Raw per-image experiment predictions
+*predictions.csv
+
+# Local review assets / caches
+near_duplicate_review/assets/
+.cache/
+wandb/
+runs/
+
+# Secrets
+.env
+
+# OS
+.DS_Store
+Thumbs.db
