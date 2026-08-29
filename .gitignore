@@ -11,6 +11,9 @@ __pycache__/
 venv/
 env/
 
+# JavaScript dependencies
+node_modules/
+
 # Local datasets
 data/
 datasets/
@@ -19,6 +22,11 @@ datasets/
 *.pt
 *.pth
 *.ckpt
+
+# Generated browser model artifacts
+*.onnx
+*.onnx.data
+web_models/
 
 # Raw per-image experiment predictions
 *predictions.csv

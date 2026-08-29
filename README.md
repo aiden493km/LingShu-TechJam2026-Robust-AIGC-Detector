@@ -18,6 +18,9 @@ Our final model, **B2-NJR**, is based on the Community Forensics ViT-S/16 detect
 - External demonstration benchmark on **COCO + DALL·E Advanced**.
 - Exact-duplicate and near-duplicate leakage audit.
 
+The browser-deployment spike, measurements, and reproduction steps are recorded in
+[`results/web_model_experiment/README.md`](results/web_model_experiment/README.md).
+
 ---
 
 ## Final Model
