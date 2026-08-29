@@ -37,6 +37,11 @@ near_duplicate_review/assets/
 wandb/
 runs/
 
+# Frontend-generated tests and design review artifacts
+web_demo/.generated-tests/
+.impeccable/review/
+.impeccable/live/
+
 # Secrets
 .env
 
