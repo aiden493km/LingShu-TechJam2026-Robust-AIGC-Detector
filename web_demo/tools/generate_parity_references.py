@@ -9,7 +9,6 @@ import math
 import os
 import shutil
 import sys
-import tempfile
 import uuid
 from pathlib import Path, PurePosixPath
 from typing import Protocol, Sequence
@@ -324,6 +323,24 @@ def _publish_staged_directory(stage: Path, output: Path) -> None:
         shutil.rmtree(backup)
 
 
+def _create_stage_directory(output: Path) -> Path:
+    """Atomically reserve an inheritable sibling directory for staged output."""
+
+    for _ in range(16):
+        stage = output.parent / f".{output.name}.stage-{uuid.uuid4().hex}"
+        try:
+            # tempfile.mkdtemp uses mode 0o700. Python 3.12 maps that mode to a
+            # restrictive Windows DACL which must not be inherited by the
+            # published directory. A normal mkdir inherits the accessible
+            # output parent's permissions while still reserving the name
+            # atomically.
+            stage.mkdir(mode=0o777)
+        except FileExistsError:
+            continue
+        return stage
+    raise FileExistsError(f"could not reserve a unique staging directory beside {output}")
+
+
 def generate_parity_references(
     repository_root: Path = DEFAULT_REPOSITORY_ROOT,
     output_directory: Path | None = None,
@@ -357,12 +374,7 @@ def generate_parity_references(
         str(contract["input_name"]),
         str(contract["output_name"]),
     )
-    stage = Path(
-        tempfile.mkdtemp(
-            prefix=f".{output.name}.stage-",
-            dir=output.parent,
-        )
-    )
+    stage = _create_stage_directory(output)
 
     try:
         tensor_directory = stage / "tensors"

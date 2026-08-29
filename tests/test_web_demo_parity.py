@@ -1,6 +1,7 @@
 import hashlib
 import json
 import math
+import tempfile
 import unittest
 from contextlib import nullcontext
 from pathlib import Path
@@ -172,6 +173,25 @@ class ParityReferenceUnitTests(unittest.TestCase):
             )
 
             self.assertEqual(_tree_snapshot(first), _tree_snapshot(second))
+
+    def test_stage_creation_does_not_use_restricted_tempfile_mkdtemp(self):
+        source = REPOSITORY_ROOT / EXPECTED_SOURCES[0]
+        with TemporaryDirectory() as temporary_directory, patch.object(
+            tempfile,
+            "mkdtemp",
+            side_effect=AssertionError("restricted tempfile directory ACL must not be published"),
+        ):
+            output = Path(temporary_directory) / "parity"
+
+            manifest = generate_parity_references(
+                REPOSITORY_ROOT,
+                output,
+                source_paths=[source],
+                runner=DeterministicFakeRunner(),
+            )
+
+            self.assertEqual(len(manifest["images"]), 1)
+            self.assertTrue((output / "manifest.json").is_file())
 
     def test_creates_missing_output_parent_directories(self):
         source = REPOSITORY_ROOT / EXPECTED_SOURCES[0]
