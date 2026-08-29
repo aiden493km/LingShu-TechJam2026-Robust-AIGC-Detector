@@ -1,3 +1,5 @@
+import contextlib
+import ctypes
 import hashlib
 import json
 import os
@@ -31,6 +33,20 @@ def _find_sh() -> str | None:
 
 
 SH_EXECUTABLE = _find_sh()
+
+
+@contextlib.contextmanager
+def _suppress_windows_error_dialogs():
+    if os.name != "nt":
+        yield
+        return
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    previous_mode = kernel32.SetErrorMode(0x0001 | 0x0002)
+    try:
+        yield
+    finally:
+        kernel32.SetErrorMode(previous_mode)
 
 
 FAKE_SERVER = r'''"""Tiny launcher-only server stand-in with artifact validation."""
@@ -70,6 +86,57 @@ record = {
 with Path(os.environ["LAUNCH_SERVER_LOG"]).open("a", encoding="utf-8") as output:
     output.write(json.dumps(record, ensure_ascii=False) + "\n")
 raise SystemExit(int(os.environ.get("FAKE_SERVER_EXIT", "0")))
+'''
+
+
+REAL_SERVER_VERIFY_STUB = r'''"""Test-only tiny verifier imported by the real server CLI."""
+
+import hashlib
+import json
+import os
+from pathlib import Path
+
+
+def verify_distribution(repository_root: Path) -> list[str]:
+    root = Path(repository_root).resolve()
+    errors: list[str] = []
+
+    try:
+        manifest = json.loads(
+            (root / "web_demo" / "models" / "manifest.json").read_text(encoding="utf-8")
+        )
+        model = manifest["model"]
+        model_bytes = (root / "web_demo" / "models" / model["file"]).read_bytes()
+        if len(model_bytes) != model["bytes"]:
+            errors.append("tiny model byte count mismatch")
+        if hashlib.sha256(model_bytes).hexdigest() != model["sha256"]:
+            errors.append("tiny model SHA-256 mismatch")
+    except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError) as error:
+        errors.append(f"could not validate tiny model fixture: {error}")
+
+    try:
+        dist = root / "web_demo" / "dist"
+        integrity = json.loads((dist / "integrity.json").read_text(encoding="utf-8"))
+        for entry in integrity["files"]:
+            content = (dist / entry["path"]).read_bytes()
+            if len(content) != entry["bytes"]:
+                errors.append(f"tiny dist byte count mismatch: {entry['path']}")
+            if hashlib.sha256(content).hexdigest() != entry["sha256"]:
+                errors.append(f"tiny dist SHA-256 mismatch: {entry['path']}")
+    except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError) as error:
+        errors.append(f"could not validate tiny dist fixture: {error}")
+
+    record = {
+        "root": str(root),
+        "cwd": os.getcwd(),
+        "validated": not errors,
+        "errors": errors,
+    }
+    Path(os.environ["REAL_SERVER_VERIFY_LOG"]).write_text(
+        json.dumps(record, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return errors
 '''
 
 
@@ -200,24 +267,30 @@ exit /b %errorlevel%
 
     def _install_repository_venv_python(self) -> Path:
         venv_root = self.root / ".venv"
+        with _suppress_windows_error_dialogs():
+            result = subprocess.run(
+                [sys.executable, "-m", "venv", "--without-pip", str(venv_root)],
+                cwd=self.root,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=30,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                check=False,
+            )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         executable = venv_root / "Scripts" / "python.exe"
-        executable.parent.mkdir(parents=True)
-        shutil.copy2(sys.executable, executable)
-
-        base_executable = Path(getattr(sys, "_base_executable", sys.executable)).resolve()
-        _write_text(
-            venv_root / "pyvenv.cfg",
-            "\n".join(
-                (
-                    f"home = {base_executable.parent}",
-                    "include-system-site-packages = false",
-                    f"version = {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
-                    f"executable = {base_executable}",
-                    "",
-                )
-            ),
-        )
+        self.assertTrue(executable.is_file(), executable)
+        self.assertTrue((venv_root / "pyvenv.cfg").is_file(), venv_root / "pyvenv.cfg")
         return executable
+
+    def _install_real_server_with_tiny_verifier(self) -> Path:
+        tools = self.web_demo / "tools"
+        shutil.copy2(SOURCE_WEB_DEMO / "tools" / "serve_demo.py", tools / "serve_demo.py")
+        _write_text(tools / "verify_distribution.py", REAL_SERVER_VERIFY_STUB)
+        return self.root / "real-server-verifier.json"
 
     def _run(self, *arguments: str, environment: dict[str, str] | None = None):
         batch_command = "call " + subprocess.list2cmdline(
@@ -230,18 +303,20 @@ exit /b %errorlevel%
             + " /d /c "
             + batch_command
         )
-        return subprocess.run(
-            command,
-            cwd=self.unrelated_cwd,
-            env=self._base_environment() if environment is None else environment,
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=15,
-            check=False,
-        )
+        with _suppress_windows_error_dialogs():
+            return subprocess.run(
+                command,
+                cwd=self.unrelated_cwd,
+                env=self._base_environment() if environment is None else environment,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=15,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                check=False,
+            )
 
     def test_repository_venv_is_first_and_preserves_unicode_space_and_arguments(self):
         venv_python = self._install_repository_venv_python()
@@ -272,6 +347,24 @@ exit /b %errorlevel%
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(_runtime_events(self.runtime_log), ["py-probe", "py-server"])
         self.assertEqual(_server_records(self.server_log)[0]["argv"], ["--check", "--port", "45678"])
+
+    def test_check_runs_real_server_cli_and_tiny_distribution_verifier(self):
+        self._write_python_wrapper("py")
+        self._write_python_wrapper("python")
+        verifier_log = self._install_real_server_with_tiny_verifier()
+        environment = self._base_environment()
+        environment["REAL_SERVER_VERIFY_LOG"] = str(verifier_log)
+
+        result = self._run("--check", "--port", "43123", environment=environment)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Distribution verification passed.", result.stdout)
+        self.assertEqual(_runtime_events(self.runtime_log), ["py-probe", "py-server"])
+        self.assertEqual(_server_records(self.server_log), [])
+        verification = json.loads(verifier_log.read_text(encoding="utf-8"))
+        self.assertEqual(Path(verification["root"]).resolve(), self.root.resolve())
+        self.assertEqual(Path(verification["cwd"]).resolve(), self.web_demo.resolve())
+        self.assertTrue(verification["validated"])
 
     def test_probe_failing_py_falls_back_to_successful_python(self):
         self._write_python_wrapper("py", failing_probe=True)
