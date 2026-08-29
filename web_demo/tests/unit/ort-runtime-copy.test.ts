@@ -128,7 +128,33 @@ describe('ORT runtime packaging', () => {
     );
 
     await expect(copyOrtRuntime({ sourcePath: source, distDirectory: dist })).rejects.toThrow(
-      /additional asyncify runtime sibling.*oldhash/i,
+      /additional ORT runtime sibling.*oldhash/i,
+    );
+  });
+
+  it('rejects a JSEP ORT runtime sibling before copying', async () => {
+    const root = await makeTemporaryDirectory();
+    const source = resolveOrtRuntimeSource();
+    const dist = join(root, 'dist');
+    const assets = join(dist, 'assets');
+    await mkdir(assets, { recursive: true });
+    await writeFile(join(assets, 'ort-wasm-simd-threaded.jsep.wasm'), 'duplicate');
+
+    await expect(copyOrtRuntime({ sourcePath: source, distDirectory: dist })).rejects.toThrow(
+      /additional ORT runtime sibling.*jsep/i,
+    );
+  });
+
+  it('rejects an ORT runtime nested anywhere below dist assets', async () => {
+    const root = await makeTemporaryDirectory();
+    const source = resolveOrtRuntimeSource();
+    const dist = join(root, 'dist');
+    const nested = join(dist, 'assets', 'nested');
+    await mkdir(nested, { recursive: true });
+    await writeFile(join(nested, 'ort-wasm-simd-threaded.wasm'), 'duplicate');
+
+    await expect(copyOrtRuntime({ sourcePath: source, distDirectory: dist })).rejects.toThrow(
+      /additional ORT runtime.*nested.*ort-wasm/i,
     );
   });
 
@@ -150,7 +176,25 @@ describe('ORT runtime packaging', () => {
           },
         },
       }),
-    ).rejects.toThrow(/additional asyncify runtime sibling.*race/i);
+    ).rejects.toThrow(/additional ORT runtime sibling.*race/i);
+  });
+
+  it('rejects a case-variant ORT runtime sibling that appears after copying', async () => {
+    const root = await makeTemporaryDirectory();
+    const source = resolveOrtRuntimeSource();
+    const dist = join(root, 'dist');
+
+    await expect(
+      copyOrtRuntime({
+        sourcePath: source,
+        distDirectory: dist,
+        testHooks: {
+          afterCopy: async ({ assetsDirectory }: { assetsDirectory: string }) => {
+            await writeFile(join(assetsDirectory, 'ORT-WASM-SIMD-THREADED.JSPI.WASM'), 'duplicate');
+          },
+        },
+      }),
+    ).rejects.toThrow(/additional ORT runtime sibling.*jspi/i);
   });
 
   it('rejects a destination whose contents change before post-copy verification', async () => {

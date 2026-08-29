@@ -14,8 +14,7 @@ export const ORT_RUNTIME_BYTES = 25_749_873;
 export const ORT_RUNTIME_SHA256 =
   '503d17cb7411b79781b9fad1cf0978f03cf06b050c7d399c730e914f473bf549';
 
-const ASYNCIFY_RUNTIME_PATTERN =
-  /^ort-wasm-simd-threaded\.asyncify.*\.wasm$/;
+const ORT_RUNTIME_PATTERN = /^ort.*\.wasm$/i;
 
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
@@ -63,23 +62,34 @@ async function prepareAssetsDirectory(distDirectory) {
   return assetsDirectory;
 }
 
-async function rejectAdditionalRuntimeSiblings(assetsDirectory) {
-  const entries = await readdir(assetsDirectory, { withFileTypes: true });
-  for (const entry of entries) {
-    if (!ASYNCIFY_RUNTIME_PATTERN.test(entry.name)) {
-      continue;
-    }
-    if (entry.name !== ORT_RUNTIME_NAME) {
-      throw new Error(
-        `Found additional asyncify runtime sibling in dist/assets: ${entry.name}`,
-      );
-    }
-    const exactPath = join(assetsDirectory, entry.name);
-    const stats = await lstat(exactPath);
-    if (stats.isSymbolicLink() || !stats.isFile()) {
-      throw new Error(`Existing ORT runtime destination must be a regular file: ${exactPath}`);
+async function rejectAdditionalOrtRuntimeSiblings(assetsDirectory) {
+  async function visit(directory, relativeDirectory = '') {
+    const entries = await readdir(directory, { withFileTypes: true });
+    for (const entry of entries) {
+      const relativePath = relativeDirectory
+        ? `${relativeDirectory}/${entry.name}`
+        : entry.name;
+      const absolutePath = join(directory, entry.name);
+      if (ORT_RUNTIME_PATTERN.test(entry.name)) {
+        if (relativePath !== ORT_RUNTIME_NAME) {
+          throw new Error(
+            `Found additional ORT runtime sibling in dist/assets: ${relativePath}`,
+          );
+        }
+        const stats = await lstat(absolutePath);
+        if (stats.isSymbolicLink() || !stats.isFile()) {
+          throw new Error(
+            `Existing ORT runtime destination must be a regular file: ${absolutePath}`,
+          );
+        }
+      }
+      if (entry.isDirectory()) {
+        await visit(absolutePath, relativePath);
+      }
     }
   }
+
+  await visit(assetsDirectory);
 }
 
 async function hashFile(path) {
@@ -109,7 +119,7 @@ export async function copyOrtRuntime(options = {}) {
   }
 
   const assetsDirectory = await prepareAssetsDirectory(distDirectory);
-  await rejectAdditionalRuntimeSiblings(assetsDirectory);
+  await rejectAdditionalOrtRuntimeSiblings(assetsDirectory);
   const destinationPath = join(assetsDirectory, ORT_RUNTIME_NAME);
   if (sourcePath === resolve(destinationPath)) {
     throw new Error('ORT runtime source and destination must not be the same file');
@@ -141,7 +151,7 @@ export async function copyOrtRuntime(options = {}) {
   }
 
   await options.testHooks?.afterCopy?.({ assetsDirectory, destinationPath });
-  await rejectAdditionalRuntimeSiblings(assetsDirectory);
+  await rejectAdditionalOrtRuntimeSiblings(assetsDirectory);
 
   const destinationStats = await inspectRegularFile(
     destinationPath,

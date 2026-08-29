@@ -1,18 +1,24 @@
 import hashlib
 import json
 import unittest
+from contextlib import nullcontext
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from web_demo.tools.verify_distribution import (
     FROZEN_CONTRACT,
+    FROZEN_ORT_RUNTIME,
     FrozenContract,
+    FrozenOrtRuntime,
     verify_distribution,
 )
 
 
 TEST_MODEL = b"small deterministic ONNX stand-in\n"
 TEST_MODEL_FILE = "tiny_fp32.onnx"
+TEST_ORT_RUNTIME = b"small deterministic ORT runtime stand-in\n"
+TEST_ORT_RUNTIME_PATH = "assets/ort-wasm-simd-threaded.asyncify.wasm"
 
 
 def _contract_for(
@@ -25,6 +31,19 @@ def _contract_for(
         model_file=TEST_MODEL_FILE,
         model_bytes=len(model) if byte_count is None else byte_count,
         model_sha256=hashlib.sha256(model).hexdigest() if sha256 is None else sha256,
+    )
+
+
+def _runtime_contract_for(
+    runtime: bytes = TEST_ORT_RUNTIME,
+    *,
+    sha256: str | None = None,
+    byte_count: int | None = None,
+) -> FrozenOrtRuntime:
+    return FrozenOrtRuntime(
+        path=TEST_ORT_RUNTIME_PATH,
+        bytes=len(runtime) if byte_count is None else byte_count,
+        sha256=hashlib.sha256(runtime).hexdigest() if sha256 is None else sha256,
     )
 
 
@@ -56,8 +75,13 @@ def _write_valid_tree(
     *,
     contract: FrozenContract | None = None,
     model: bytes = TEST_MODEL,
+    runtime_contract: FrozenOrtRuntime | None = None,
+    runtime: bytes = TEST_ORT_RUNTIME,
 ) -> FrozenContract:
     selected_contract = _contract_for(model) if contract is None else contract
+    selected_runtime = (
+        _runtime_contract_for(runtime) if runtime_contract is None else runtime_contract
+    )
     models = root / "web_demo" / "models"
     dist = root / "web_demo" / "dist"
     models.mkdir(parents=True)
@@ -77,11 +101,29 @@ def _write_valid_tree(
     )
     (dist / "index.html").write_bytes(b"<!doctype html><title>demo</title>\n")
     (dist / "assets" / "app.js").write_bytes(b"console.log('demo');\n")
+    runtime_path = dist.joinpath(*selected_runtime.path.split("/"))
+    runtime_path.parent.mkdir(parents=True, exist_ok=True)
+    runtime_path.write_bytes(runtime)
     _write_json(
         dist / "integrity.json",
         {"schema_version": 1, "files": _dist_entries(dist)},
     )
     return selected_contract
+
+
+def _verify_test_tree(
+    root: Path,
+    contract: FrozenContract,
+    *,
+    runtime_contract: FrozenOrtRuntime | None = None,
+) -> list[str]:
+    return verify_distribution(
+        root,
+        contract=contract,
+        runtime_contract=(
+            _runtime_contract_for() if runtime_contract is None else runtime_contract
+        ),
+    )
 
 
 class FrozenContractTests(unittest.TestCase):
@@ -92,6 +134,15 @@ class FrozenContractTests(unittest.TestCase):
             FROZEN_CONTRACT.model_sha256,
             "e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69",
         )
+        self.assertEqual(
+            FROZEN_ORT_RUNTIME.path,
+            "assets/ort-wasm-simd-threaded.asyncify.wasm",
+        )
+        self.assertEqual(FROZEN_ORT_RUNTIME.bytes, 25749873)
+        self.assertEqual(
+            FROZEN_ORT_RUNTIME.sha256,
+            "503d17cb7411b79781b9fad1cf0978f03cf06b050c7d399c730e914f473bf549",
+        )
 
 
 class VerifyDistributionTests(unittest.TestCase):
@@ -100,7 +151,7 @@ class VerifyDistributionTests(unittest.TestCase):
             root = Path(temporary_directory)
             contract = _write_valid_tree(root)
 
-            self.assertEqual(verify_distribution(root, contract=contract), [])
+            self.assertEqual(_verify_test_tree(root, contract), [])
 
     def test_reports_wrong_model_byte_count(self):
         with TemporaryDirectory() as temporary_directory:
@@ -108,7 +159,7 @@ class VerifyDistributionTests(unittest.TestCase):
             contract = _contract_for(byte_count=len(TEST_MODEL) + 1)
             _write_valid_tree(root, contract=contract)
 
-            errors = verify_distribution(root, contract=contract)
+            errors = _verify_test_tree(root, contract)
 
         self.assertTrue(
             any("model byte count" in error and str(len(TEST_MODEL) + 1) in error for error in errors),
@@ -121,7 +172,7 @@ class VerifyDistributionTests(unittest.TestCase):
             contract = _contract_for(sha256="0" * 64)
             _write_valid_tree(root, contract=contract)
 
-            errors = verify_distribution(root, contract=contract)
+            errors = _verify_test_tree(root, contract)
 
         self.assertTrue(
             any("model SHA-256" in error and "0" * 64 in error for error in errors),
@@ -134,7 +185,7 @@ class VerifyDistributionTests(unittest.TestCase):
             contract = _write_valid_tree(root)
             (root / "web_demo" / "models" / "alternate.onnx").write_bytes(b"alternate")
 
-            errors = verify_distribution(root, contract=contract)
+            errors = _verify_test_tree(root, contract)
 
         self.assertTrue(
             any("exactly one .onnx" in error and "alternate.onnx" in error for error in errors),
@@ -152,7 +203,7 @@ class VerifyDistributionTests(unittest.TestCase):
             contract = _contract_for(pointer)
             _write_valid_tree(root, contract=contract, model=pointer)
 
-            errors = verify_distribution(root, contract=contract)
+            errors = _verify_test_tree(root, contract)
 
         self.assertTrue(
             any("Git LFS pointer" in error and "incomplete clone" in error for error in errors),
@@ -165,7 +216,7 @@ class VerifyDistributionTests(unittest.TestCase):
             contract = _write_valid_tree(root)
             (root / "web_demo" / "dist" / "integrity.json").unlink()
 
-            errors = verify_distribution(root, contract=contract)
+            errors = _verify_test_tree(root, contract)
 
         self.assertTrue(any("dist/integrity.json is missing" in error for error in errors), errors)
 
@@ -175,7 +226,7 @@ class VerifyDistributionTests(unittest.TestCase):
             contract = _write_valid_tree(root)
             (root / "web_demo" / "dist" / "index.html").write_bytes(b"changed after hashing")
 
-            errors = verify_distribution(root, contract=contract)
+            errors = _verify_test_tree(root, contract)
 
         self.assertTrue(
             any("dist entry index.html" in error and "byte count" in error for error in errors),
@@ -195,7 +246,7 @@ class VerifyDistributionTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            errors = verify_distribution(root, contract=contract)
+            errors = _verify_test_tree(root, contract)
 
         self.assertTrue(any("manifest.json is not valid JSON" in error for error in errors), errors)
 
@@ -210,7 +261,7 @@ class VerifyDistributionTests(unittest.TestCase):
             )
             _write_json(dist / "integrity.json", integrity)
 
-            errors = verify_distribution(root, contract=contract)
+            errors = _verify_test_tree(root, contract)
 
         self.assertTrue(any("../outside.js" in error and "escapes" in error for error in errors), errors)
 
@@ -225,13 +276,105 @@ class VerifyDistributionTests(unittest.TestCase):
             )
             _write_json(dist / "integrity.json", integrity)
 
-            errors = verify_distribution(root, contract=contract)
+            errors = _verify_test_tree(root, contract)
 
         self.assertTrue(
             any(
                 "assets/../ghost.js" in error and "normalized relative path" in error
                 for error in errors
             ),
+            errors,
+        )
+
+    def test_reports_an_extra_jsep_ort_runtime_even_when_integrity_is_current(self):
+        with TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            contract = _write_valid_tree(root)
+            dist = root / "web_demo" / "dist"
+            (dist / "assets" / "ort-wasm-simd-threaded.jsep.wasm").write_bytes(b"duplicate")
+            _write_json(
+                dist / "integrity.json",
+                {"schema_version": 1, "files": _dist_entries(dist)},
+            )
+
+            errors = _verify_test_tree(root, contract)
+
+        self.assertTrue(
+            any("exactly one ORT" in error and "jsep.wasm" in error for error in errors),
+            errors,
+        )
+
+    def test_reports_wrong_ort_runtime_byte_count(self):
+        with TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            contract = _write_valid_tree(root)
+            runtime_contract = _runtime_contract_for(
+                byte_count=len(TEST_ORT_RUNTIME) + 1,
+            )
+
+            errors = _verify_test_tree(
+                root,
+                contract,
+                runtime_contract=runtime_contract,
+            )
+
+        self.assertTrue(
+            any("ORT runtime byte count" in error for error in errors),
+            errors,
+        )
+
+    def test_reports_wrong_ort_runtime_sha256(self):
+        with TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            contract = _write_valid_tree(root)
+            runtime_contract = _runtime_contract_for(sha256="0" * 64)
+
+            errors = _verify_test_tree(
+                root,
+                contract,
+                runtime_contract=runtime_contract,
+            )
+
+        self.assertTrue(
+            any("ORT runtime SHA-256" in error and "0" * 64 in error for error in errors),
+            errors,
+        )
+
+    def test_rejects_a_symlinked_ort_runtime(self):
+        with TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            contract = _write_valid_tree(root)
+            dist = root / "web_demo" / "dist"
+            runtime_path = dist.joinpath(*TEST_ORT_RUNTIME_PATH.split("/"))
+            outside = root / "outside-runtime.wasm"
+            outside.write_bytes(TEST_ORT_RUNTIME)
+            runtime_path.unlink()
+            try:
+                runtime_path.symlink_to(outside)
+            except (NotImplementedError, OSError):
+                runtime_path.write_bytes(TEST_ORT_RUNTIME)
+                real_is_symlink = Path.is_symlink
+
+                def filesystem_marks_runtime_as_symlink(path: Path) -> bool:
+                    return path == runtime_path or real_is_symlink(path)
+
+                symlink_context = patch.object(
+                    Path,
+                    "is_symlink",
+                    filesystem_marks_runtime_as_symlink,
+                )
+            else:
+                symlink_context = nullcontext()
+            _write_json(
+                dist / "integrity.json",
+                {"schema_version": 1, "files": _dist_entries(dist)},
+            )
+
+            with symlink_context:
+                errors = _verify_test_tree(root, contract)
+
+        self.assertTrue(
+            any("ORT runtime" in error and "symlink" in error for error in errors),
             errors,
         )
 
