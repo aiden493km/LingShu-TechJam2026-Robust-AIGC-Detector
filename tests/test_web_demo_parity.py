@@ -2,6 +2,7 @@ import hashlib
 import json
 import math
 import unittest
+from contextlib import nullcontext
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -13,6 +14,7 @@ from web_demo.tools.generate_parity_references import (
     EXPECTED_TENSOR_BYTES,
     EXPECTED_TENSOR_FLOATS,
     EXPECTED_TENSOR_SHAPE,
+    _validated_output_path,
     collect_parity_inputs,
     generate_parity_references,
     stable_sigmoid,
@@ -185,6 +187,65 @@ class ParityReferenceUnitTests(unittest.TestCase):
 
             self.assertEqual(len(manifest["images"]), 1)
             self.assertTrue((output / "manifest.json").is_file())
+
+    def test_rejects_an_existing_tracked_repository_directory_as_output(self):
+        tracked_directory = REPOSITORY_ROOT / "web_demo" / "src"
+
+        with self.assertRaisesRegex(ValueError, "strictly below.*[.]generated-tests"):
+            _validated_output_path(REPOSITORY_ROOT, tracked_directory, [])
+
+        self.assertTrue((tracked_directory / "App.tsx").is_file())
+
+    def test_rejects_the_generated_tests_container_itself_as_output(self):
+        generated_tests = REPOSITORY_ROOT / "web_demo" / ".generated-tests"
+
+        with self.assertRaisesRegex(ValueError, "strictly below.*[.]generated-tests"):
+            _validated_output_path(REPOSITORY_ROOT, generated_tests, [])
+
+    def test_allows_a_descendant_of_the_generated_tests_container(self):
+        output = REPOSITORY_ROOT / "web_demo" / ".generated-tests" / "parity-safe-child"
+
+        self.assertEqual(
+            _validated_output_path(REPOSITORY_ROOT, output, []),
+            output.resolve(strict=False),
+        )
+
+    def test_rejects_a_repository_symlink_parent_that_escapes_generated_tests(self):
+        with TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            repository = temporary_root / "repo"
+            generated_tests = repository / "web_demo" / ".generated-tests"
+            generated_tests.mkdir(parents=True)
+            outside = temporary_root / "outside"
+            outside.mkdir()
+            linked_parent = generated_tests / "linked-parent"
+
+            try:
+                linked_parent.symlink_to(outside, target_is_directory=True)
+            except OSError:
+                real_resolve = Path.resolve
+
+                def simulate_parent_symlink(path: Path, strict: bool = False) -> Path:
+                    if path == linked_parent:
+                        return outside
+                    return real_resolve(path, strict=strict)
+
+                symlink_context = patch.object(Path, "resolve", simulate_parent_symlink)
+            else:
+                symlink_context = nullcontext()
+
+            with symlink_context, self.assertRaisesRegex(ValueError, "symlink.*escapes"):
+                _validated_output_path(repository.resolve(), linked_parent / "parity", [])
+
+    def test_rejects_an_external_output_that_contains_a_protected_file(self):
+        with TemporaryDirectory() as temporary_directory:
+            output = Path(temporary_directory) / "output"
+            protected = output / "deployed-model.onnx"
+            protected.parent.mkdir()
+            protected.write_bytes(b"protected")
+
+            with self.assertRaisesRegex(ValueError, "source/model files"):
+                _validated_output_path(REPOSITORY_ROOT, output, [protected])
 
     def test_rejects_a_source_path_that_escapes_the_repository(self):
         with TemporaryDirectory() as temporary_directory:

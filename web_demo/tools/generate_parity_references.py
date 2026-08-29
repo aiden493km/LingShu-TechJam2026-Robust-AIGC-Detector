@@ -185,16 +185,34 @@ def _validated_output_path(
     output_directory: Path,
     protected_paths: Sequence[Path],
 ) -> Path:
+    resolved_repository = Path(repository_root).resolve(strict=True)
     candidate = Path(output_directory)
     if not candidate.is_absolute():
-        candidate = repository_root / candidate
+        candidate = resolved_repository / candidate
+    candidate = Path(os.path.abspath(candidate))
     if candidate.is_symlink():
         raise ValueError(f"output directory must not be a symlink: {candidate}")
 
     candidate_parent = candidate.parent.resolve(strict=False)
     resolved = candidate_parent / candidate.name
-    if resolved == repository_root or repository_root.is_relative_to(resolved):
+    lexical_is_in_repository = candidate.is_relative_to(resolved_repository)
+    resolved_is_in_repository = resolved.is_relative_to(resolved_repository)
+    if lexical_is_in_repository != resolved_is_in_repository:
+        raise ValueError(
+            f"output directory symlink path escapes the repository boundary: {candidate} -> {resolved}"
+        )
+
+    if resolved == resolved_repository or resolved_repository.is_relative_to(resolved):
         raise ValueError(f"output directory must not contain the repository: {resolved}")
+    if resolved_is_in_repository:
+        generated_tests = (
+            resolved_repository / "web_demo" / ".generated-tests"
+        ).resolve(strict=False)
+        if resolved == generated_tests or not resolved.is_relative_to(generated_tests):
+            raise ValueError(
+                "repository output must be strictly below web_demo/.generated-tests: "
+                f"{resolved}"
+            )
     for protected in protected_paths:
         protected_resolved = protected.resolve(strict=True)
         if protected_resolved == resolved or protected_resolved.is_relative_to(resolved):
