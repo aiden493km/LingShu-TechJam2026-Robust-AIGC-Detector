@@ -402,6 +402,69 @@ exit /b %errorlevel%
         self.assertEqual(_runtime_events(self.runtime_log), ["py-probe", "py-server"])
         self.assertEqual(len(_server_records(self.server_log)), 1)
 
+    def test_batch_restores_callers_console_code_page_after_check(self):
+        self._write_python_wrapper("py")
+        self._write_python_wrapper("python")
+        driver = self.root / "code-page-driver.cmd"
+        code_page_log = self.root / "code-page-result.txt"
+        _write_text(
+            driver,
+            r'''@echo off
+setlocal DisableDelayedExpansion
+set "HOST_PAGE="
+for /f "delims=" %%C in ('chcp') do for %%P in (%%C) do set "HOST_PAGE=%%P"
+if not defined HOST_PAGE goto :unsupported
+chcp 437 >nul 2>&1
+if errorlevel 1 goto :unsupported
+for /f "delims=" %%C in ('chcp') do for %%P in (%%C) do set "BEFORE_PAGE=%%P"
+call "%TARGET_LAUNCHER%" --check
+set "LAUNCH_EXIT=%ERRORLEVEL%"
+for /f "delims=" %%C in ('chcp') do for %%P in (%%C) do set "AFTER_PAGE=%%P"
+chcp %HOST_PAGE% >nul 2>&1
+>"%CODE_PAGE_LOG%" echo %BEFORE_PAGE% %AFTER_PAGE% %LAUNCH_EXIT%
+endlocal & exit /b 0
+
+:unsupported
+if defined HOST_PAGE chcp %HOST_PAGE% >nul 2>&1
+>"%CODE_PAGE_LOG%" echo unsupported
+endlocal & exit /b 0
+''',
+            newline="\r\n",
+        )
+        environment = self._base_environment()
+        environment["TARGET_LAUNCHER"] = str(self.web_demo / "start-demo.bat")
+        environment["CODE_PAGE_LOG"] = str(code_page_log)
+        command = (
+            subprocess.list2cmdline(
+                [os.environ.get("ComSpec", r"C:\Windows\System32\cmd.exe")]
+            )
+            + " /d /c call "
+            + subprocess.list2cmdline([str(driver)])
+        )
+
+        with _suppress_windows_error_dialogs():
+            result = subprocess.run(
+                command,
+                cwd=self.unrelated_cwd,
+                env=environment,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=15,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                check=False,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        recorded = code_page_log.read_text(encoding="utf-8").strip()
+        if recorded == "unsupported":
+            self.skipTest("code page 437 is unavailable in the child cmd.exe")
+        before, after, launcher_exit = recorded.split()
+        self.assertEqual(launcher_exit, "0", result.stdout + result.stderr)
+        self.assertEqual(after, before)
+
 
 class PosixLauncherTests(unittest.TestCase):
     def test_shell_launcher_has_lf_endings_and_git_executable_mode(self):
@@ -432,6 +495,8 @@ class PosixLauncherTests(unittest.TestCase):
             fake_bin = root / "伪运行时 bin"
             fake_bin.mkdir(parents=True)
             runtime_log = fake_bin / "runtime.log"
+            launcher_pid_log = fake_bin / "launcher.pid"
+            server_pid_log = fake_bin / "server.pid"
             server_log = root / "服务器 参数.jsonl"
             wrapper = fake_bin / "python3"
             _write_text(
@@ -439,8 +504,10 @@ class PosixLauncherTests(unittest.TestCase):
                 '''#!/bin/sh
 if [ "$1" = "-c" ]; then
   printf '%s\n' python3-probe >> "$(dirname -- "$0")/runtime.log"
+  printf '%s\n' "$PPID" > "$SH_LAUNCHER_PID_LOG"
 else
   printf '%s\n' python3-server >> "$(dirname -- "$0")/runtime.log"
+  printf '%s\n' "$$" > "$SH_SERVER_PID_LOG"
 fi
 exec "$REAL_PYTHON" "$@"
 ''',
@@ -453,9 +520,17 @@ exec "$REAL_PYTHON" "$@"
             environment["REAL_PYTHON"] = str(Path(sys.executable).resolve())
             environment["LAUNCH_SERVER_LOG"] = str(server_log)
             environment["FAKE_SERVER_EXIT"] = "29"
+            environment["SH_LAUNCHER_PID_LOG"] = str(launcher_pid_log)
+            environment["SH_SERVER_PID_LOG"] = str(server_pid_log)
 
             result = subprocess.run(
-                [sh, str(web_demo / "start-demo.sh"), "--check", "--port", "41000"],
+                [
+                    sh,
+                    str(web_demo / "start-demo.sh"),
+                    "--check",
+                    "--port",
+                    "41000",
+                ],
                 cwd=unrelated_cwd,
                 env=environment,
                 stdin=subprocess.DEVNULL,
@@ -469,6 +544,10 @@ exec "$REAL_PYTHON" "$@"
 
             self.assertEqual(result.returncode, 29, result.stdout + result.stderr)
             self.assertEqual(_runtime_events(runtime_log), ["python3-probe", "python3-server"])
+            self.assertEqual(
+                server_pid_log.read_text(encoding="utf-8").strip(),
+                launcher_pid_log.read_text(encoding="utf-8").strip(),
+            )
             records = _server_records(server_log)
             self.assertEqual(len(records), 1, records)
             self.assertEqual(records[0]["argv"], ["--check", "--port", "41000"])

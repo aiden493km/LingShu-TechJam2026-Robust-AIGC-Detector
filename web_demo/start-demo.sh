@@ -12,12 +12,12 @@ cd "$SCRIPT_DIR" || {
 }
 
 if python3 -c 'import sys; raise SystemExit(sys.version_info < (3, 11))' >/dev/null 2>&1; then
-  python3 tools/serve_demo.py "$@"
+  exec python3 tools/serve_demo.py "$@"
   exit $?
 fi
 
 if python -c 'import sys; raise SystemExit(sys.version_info < (3, 11))' >/dev/null 2>&1; then
-  python tools/serve_demo.py "$@"
+  exec python tools/serve_demo.py "$@"
   exit $?
 fi
 
