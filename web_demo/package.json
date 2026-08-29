@@ -8,7 +8,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "build": "vite build && node tools/write_dist_integrity.mjs",
+    "build": "vite build && node tools/copy_ort_runtime.mjs && node tools/write_dist_integrity.mjs",
     "verify:dist": "npm run build && git diff --exit-code -- dist"
   },
   "dependencies": {

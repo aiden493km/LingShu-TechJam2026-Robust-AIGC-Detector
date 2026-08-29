@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "assets/index-BiSrUD_A.js",
+      "bytes": 394094,
+      "sha256": "b13fc08662d04a5ac1fd67f4515b9ee2a88015ede4dcdf233f10afe8c37c7ced"
+    },
+    {
+      "path": "assets/index-DQGgHzSy.css",
+      "bytes": 8493,
+      "sha256": "968b9b54fca726a633dde64804a99c4ce22e382f87e590502d03544419ca4220"
+    },
+    {
+      "path": "assets/jsquash_magic_kernel_bg-Cq4C4bH5.wasm",
+      "bytes": 18760,
+      "sha256": "f3d1b2e550d4de73abc2a1ed9c89adde4b0eed80009e730b4c3a0ae415f8122d"
+    },
+    {
+      "path": "assets/mozjpeg_dec-muSO2n8T.wasm",
+      "bytes": 166470,
+      "sha256": "a7c4b12169817e779ff4af137981393ae924944e167ad1bd95747c9199162d3e"
+    },
+    {
+      "path": "assets/ort-wasm-simd-threaded.asyncify.wasm",
+      "bytes": 25749873,
+      "sha256": "503d17cb7411b79781b9fad1cf0978f03cf06b050c7d399c730e914f473bf549"
+    },
+    {
+      "path": "assets/squoosh_png_bg-DAY7U9NW.wasm",
+      "bytes": 181088,
+      "sha256": "263d6e658808a74b72a1a99c5cc1d619237e70c150db6e41d5d84d3d117ab9be"
+    },
+    {
+      "path": "assets/squoosh_resize_bg-YY9xfwUg.wasm",
+      "bytes": 34545,
+      "sha256": "5b1f702d502c4d0a70b99f78691bd554d566ba95859e4c57af5435955a1d74a5"
+    },
+    {
+      "path": "assets/squooshhqx_bg-jpRtGvMp.wasm",
+      "bytes": 135082,
+      "sha256": "812617712f0444b09ee61d72f9b2dab6cdd7fed3e9c74cc57e4dd6c80f4a4c80"
+    },
+    {
+      "path": "assets/webp_dec-C990n7mh.wasm",
+      "bytes": 137960,
+      "sha256": "30fb52fa2a80166d25ba7debf902218904ba1f05ccce9f959f722beff9e2f344"
+    },
+    {
+      "path": "index.html",
+      "bytes": 534,
+      "sha256": "02c51f2ec8414332208265b96161891dade40d1399fd496468f88f21502b45a8"
+    }
+  ]
+}

@@ -27,6 +27,7 @@ datasets/
 *.onnx
 *.onnx.data
 web_models/
+!web_demo/models/baseline2_njr_fp32.onnx
 
 # Raw per-image experiment predictions
 *predictions.csv
