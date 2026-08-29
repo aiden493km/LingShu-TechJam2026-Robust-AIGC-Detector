@@ -24,15 +24,18 @@ function lexicalCompare(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
-function containedRelativePath(root, candidate) {
+function containedRelativePath(root, candidate, { allowRoot = false } = {}) {
   const relativePath = relative(root, resolve(candidate));
+  if (relativePath === '' && allowRoot) {
+    return relativePath;
+  }
   if (
     relativePath === '' ||
     relativePath === '..' ||
     relativePath.startsWith(`..${sep}`) ||
     isAbsolute(relativePath)
   ) {
-    throw new Error(`Dist entry escapes the resolved dist directory: ${candidate}`);
+    throw new Error(`Path escapes the resolved dist directory: ${candidate}`);
   }
   return relativePath;
 }
@@ -50,15 +53,11 @@ function manifestPath(relativePath) {
   return normalized;
 }
 
-function isTemporaryManifest(path) {
-  return (
-    !path.includes('/') &&
-    path.startsWith(TEMP_PREFIX) &&
-    path.endsWith(TEMP_SUFFIX)
-  );
+function isWriterTempName(name) {
+  return name.startsWith(TEMP_PREFIX) && name.endsWith(TEMP_SUFFIX);
 }
 
-function isSameFile(left, right) {
+function isSameEntry(left, right) {
   return (
     left.dev === right.dev &&
     left.ino === right.ino &&
@@ -90,58 +89,161 @@ async function resolveDistRoot(distDirectory) {
   if (!stats.isDirectory()) {
     throw new Error(`Dist path must be a directory: ${requestedRoot}`);
   }
-  return realpath(requestedRoot);
+
+  const root = await realpath(requestedRoot);
+  const resolvedStats = await lstat(root, { bigint: true });
+  if (resolvedStats.isSymbolicLink() || !resolvedStats.isDirectory()) {
+    throw new Error(`Resolved dist path must be a real directory: ${root}`);
+  }
+  return root;
 }
 
-async function enumerateFiles(root) {
+async function realPathWithin(root, candidate, label, { allowRoot = false } = {}) {
+  const resolvedPath = await realpath(candidate);
+  try {
+    containedRelativePath(root, resolvedPath, { allowRoot });
+  } catch {
+    throw new Error(`${label} resolves outside the dist directory: ${resolvedPath}`);
+  }
+  return resolvedPath;
+}
+
+async function inspectDirectory(root, absolutePath, path) {
+  const label = path === '' ? 'Dist root' : `Dist directory ${path}`;
+  const stats = await lstat(absolutePath, { bigint: true });
+  if (stats.isSymbolicLink()) {
+    throw new Error(`${label} is a symlink; symlinks are not allowed`);
+  }
+  if (!stats.isDirectory()) {
+    throw new Error(`${label} changed type and is no longer a directory`);
+  }
+  const resolvedPath = await realPathWithin(root, absolutePath, label, {
+    allowRoot: path === '',
+  });
+  return { resolvedPath, stats };
+}
+
+async function inspectFile(root, absolutePath, path) {
+  const label = `Dist entry ${path}`;
+  const stats = await lstat(absolutePath, { bigint: true });
+  if (stats.isSymbolicLink()) {
+    throw new Error(`${label} is a symlink; symlinks are not allowed`);
+  }
+  if (!stats.isFile()) {
+    throw new Error(`${label} changed type and is no longer a regular file`);
+  }
+  const resolvedPath = await realPathWithin(root, absolutePath, label);
+  return { resolvedPath, stats };
+}
+
+async function removeStaleWriterTemps(root) {
+  const entries = await readdir(root, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!isWriterTempName(entry.name)) {
+      continue;
+    }
+
+    const absolutePath = join(root, entry.name);
+    containedRelativePath(root, absolutePath);
+    if (entry.isSymbolicLink()) {
+      throw new Error(
+        `Writer-owned temporary output ${entry.name} must be a regular file, not a symlink`,
+      );
+    }
+    const stats = await lstat(absolutePath, { bigint: true });
+    if (stats.isSymbolicLink() || !stats.isFile()) {
+      throw new Error(`Writer-owned temporary output ${entry.name} must be a regular file`);
+    }
+    await realPathWithin(root, absolutePath, `Writer-owned temporary output ${entry.name}`);
+    await unlink(absolutePath);
+  }
+}
+
+async function enumerateFiles(root, hooks) {
   const files = [];
 
-  async function visit(directory) {
+  async function visit(directory, path) {
+    const before = await inspectDirectory(root, directory, path);
     const entries = await readdir(directory, { withFileTypes: true });
     entries.sort((left, right) => lexicalCompare(left.name, right.name));
+    await hooks.afterDirectoryRead?.({ absolutePath: directory, path });
+
+    const afterRead = await inspectDirectory(root, directory, path);
+    if (
+      !isSameEntry(before.stats, afterRead.stats) ||
+      before.resolvedPath !== afterRead.resolvedPath
+    ) {
+      throw new Error(`Dist directory ${path || '.'} changed while it was being read`);
+    }
 
     for (const entry of entries) {
       const absolutePath = join(directory, entry.name);
-      const path = manifestPath(containedRelativePath(root, absolutePath));
+      const entryPath = manifestPath(containedRelativePath(root, absolutePath));
       if (entry.isSymbolicLink()) {
-        throw new Error(`Dist entry ${path} is a symlink; symlinks are not allowed`);
+        throw new Error(`Dist entry ${entryPath} is a symlink; symlinks are not allowed`);
       }
 
       const stats = await lstat(absolutePath, { bigint: true });
       if (stats.isSymbolicLink()) {
-        throw new Error(`Dist entry ${path} is a symlink; symlinks are not allowed`);
+        throw new Error(`Dist entry ${entryPath} is a symlink; symlinks are not allowed`);
       }
-      if (path === MANIFEST_NAME) {
+      if (entryPath === MANIFEST_NAME) {
         if (!stats.isFile()) {
           throw new Error(`Dist output ${MANIFEST_NAME} must be a regular file`);
         }
+        await realPathWithin(root, absolutePath, `Dist output ${MANIFEST_NAME}`);
         continue;
       }
-      if (stats.isFile() && isTemporaryManifest(path)) {
-        continue;
+      if (directory === root && isWriterTempName(entry.name)) {
+        throw new Error(
+          `Writer-owned temporary output ${entry.name} appeared during enumeration; concurrent writers are unsupported`,
+        );
       }
       if (stats.isDirectory()) {
-        await visit(absolutePath);
+        await visit(absolutePath, entryPath);
       } else if (stats.isFile()) {
-        files.push({ absolutePath, path, stats });
+        const resolvedPath = await realPathWithin(
+          root,
+          absolutePath,
+          `Dist entry ${entryPath}`,
+        );
+        files.push({ absolutePath, path: entryPath, resolvedPath, stats });
       }
+    }
+
+    const afterRecursion = await inspectDirectory(root, directory, path);
+    if (
+      !isSameEntry(before.stats, afterRecursion.stats) ||
+      before.resolvedPath !== afterRecursion.resolvedPath
+    ) {
+      throw new Error(`Dist directory ${path || '.'} changed during enumeration`);
     }
   }
 
-  await visit(root);
+  await visit(root, '');
   files.sort((left, right) => lexicalCompare(left.path, right.path));
   return files;
 }
 
-async function hashFile(file) {
+async function hashFile(root, file, hooks) {
   let handle;
+  let primaryError;
   try {
-    const before = await lstat(file.absolutePath, { bigint: true });
-    if (before.isSymbolicLink() || !before.isFile() || !isSameFile(file.stats, before)) {
+    const before = await inspectFile(root, file.absolutePath, file.path);
+    if (
+      !isSameEntry(file.stats, before.stats) ||
+      file.resolvedPath !== before.resolvedPath
+    ) {
       throw new Error(`Dist entry ${file.path} changed before hashing`);
     }
 
     handle = await open(file.absolutePath, constants.O_RDONLY | NO_FOLLOW);
+    const openedBefore = await handle.stat({ bigint: true });
+    if (!openedBefore.isFile() || !isSameEntry(before.stats, openedBefore)) {
+      throw new Error(`Dist entry ${file.path} changed while opening for hashing`);
+    }
+    await hooks.afterFileOpen?.({ absolutePath: file.absolutePath, path: file.path });
+
     const hash = createHash('sha256');
     let bytes = 0n;
     for await (const chunk of handle.createReadStream({ autoClose: false })) {
@@ -150,12 +252,11 @@ async function hashFile(file) {
     }
 
     const openedAfter = await handle.stat({ bigint: true });
-    const pathAfter = await lstat(file.absolutePath, { bigint: true });
+    const pathAfter = await inspectFile(root, file.absolutePath, file.path);
     if (
-      pathAfter.isSymbolicLink() ||
-      !pathAfter.isFile() ||
-      !isSameFile(before, openedAfter) ||
-      !isSameFile(openedAfter, pathAfter) ||
+      !isSameEntry(openedBefore, openedAfter) ||
+      !isSameEntry(openedAfter, pathAfter.stats) ||
+      before.resolvedPath !== pathAfter.resolvedPath ||
       bytes !== openedAfter.size
     ) {
       throw new Error(`Dist entry ${file.path} changed while hashing`);
@@ -166,12 +267,20 @@ async function hashFile(file) {
 
     return { path: file.path, bytes: Number(bytes), sha256: hash.digest('hex') };
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('Dist entry ')) {
-      throw error;
-    }
-    throw new Error(`Could not hash dist entry ${file.path}: ${errorMessage(error)}`);
+    const actionable =
+      error instanceof Error && error.message.startsWith('Dist entry ')
+        ? error
+        : new Error(`Could not hash dist entry ${file.path}: ${errorMessage(error)}`);
+    primaryError = actionable;
+    throw actionable;
   } finally {
-    await handle?.close();
+    try {
+      await handle?.close();
+    } catch (error) {
+      if (primaryError === undefined) {
+        throw new Error(`Could not close dist entry ${file.path}: ${errorMessage(error)}`);
+      }
+    }
   }
 }
 
@@ -186,6 +295,7 @@ async function writeManifestAtomically(root, contents) {
 
   let temporaryExists = false;
   let handle;
+  let primaryError;
   try {
     handle = await open(
       temporary,
@@ -197,32 +307,62 @@ async function writeManifestAtomically(root, contents) {
     await handle.sync();
     await handle.close();
     handle = undefined;
+
+    try {
+      const outputStats = await lstat(output, { bigint: true });
+      if (outputStats.isSymbolicLink() || !outputStats.isFile()) {
+        throw new Error(`Dist output ${MANIFEST_NAME} must be a regular file`);
+      }
+      await realPathWithin(root, output, `Dist output ${MANIFEST_NAME}`);
+    } catch (error) {
+      if (errorCode(error) !== 'ENOENT') {
+        throw error;
+      }
+    }
+
     await rename(temporary, output);
     temporaryExists = false;
+  } catch (error) {
+    primaryError = error;
+    throw error;
   } finally {
-    await handle?.close();
+    let cleanupError;
+    try {
+      await handle?.close();
+    } catch (error) {
+      cleanupError = error;
+    }
     if (temporaryExists) {
       try {
         await unlink(temporary);
       } catch (error) {
-        if (errorCode(error) !== 'ENOENT') {
-          throw error;
+        if (errorCode(error) !== 'ENOENT' && cleanupError === undefined) {
+          cleanupError = error;
         }
       }
+    }
+    if (primaryError === undefined && cleanupError !== undefined) {
+      throw new Error(`Could not clean up integrity output: ${errorMessage(cleanupError)}`);
     }
   }
 }
 
 /**
+ * Build and atomically write a deterministic integrity manifest.
+ * Concurrent writers targeting the same dist directory are unsupported.
+ *
  * @param {string} distDirectory explicit path to the dist directory
+ * @param {{afterDirectoryRead?: Function, afterFileOpen?: Function}} [testHooks]
+ * internal hooks used only for deterministic filesystem-race tests
  * @returns {Promise<{schema_version: 1, files: Array<{path: string, bytes: number, sha256: string}>}>}
  */
-export async function buildIntegrityManifest(distDirectory) {
+export async function buildIntegrityManifest(distDirectory, testHooks = {}) {
   const root = await resolveDistRoot(distDirectory);
-  const files = await enumerateFiles(root);
+  await removeStaleWriterTemps(root);
+  const files = await enumerateFiles(root, testHooks);
   const entries = [];
   for (const file of files) {
-    entries.push(await hashFile(file));
+    entries.push(await hashFile(root, file, testHooks));
   }
 
   const manifest = { schema_version: 1, files: entries };

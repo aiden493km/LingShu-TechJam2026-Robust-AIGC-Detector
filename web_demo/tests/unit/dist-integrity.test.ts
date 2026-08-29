@@ -1,8 +1,10 @@
 import { createHash } from 'node:crypto';
 import {
+  lstat,
   mkdir,
   mkdtemp,
   readFile,
+  rename,
   rm,
   symlink,
   writeFile,
@@ -39,13 +41,20 @@ describe('dist integrity writer', () => {
     const root = await makeTemporaryDirectory();
     const dist = join(root, 'dist');
     const nestedContents = Uint8Array.from([0, 1, 2, 255]);
+    const nestedTempContents = 'kept because it is not a root writer temp';
     const rootContents = 'alpha\n';
+    const staleTemp = join(dist, '.integrity.json.stale.tmp');
 
     await mkdir(join(dist, 'assets'), { recursive: true });
     await writeFile(join(dist, 'assets', 'z.bin'), nestedContents);
+    await writeFile(
+      join(dist, 'assets', '.integrity.json.nested.tmp'),
+      nestedTempContents,
+      'utf8',
+    );
     await writeFile(join(dist, 'a.txt'), rootContents, 'utf8');
     await writeFile(join(dist, 'integrity.json'), '{"stale":true}\n', 'utf8');
-    await writeFile(join(dist, '.integrity.json.stale.tmp'), 'temporary', 'utf8');
+    await writeFile(staleTemp, 'temporary', 'utf8');
 
     const expected = {
       schema_version: 1,
@@ -54,6 +63,11 @@ describe('dist integrity writer', () => {
           path: 'a.txt',
           bytes: Buffer.byteLength(rootContents),
           sha256: sha256(rootContents),
+        },
+        {
+          path: 'assets/.integrity.json.nested.tmp',
+          bytes: Buffer.byteLength(nestedTempContents),
+          sha256: sha256(nestedTempContents),
         },
         {
           path: 'assets/z.bin',
@@ -70,11 +84,13 @@ describe('dist integrity writer', () => {
     expect(firstBytes.toString('utf8')).toBe(`${JSON.stringify(expected, null, 2)}\n`);
     expect(firstManifest.files.map((entry: { path: string }) => entry.path)).toEqual([
       'a.txt',
+      'assets/.integrity.json.nested.tmp',
       'assets/z.bin',
     ]);
     expect(firstManifest.files.every((entry: { path: string }) => !entry.path.includes('\\'))).toBe(
       true,
     );
+    await expect(lstat(staleTemp)).rejects.toMatchObject({ code: 'ENOENT' });
 
     const secondManifest = await buildIntegrityManifest(dist);
     const secondBytes = await readFile(join(dist, 'integrity.json'));
@@ -99,7 +115,63 @@ describe('dist integrity writer', () => {
     await expect(buildIntegrityManifest(file)).rejects.toThrow(/dist path.*directory/i);
   });
 
-  it('rejects symlink entries without following them', async (context) => {
+  it('rejects a writer-owned temporary path that is not a regular file', async () => {
+    const root = await makeTemporaryDirectory();
+    const dist = join(root, 'dist');
+    await mkdir(join(dist, '.integrity.json.not-a-file.tmp'), { recursive: true });
+
+    await expect(buildIntegrityManifest(dist)).rejects.toThrow(
+      /writer-owned temporary.*regular file/i,
+    );
+  });
+
+  it('aborts when a directory identity changes after it is read', async () => {
+    const root = await makeTemporaryDirectory();
+    const dist = join(root, 'dist');
+    const nested = join(dist, 'nested');
+    const moved = join(root, 'moved-nested');
+    await mkdir(nested, { recursive: true });
+    await writeFile(join(nested, 'asset.txt'), 'asset', 'utf8');
+    let swapped = false;
+
+    await expect(
+      buildIntegrityManifest(dist, {
+        afterDirectoryRead: async ({ absolutePath, path }: { absolutePath: string; path: string }) => {
+          if (path === 'nested') {
+            await rename(absolutePath, moved);
+            await mkdir(absolutePath);
+            swapped = true;
+          }
+        },
+      }),
+    ).rejects.toThrow(/directory.*nested.*changed/i);
+    expect(swapped).toBe(true);
+  });
+
+  it('aborts when a file identity changes after it is opened', async () => {
+    const root = await makeTemporaryDirectory();
+    const dist = join(root, 'dist');
+    const asset = join(dist, 'asset.txt');
+    const moved = join(root, 'moved-asset.txt');
+    await mkdir(dist);
+    await writeFile(asset, 'original', 'utf8');
+    let swapped = false;
+
+    await expect(
+      buildIntegrityManifest(dist, {
+        afterFileOpen: async ({ absolutePath, path }: { absolutePath: string; path: string }) => {
+          if (path === 'asset.txt') {
+            await rename(absolutePath, moved);
+            await writeFile(absolutePath, 'replacement', 'utf8');
+            swapped = true;
+          }
+        },
+      }),
+    ).rejects.toThrow(/entry asset\.txt changed while hashing/i);
+    expect(swapped).toBe(true);
+  });
+
+  it('rejects a junction or symlink escape without traversing it', async (context) => {
     const root = await makeTemporaryDirectory();
     const dist = join(root, 'dist');
     const target = join(root, 'outside');
@@ -122,5 +194,6 @@ describe('dist integrity writer', () => {
     }
 
     await expect(buildIntegrityManifest(dist)).rejects.toThrow(/symlink.*linked|linked.*symlink/i);
+    expect(await readFile(join(target, 'outside.txt'), 'utf8')).toBe('outside');
   });
 });
