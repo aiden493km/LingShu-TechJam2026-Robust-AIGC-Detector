@@ -80,6 +80,30 @@ upstream model's MIT metadata and the candidate dataset metadata above do not
 resolve that separate question. Nothing in the browser-runtime inventory below
 clears the model weights for public redistribution.
 
+## Bundled judge Python runtimes
+
+The following upstream archives are redistributed unchanged in
+`web_demo/runtimes/` for offline judge startup:
+
+- `windows-x86_64-python.zip` is the CPython 3.12.10 Windows embeddable package
+  published by the Python Software Foundation under the PSF License Version 2.
+  Source: `https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip`;
+  11,133,606 bytes; SHA-256
+  `4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3`.
+  The archive retains `LICENSE.txt`.
+- `macos-arm64-python.tar.gz` is the Astral `python-build-standalone` CPython
+  3.12.14 aarch64 Apple Darwin install-only stripped archive from the 20260825
+  release. Source:
+  `https://github.com/astral-sh/python-build-standalone/releases/download/20260825/cpython-3.12.14%2B20260825-aarch64-apple-darwin-install_only_stripped.tar.gz`;
+  24,970,238 bytes; SHA-256
+  `8b0f1fa71eab7ca644e482c631807a1116fa848491051cd1c8d9429491de63a6`.
+  The archive retains CPython's `python/lib/python3.12/LICENSE.txt`, pip's
+  `python/lib/python3.12/site-packages/pip-26.2.1.dist-info/licenses/AUTHORS.txt`
+  and `python/lib/python3.12/site-packages/pip-26.2.1.dist-info/licenses/LICENSE.txt`,
+  and the bundled dependency license files under
+  `python/lib/python3.12/site-packages/pip-26.2.1.dist-info/licenses/src/pip/_vendor/`
+  and `python/lib/python3.12/site-packages/pip/_vendor/`.
+
 ## Committed browser runtime
 
 The committed `web_demo/dist/` build contains runtime code associated with these

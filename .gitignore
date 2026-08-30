@@ -40,6 +40,7 @@ runs/
 
 # Frontend-generated tests and design review artifacts
 web_demo/.generated-tests/
+web_demo/.runtime-cache/
 .impeccable/review/
 .impeccable/live/
 
