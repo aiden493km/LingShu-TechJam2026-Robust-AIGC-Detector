@@ -1,89 +1,235 @@
 # Robust AIGC Image Detector under Real-World Transformations
 
-**TikTok TechJam 2026 — Track 5**
+**TikTok TechJam 2026 — Track 5**<br>
+**Team: LingShu Intelligence**
 
-A robust image-level detector for distinguishing authentic images from AI-generated images (AIGC), with a focus on maintaining detection performance after common real-world image transformations.
+A robustness-aware image-level detector for distinguishing authentic images from AI-generated images under common real-world image transformations.
 
-Our final model, **B2-NJR**, is based on the Community Forensics ViT-S/16 detector and is robustness-aware fine-tuned with **Gaussian Noise + JPEG Compression + Resize**.
+**Final model: B2-NJR = Gaussian Noise + JPEG Compression + Resize**
 
----
-
-## Highlights
-
-- **Directory-in, JSON-out inference** with a continuous AIGC confidence score for every image.
-- **CPU and CUDA support**.
-- Final inference loads the frozen local checkpoint directly and does **not require model-weight downloads at inference time**.
-- **Clone-and-run local WebDemo** with browser-side FP32 inference and no inference server.
-- Systematic augmentation ablation rather than blindly stacking all transformations.
-- Frozen validation threshold and one-time held-out test evaluation.
-- External demonstration benchmark on **COCO + DALL·E Advanced**.
-- Exact-duplicate and near-duplicate leakage audit.
-
-The historical browser-deployment spike is recorded in
-[`results/web_model_experiment/README.md`](results/web_model_experiment/README.md).
-The formal offline FP32 WebDemo workflow and browser evidence are documented in
-[`web_demo/README.md`](web_demo/README.md) and
-[`results/web_demo_acceptance/`](results/web_demo_acceptance/README.md).
+[Final Checkpoint Release](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.0.0) · [Direct Model Download](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/download/v1.0.0/baseline2_njr_best.pt) · [Local WebDemo](web_demo/README.md) · Demo Video *(in progress)*
 
 ---
 
-## Final Model
+## At a Glance
 
-| Item | Configuration |
-|---|---|
-| Base detector | `OwensLab/commfor-model-384` |
-| Architecture | Community Forensics ViT-S/16 |
-| Input size | 384 × 384 |
-| Task | Binary image-level AIGC detection |
-| Final recipe | Gaussian Noise + JPEG + Resize |
-| Gaussian Blur | Excluded after ablation |
-| Best epoch | 4 |
-| Frozen threshold | `0.55657113` |
-| Threshold source | Clean validation only |
+- **Directory → confidence JSON** inference for every image.
+- **Community Forensics ViT-S/16**, 384 × 384 input.
+- Systematic **Noise / JPEG / Resize / Blur ablation** before selecting the final augmentation recipe.
+- **Mean Robust Accuracy: 0.973977** on the frozen held-out test.
+- **Worst-case Robust Accuracy: 0.927090**.
+- **External ROC-AUC: 0.993124** on COCO val2017 + DALL·E Advanced.
+- **CPU / CUDA / local-checkpoint inference** supported.
+- **Clone-and-run offline WebDemo** with browser-side FP32 inference and no inference server.
 
-The output field `pred` is the estimated probability/confidence that an image is **AI-generated**.
+![Method overview](assets/figures/pipeline_overview.png)
 
 ---
 
-## Local WebDemo (judge path)
+## Problem and Method
 
-> For the competition handoff, merge and publish the WebDemo branch before sharing
-> the repository link. Judges should use the submitted revision that contains
-> `web_demo/models/baseline2_njr_fp32.onnx`, rather than assume an older default
-> branch already includes it.
+The goal is not only to separate Real vs. AIGC images on clean inputs, but to preserve detection quality after realistic post-processing. We therefore treat robustness as a model-selection problem rather than blindly stacking every available augmentation.
 
-1. Clone the submitted revision or use GitHub **Download ZIP** and extract it.
-2. Double-click `web_demo/start-demo.bat`.
-3. Wait for the local browser tab and the verified FP32 model to become ready.
-4. Choose one JPEG, PNG, or WebP still image.
+Our development path was:
 
-The formally validated Windows judge path requires Python 3.11+ and a current
-Microsoft Edge installation. It does not need Node.js, npm, a model download, Git
-LFS, an Internet connection after checkout, or a continuously running inference
-server. The 84.04 MiB model is read from the local repository into the browser, so
-first-load time varies by computer. WebGPU is attempted first and automatically
-falls back to WASM using the same FP32 model.
+**Pretrained detector → clean domain fine-tuning → single-factor robustness ablations → combination selection → frozen B2-NJR → held-out test → external demonstration benchmark**
 
-The server binds only to `127.0.0.1`. The application processes selected images
-locally and does not send their bytes to an external origin. Stop the demo with
-`Ctrl+C` or by closing the launcher window.
-
-The two frozen deployment artifacts serve different runtimes:
-
-| Workflow | Artifact | Distribution |
-|---|---|---|
-| Python CLI / evaluation | `baseline2_njr_best.pt` | Release asset from [`v1.0.0 — Final B2-NJR Checkpoint`](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.0.0); not committed to ordinary Git |
-| Local browser WebDemo | `baseline2_njr_fp32.onnx` | FP32 export committed under `web_demo/models/` as an ordinary Git blob; included in the submitted clone/ZIP |
-
-See [`web_demo/README.md`](web_demo/README.md) for complete judge instructions,
-input limits, browser status, troubleshooting, manual commands, hashes, and
-developer audit gates.
+![Real-world transformation examples](assets/figures/transformation_examples.png)
 
 ---
 
-## PyTorch CLI Quick Start
+## Data Sources and Evaluation Protocol
 
-### 1. Install dependencies
+Development data uses **SID + WildFake** with designated train, validation, and
+held-out test splits.
+
+The external post-freeze demonstration benchmark contains:
+
+- **COCO val2017:** 4,998 authentic images
+- **DALL·E Advanced:** 8,843 AI-generated images
+- **Total:** 13,841 images
+
+![Data sources and evaluation splits](assets/figures/dataset_overview.png)
+
+The external benchmark is **report-only**: it was not used for training, model selection, or threshold calibration.
+
+---
+
+## Robustness Ablation
+
+We evaluated four single-factor robustness variants from the same pretrained starting point:
+
+- **B2-N:** Gaussian Noise
+- **B2-J:** JPEG Compression
+- **B2-R:** Resize
+- **B2-B:** Gaussian Blur
+
+Noise gave the strongest global robustness gain. JPEG and Resize provided complementary benefits for compression and severe downsampling. Blur improved blur-specific performance but delivered limited global benefit and was excluded from the final recipe.
+
+![Ablation study summary](assets/figures/ablation_summary.png)
+
+### Validation ablation matrix
+
+| Model | Clean AUC | Mean Robust Acc | Mean Robust AUC | Worst Acc | Worst AUC | Decision |
+|---|---:|---:|---:|---:|---:|---|
+| B1 Clean FT | 0.999824 | 0.888565 | 0.950910 | 0.642140 | 0.724042 | Baseline |
+| B2-N | 0.999793 | **0.958178** | **0.994884** | **0.833222** | **0.977746** | Keep |
+| B2-J | 0.999679 | 0.918872 | 0.969286 | 0.672910 | 0.776991 | Keep |
+| B2-R | 0.999771 | 0.912311 | 0.956829 | 0.689186 | 0.735082 | Keep |
+| B2-B | 0.999773 | 0.894888 | 0.953336 | 0.658417 | 0.719815 | Exclude |
+| **B2-NJR** | **0.999729** | **0.972750** | **0.996291** | **0.920624** | **0.978437** | **Final** |
+
+<details>
+<summary><strong>More quantitative experiment details</strong></summary>
+
+
+
+### Final training mixture
+
+The candidate augmentation pool contained Clean, Noise, JPEG, and Resize samples,
+while each epoch was capped at **20,930 samples / 655 batches** to keep optimizer-
+update counts comparable with Baseline 1. The exact final per-transform sampling
+composition depends on the original training manifest, which is not distributed in
+this repository, so no finer composition claim is made here.
+
+</details>
+
+---
+
+## Final Held-Out Test
+
+The final augmentation recipe, checkpoint, epoch, and threshold were frozen **before** the held-out test was evaluated.
+
+![Final held-out results](assets/figures/final_heldout_results.png)
+
+| Metric | Baseline 1 | Final B2-NJR | Change |
+|---|---:|---:|---:|
+| Clean AUC | 0.999925 | **0.999918** | -0.000006 |
+| Mean Robust Accuracy | 0.889521 | **0.973977** | **+8.45 pp** |
+| Mean Robust AUC | 0.952179 | **0.996791** | +0.044612 |
+| Worst Robust Accuracy | 0.640803 | **0.927090** | **+28.63 pp** |
+| Worst Robust AUC | 0.724830 | **0.980329** | +0.255499 |
+
+The hardest final condition remained **Gaussian Noise σ = 0.10**, but its accuracy improved from **0.6408 → 0.9271** relative to Baseline 1.
+
+Other severe-condition improvements include:
+
+| Condition | B1 Accuracy | Final B2-NJR Accuracy |
+|---|---:|---:|
+| Noise σ=0.10 | 0.6408 | **0.9271** |
+| JPEG q30 | 0.8337 | **0.9561** |
+| Resize ×0.25 | 0.8042 | **0.9445** |
+| Blur σ=2.0 | 0.9101 | **0.9478** |
+
+Detailed machine-readable results are under [`results/final_test/`](results/final_test/) and [`results/ablation/`](results/ablation/).
+
+---
+
+## External Demonstration Benchmark
+
+After model freeze, we evaluated cross-source generalisation on **COCO val2017 + DALL·E Advanced** without recalibrating the threshold.
+
+![External benchmark](assets/figures/external_benchmark.png)
+
+| Metric | B2-NJR |
+|---|---:|
+| Accuracy | **0.919876** |
+| Balanced Accuracy | **0.935686** |
+| ROC-AUC | **0.993124** |
+| F1 | **0.933397** |
+| Authentic / Real Accuracy | **0.992597** |
+| AIGC / Fake Accuracy | **0.878774** |
+
+Detailed outputs are under [`results/official_demo/`](results/official_demo/).
+
+---
+
+## Data Integrity and Leakage Audit
+
+Before external evaluation, we audited potential overlap between development data and the external benchmark.
+
+| Check | Result |
+|---|---:|
+| Filename overlap | **0** |
+| Exact SHA-256 duplicates | **0** |
+| Perceptual-hash candidate pairs reviewed | **465** |
+| Manually confirmed duplicates | **0** |
+
+Compact audit outputs are available under [`results/data_integrity/`](results/data_integrity/).
+
+---
+
+## Error Analysis
+
+The evaluation pipeline exports ranked B2 false-positive and false-negative candidates to:
+
+```text
+results/official_demo/b2_official_demo_error_candidates.csv
+```
+
+The following visual shows the **intended presentation format** for representative error analysis.
+
+> **Important:** the example images and qualitative categories in this current infographic are illustrative. Before final competition submission, they should be replaced or verified against actual FP/FN candidates from the exported CSV so that every displayed failure mode is evidence-backed.
+
+![Representative error-analysis concept](assets/figures/error_analysis_concept.png)
+
+---
+
+## Deployment and Web Demo
+
+The repository provides two local inference paths. The Python CLI recursively reads
+an image directory, performs EXIF correction / RGB conversion / 384 × 384 bicubic
+resize / ImageNet normalization, loads the frozen PyTorch checkpoint, and writes
+continuous AIGC confidence scores to JSON.
+
+The functional offline FP32 WebDemo is implemented and formally tested. From a
+complete clone or extracted ZIP, a Windows judge can double-click
+`web_demo/start-demo.bat`, wait for the verified local model to load, then choose
+one JPEG, PNG, or WebP image. Normal launch requires Python 3.11+ and a current
+Microsoft Edge installation, but no Node.js, npm install, model download, Git LFS,
+API key, Internet connection, or continuously running inference server.
+
+Inference runs inside the browser. WebGPU is attempted first and automatically
+falls back to WASM with the same FP32 ONNX file. The local server binds only to
+`127.0.0.1`; the application does not upload the selected image to an external
+origin or to the Python server.
+
+The committed acceptance record covers source and Unicode-path fresh-copy runs,
+WebGPU, automatic fallback, and forced WASM: 90 browser inferences with zero frozen-
+threshold flips and a maximum absolute probability error of `0.002465222` against
+the recorded FP32 references. This is deployment-parity evidence, not a new
+accuracy benchmark.
+
+[Judge and developer guide](web_demo/README.md) ·
+[Formal acceptance evidence](results/web_demo_acceptance/README.md)
+
+The earlier FP16/INT8/browser-size spike is preserved as
+[historical deployment research](results/web_model_experiment/README.md). Its
+recommendations are superseded by the formal decision to deploy one FP32 model.
+
+The image below remains a **concept visual direction** for the later high-polish
+design slice; it is not a screenshot of the current functional inference screen.
+
+![Web demo preview](assets/figures/web_demo_preview.png)
+
+### Frozen deployment artifacts
+
+| Workflow | Artifact | Distribution | SHA-256 |
+|---|---|---|---|
+| Python CLI / evaluation | `baseline2_njr_best.pt` | [Release `v1.0.0`](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.0.0) | `9348c210f1612b4c78d74dde5e717b69e90274cbbf6fa60c4b893946409658ba` |
+| Local browser WebDemo | `baseline2_njr_fp32.onnx` | Ordinary Git under `web_demo/models/` | `e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69` |
+
+For the Python CLI, place the downloaded checkpoint at:
+
+```text
+checkpoints/baseline2_njr_best.pt
+```
+
+---
+
+## Quick Start
+
+### Install
 
 Python 3.11+ is recommended.
 
@@ -91,20 +237,7 @@ Python 3.11+ is recommended.
 pip install -r requirements.txt
 ```
 
-### 2. Download and place the final checkpoint
-
-Place the frozen checkpoint at:
-
-```text
-checkpoints/baseline2_njr_best.pt
-```
-
-The checkpoint is intentionally excluded from normal Git commits. Download
-`baseline2_njr_best.pt` from
-[`v1.0.0 — Final B2-NJR Checkpoint`](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.0.0)
-and see [`checkpoints/README.md`](checkpoints/README.md) for its expected identity.
-
-### 3. Run inference
+### Run inference
 
 ```bash
 python inference.py \
@@ -115,7 +248,7 @@ python inference.py \
   --pretty
 ```
 
-On Windows PowerShell:
+Windows PowerShell:
 
 ```powershell
 python .\inference.py `
@@ -126,15 +259,7 @@ python .\inference.py `
   --pretty
 ```
 
-`--device` supports:
-
-```text
-auto
-cuda
-cpu
-```
-
-For memory-constrained machines, reduce the batch size:
+For memory-constrained CPU machines:
 
 ```bash
 python inference.py \
@@ -146,11 +271,7 @@ python inference.py \
   --pretty
 ```
 
----
-
-## Output Format
-
-For each discovered image, the inference script outputs:
+### Output
 
 ```json
 [
@@ -161,199 +282,13 @@ For each discovered image, the inference script outputs:
 ]
 ```
 
-where:
+`pred ∈ [0,1]` is the continuous confidence that the image is AI-generated.
 
-- `image_path` is the input image path;
-- `pred ∈ [0,1]` is the AIGC confidence score;
-- larger values indicate stronger confidence that the image is AI-generated.
-
-The frozen threshold `0.55657113` is used only for console-level Real/AIGC summaries. The JSON retains the continuous score.
-
-Supported formats include JPEG, PNG, WebP, BMP, TIFF, and related common extensions.
+The frozen threshold `0.55657113` is used for Real/AIGC classification summaries, while the JSON preserves the continuous score.
 
 ---
 
-## Method
-
-### Baseline 0 — Pretrained detector
-
-We first evaluated the pretrained Community Forensics model without Track 5 fine-tuning.
-
-### Baseline 1 — Clean-only fine-tuning
-
-The model was fine-tuned on clean SID + WildFake training data to measure how much domain adaptation alone improves performance.
-
-### Baseline 2 — Robustness-aware fine-tuning
-
-Four transformation families were evaluated through ablation:
-
-- Gaussian Noise
-- JPEG Compression
-- Resize
-- Gaussian Blur
-
-The experiments showed that:
-
-- Gaussian Noise produced the strongest overall robustness gain;
-- JPEG substantially improved heavy-compression robustness;
-- Resize improved robustness to downsampling;
-- Gaussian Blur provided narrower benefits and was not included in the final combination.
-
-The selected final recipe was therefore:
-
-**Noise + JPEG + Resize (B2-NJR)**.
-
----
-
-## Held-Out Test Results
-
-The final model configuration, checkpoint, epoch, and threshold were frozen **before** evaluating the held-out test set.
-
-| Metric | Baseline 1 | Final B2-NJR |
-|---|---:|---:|
-| Clean AUC | 0.999925 | **0.999918** |
-| Mean Robust Accuracy | 0.889521 | **0.973977** |
-| Mean Robust AUC | 0.952179 | **0.996791** |
-| Worst Robust Accuracy | 0.640803 | **0.927090** |
-| Worst Robust AUC | 0.724830 | **0.980329** |
-
-The hardest final condition was **Gaussian Noise, σ = 0.10**.
-
-B2-NJR improves mean robust accuracy by approximately **8.45 percentage points** and worst-case robust accuracy by approximately **28.63 percentage points** over clean-only fine-tuning, while preserving essentially unchanged clean AUC.
-
-Detailed files are available under:
-
-```text
-results/final_test/
-results/ablation/
-```
-
----
-
-## External Demonstration Benchmark
-
-A separate post-freeze external benchmark was used to examine cross-source generalisation:
-
-- **COCO val2017** authentic images: 4,998
-- **DALL·E Advanced** AI-generated images: 8,843
-- Total: 13,841 images
-
-The frozen B2-NJR model achieved:
-
-| Metric | B2-NJR |
-|---|---:|
-| Accuracy | **0.919876** |
-| Balanced Accuracy | **0.935686** |
-| ROC-AUC | **0.993124** |
-| F1 | **0.933397** |
-| Authentic / Real Accuracy | **0.992597** |
-| AIGC / Fake Accuracy | **0.878774** |
-
-No threshold calibration was performed on this external benchmark.
-
-Detailed results and error candidates are available under:
-
-```text
-results/official_demo/
-```
-
----
-
-## Data Integrity and Leakage Audit
-
-Before using the external demonstration benchmark, we audited potential overlap between development/training data and the external benchmark.
-
-Results:
-
-- filename overlap: **0**
-- exact SHA-256 duplicates: **0**
-- perceptual-hash candidate pairs reviewed: **465**
-- manually confirmed duplicates: **0**
-
-The public repository includes compact audit summaries under:
-
-```text
-results/data_integrity/
-```
-
-The image assets used during manual review are intentionally not distributed.
-
----
-
-## Repository Structure
-
-```text
-.
-├── README.md
-├── requirements.txt
-├── .gitignore
-├── THIRD_PARTY_NOTICES.md
-│
-├── inference.py
-├── models.py
-├── train_baseline1_clean.py
-├── train_baseline2_ablation.py
-├── eval_baseline2_final_test.py
-├── eval_official_demo_benchmark.py
-├── check_official_benchmark_leakage.py
-├── make_near_duplicate_review.py
-├── finalize_near_duplicate_review.py
-│
-├── checkpoints/
-│   └── README.md
-│
-├── web_demo/
-│   ├── start-demo.bat
-│   ├── models/
-│   ├── dist/
-│   ├── src/
-│   └── README.md
-│
-├── demo_images/
-│
-├── results/
-│   ├── ablation/
-│   ├── final_test/
-│   ├── official_demo/
-│   ├── data_integrity/
-│   └── web_demo_acceptance/
-│
-├── reports/
-│
-└── assets/
-    └── figures/
-```
-
----
-
-## Evaluation Protocol
-
-The final evaluation protocol follows a strict model-selection separation:
-
-```text
-Training
-   ↓
-Validation-based ablation and model selection
-   ↓
-Checkpoint / augmentation recipe / threshold frozen
-   ↓
-Held-out test evaluated once
-   ↓
-External demonstration benchmark evaluated post-freeze
-```
-
-The held-out test was not used to modify:
-
-- augmentation recipe;
-- checkpoint selection;
-- training epoch;
-- threshold;
-- learning rate;
-- sampling ratio.
-
----
-
-## Reproducing the Final Held-Out Evaluation
+## Reproducing the Final Evaluation
 
 The portable final-test script accepts command-line paths rather than machine-specific absolute paths:
 
@@ -368,29 +303,93 @@ python eval_baseline2_final_test.py \
   --batch-size 32
 ```
 
-Dataset files are not redistributed in this repository. Users should obtain the relevant datasets from their original sources and follow the expected directory structure used by the scripts.
+Dataset files are not redistributed in this repository. Obtain the datasets from their original sources and follow the directory layout expected by the scripts.
 
 ---
 
-## Notes on Offline Inference
+## Limitations and Future Work
 
-The final B2-NJR checkpoint stores the complete model state.
+- **Strong Gaussian noise remains the hardest tested transformation.** Robustness is substantially improved, but not perfect.
+- The external demonstration benchmark covers **COCO authentic images and DALL·E Advanced generated images**; broader generator/source coverage would strengthen external-generalisation claims.
+- A threshold selected on clean validation data can experience **score-distribution / calibration shift** on new sources, even when ROC-AUC remains high.
+- The current system provides **image-level detection only**; it does not localise manipulated regions or identify the generator.
+- Future work would include mixed/composed corruptions, broader unseen-generator evaluation, confidence calibration / uncertainty estimation, and more efficient deployment.
 
-For final inference, `models.py` builds the ViT-S/16 architecture locally with pretrained-backbone downloading disabled, and `inference.py` then loads the frozen checkpoint.
+---
 
-Therefore, after Python dependencies and the checkpoint itself are available locally, final image inference does not need to download model weights from Hugging Face or timm.
+## Team Contributions
+
+> **TODO before final submission:** replace the placeholders below with the four team members' actual names and verified contributions.
+
+| Team member | Contribution |
+|---|---|
+| `<Member 1>` | `<Model / training / robustness experiments>` |
+| `<Member 2>` | `<Data / evaluation / experiment support>` |
+| `<Member 3>` | `<Deployment / web demo / repository engineering>` |
+| `<Member 4>` | `<Video / documentation / presentation / additional experiments>` |
+
+---
+
+## Repository Structure
+
+```text
+.
+├── AGENTS.md
+├── README.md
+├── requirements.txt
+├── requirements-web-experiment.txt
+├── .gitignore
+├── THIRD_PARTY_NOTICES.md
+├── inference.py
+├── models.py
+├── train_baseline1_clean.py
+├── train_baseline2_ablation.py
+├── eval_baseline2_final_test.py
+├── eval_official_demo_benchmark.py
+├── check_official_benchmark_leakage.py
+├── make_near_duplicate_review.py
+├── finalize_near_duplicate_review.py
+├── checkpoints/
+│   └── README.md
+├── demo_images/
+├── assets/
+│   └── figures/
+├── browser_benchmark/
+├── docs/
+│   └── superpowers/
+├── results/
+│   ├── ablation/
+│   ├── final_test/
+│   ├── official_demo/
+│   ├── data_integrity/
+│   ├── web_demo_acceptance/
+│   └── web_model_experiment/
+├── tests/
+├── third_party/
+│   └── Community-Forensics-LICENSE
+└── web_demo/
+    ├── start-demo.bat
+    ├── models/
+    ├── dist/
+    ├── src/
+    └── README.md
+```
 
 ---
 
 ## Third-Party Attribution
 
-This project builds on **Community Forensics** and its ViT classifier implementation.
+This work builds on **Community Forensics** and the `OwensLab/commfor-model-384` detector.
 
-Please see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for attribution and licensing information.
+See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and [`third_party/Community-Forensics-LICENSE`](third_party/Community-Forensics-LICENSE) for attribution and licensing information.
+
+`THIRD_PARTY_NOTICES.md` is an evidence inventory, not a legal certification. Its
+model/dataset provenance and complete runtime-notice items remain public-release
+review gates and must not be described as cleared without additional evidence.
 
 ---
 
-## Track
+## TikTok TechJam 2026
 
-**TikTok TechJam 2026**  
-**Track 5 — Robust Detection of AI-Generated Images Under Real-World Transformations**
+**Track 5 — Robust Detection of AI-Generated Images Under Real-World Transformations**<br>
+**Team — LingShu Intelligence**

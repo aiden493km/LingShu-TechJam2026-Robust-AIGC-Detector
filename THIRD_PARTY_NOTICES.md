@@ -6,6 +6,14 @@ versions and license identifications below were checked against the locally
 installed npm package metadata and license/codec-notice files used to build the
 committed WebDemo distribution.
 
+## Project-specific code license
+
+The repository does not currently contain a project-wide root `LICENSE` for the
+team's original code. This third-party inventory does not supply that missing
+license or grant rights in project-specific material. The team must make and
+document its own licensing decision before claiming that the repository as a
+whole is licensed for reuse or redistribution.
+
 ## Community Forensics
 
 This project builds on and adapts code and model definitions from the **Community Forensics** project by Jeongsoo Park and collaborators.
@@ -39,15 +47,38 @@ that observation is provenance context, not retroactive proof of the training
 revision. The final submitted `.pt` checkpoint and its FP32 ONNX export are
 robustness-aware fine-tuned derivatives of the named detector.
 
-The fine-tuning used SID and WildFake training images. Dataset files are not
-redistributed by this repository, but the exact source terms governing their use in
-redistributed trained weights have not been captured in this repository.
+The fine-tuning used directories named SID and WildFake. The training records in
+this repository do not capture dataset URLs, revisions, a source manifest, or
+sample hashes, so those local names cannot be proven to match a particular public
+release.
+
+During the 2026-08-30 review, the current
+[`saberzl/SID_Set`](https://huggingface.co/datasets/saberzl/SID_Set) page identified
+that release as CC BY 4.0. The WildFake paper points to its
+[official repository](https://github.com/hy-zpg/AIGC-Image-Detection-Dataset), and
+the current [ModelScope metadata](https://modelscope.cn/openapi/v1/datasets/hy2628982280/WildFake)
+identified the hosted dataset as Apache License 2.0. These are useful candidate
+references, not proof of the exact data used locally or a complete clearance of
+all underlying images.
+
+The [WildFake paper](https://ojs.aaai.org/index.php/AAAI/article/download/32363/34518)
+describes a mixture of generated-community images and several third-party real
+image datasets. SID_Set also incorporates sources whose own notices differ: the
+[Open Images site](https://storage.googleapis.com/openimages/web/download_v4.html)
+uses per-image CC BY 2.0 metadata, while the
+[Flickr30k page](https://shannon.cs.illinois.edu/DenotationGraph/data/index.html)
+states that image copyrights remain with their owners and imposes its own use
+conditions. A dataset-level metadata label therefore cannot, by itself, settle
+every underlying right or whether trained weights are treated as an adaptation in
+the relevant jurisdiction.
 
 **Release gate:** public redistribution of either the `.pt` checkpoint or the ONNX
-export remains unapproved until the team records and reviews those dataset terms.
-The upstream model's MIT metadata alone does not resolve that separate question.
-Nothing in the browser-runtime inventory below clears the model weights for public
-redistribution.
+export remains unapproved until the team identifies the actual dataset releases
+and subsets used, records and reviews their complete applicable terms and source
+attribution, and determines how those terms apply to the trained weights. The
+upstream model's MIT metadata and the candidate dataset metadata above do not
+resolve that separate question. Nothing in the browser-runtime inventory below
+clears the model weights for public redistribution.
 
 ## Committed browser runtime
 

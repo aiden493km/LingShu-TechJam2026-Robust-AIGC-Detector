@@ -327,9 +327,9 @@ Windows BAT workflow.
 
 ## Documentation changes
 
-The root README will gain a prominent `Local WebDemo` section with the one-click
+The root README now provides a prominent `Local WebDemo` section with the one-click
 path, expected first-load behavior, supported browsers, privacy statement, and a
-manual command fallback. The browser experiment report will distinguish its
+manual command fallback. The browser experiment report now distinguishes its
 historical FP16 recommendation from the team's final deployment decision to ship
 only FP32.
 
@@ -339,7 +339,9 @@ The runtime foundation is complete only when all of the following are true:
 
 - a fresh offline clone contains exactly one deployed ONNX model, FP32;
 - the exact FP32 model and its manifest are committed through ordinary Git, not LFS;
-- double-clicking the BAT file opens a functioning local demo without npm install;
+- the BAT launcher implements default-browser opening without npm install, while
+  the formal automated fresh-copy harness validates its `--no-browser` path and
+  printed loopback URL;
 - WebGPU and WASM both use the same model and produce no demo-set threshold flips;
 - browser preprocessing meets the defined end-to-end parity tolerance;
 - no uploaded image data leaves the browser or is persisted locally;

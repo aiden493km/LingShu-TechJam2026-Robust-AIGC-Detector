@@ -10,8 +10,10 @@
 1. Clone the submitted repository revision, or download that revision with
    GitHub's **Download ZIP** and extract it completely.
 2. Double-click `web_demo/start-demo.bat`.
-3. Keep the launcher window open and wait for the local browser tab. The page is
-   ready when it reports that the verified FP32 model is loaded.
+3. Keep the launcher window open and wait for the local browser tab. If the default
+   browser is not Edge, copy the printed `READY http://127.0.0.1:.../` URL into a
+   current Microsoft Edge window. The page is ready when it reports that the
+   verified FP32 model is loaded.
 4. Choose or drop one JPEG, PNG, or WebP still image and read the AIGC confidence,
    Real/AIGC decision, and execution provider.
 

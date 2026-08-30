@@ -44,7 +44,19 @@ Judge smoke check from the repository root:
 cmd /d /c web_demo\start-demo.bat --check
 ```
 
-Developer gates:
+Fresh developer setup uses Python 3.12 for the recorded parity environment and a
+Node.js version accepted by both pinned Vite and Vitest (`^20.19.0`, `^22.12.0`,
+or `>=24.0.0`):
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-web-experiment.txt
+Set-Location web_demo
+npm.cmd ci
+Set-Location ..
+```
+
+Then run the developer gates:
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v

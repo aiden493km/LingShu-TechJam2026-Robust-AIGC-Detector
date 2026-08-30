@@ -4,6 +4,26 @@ This directory holds the committed, reproducible evidence for the offline FP32
 WebDemo. `latest.json` is generated only after both real-browser suites pass; do
 not edit it by hand.
 
+## Current recorded result
+
+The committed report currently records a passing Windows 11 / Microsoft Edge run:
+
+| Gate | Recorded result |
+|---|---:|
+| Browser inference matrix | 90/90 images passed across source and Unicode fresh-copy runs |
+| Execution paths | WebGPU, automatic WASM fallback, and forced WASM |
+| Maximum absolute probability error | `0.002465222` (gate `<= 0.01`) |
+| Frozen-threshold flips | `0` |
+| Browser/Python tensor parity | 15/15 images |
+| Worst mean tensor error | `0.006058` (gate `<= 0.02`) |
+| Worst maximum tensor error | `0.418301` (gate `<= 0.50`) |
+| Port fallback | occupied 8765 selected 8766 successfully |
+| Shutdown | source and fresh-copy servers unreachable after termination |
+
+The exact tested commit, environment versions, artifact hashes, per-image results,
+and request origins are authoritative in [`latest.json`](latest.json). Timing is
+machine-specific and intentionally omitted from this summary.
+
 ## Reproduce the evidence
 
 Start from a committed tree with a clean tracked index and worktree. From
