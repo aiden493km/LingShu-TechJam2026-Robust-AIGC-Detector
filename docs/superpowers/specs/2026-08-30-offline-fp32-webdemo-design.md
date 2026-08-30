@@ -2,7 +2,9 @@
 
 ## Status
 
-Approved written specification. Implementation planning and execution are authorized.
+Implemented. The offline runtime foundation and fresh-copy browser acceptance are
+recorded in the [formal acceptance evidence](../../../results/web_demo_acceptance/README.md).
+The visual-polish and narrative slice remains separate from this specification.
 
 ## Objective
 
@@ -91,9 +93,10 @@ The model lives outside `dist` so the source tree contains only one copy. The lo
 server maps `/models/` to `web_demo/models/` and all other paths to `web_demo/dist/`.
 Online hosting configuration is deliberately deferred to a later design.
 
-The repository keeps the broad generated-model ignore rule but explicitly
-unignores only `web_demo/models/baseline2_njr_fp32.onnx`. `.gitattributes` marks
-ONNX as binary without enabling Git LFS.
+The repository keeps broad ignores for generated experiment models (`*.onnx` and
+`web_models/`) but explicitly unignores the one formal deployment artifact,
+`web_demo/models/baseline2_njr_fp32.onnx`. `.gitattributes` marks that ONNX file as
+binary without enabling Git LFS.
 
 ## Model contract and provenance
 
@@ -149,9 +152,11 @@ that successfully falls back to WASM is shown as a non-blocking compatibility no
 
 ### Local server and launcher
 
-`start-demo.bat` resolves paths relative to its own location, checks for `py -3`
-and then `python`, and runs `tools/serve_demo.py`. Python is already the repository's
-documented runtime requirement; no new system dependency is introduced.
+`start-demo.bat` resolves paths relative to its own location, tries the repository
+`.venv\Scripts\python.exe` first, then `py -3`, then `python`, and runs
+`tools/serve_demo.py` with the first Python 3.11+ interpreter whose probe succeeds.
+Python is already the repository's documented runtime requirement; no new system
+dependency is introduced.
 
 The server:
 
@@ -252,9 +257,11 @@ documents both paths:
 - judge: clone, double-click `web_demo/start-demo.bat`;
 - developer: `npm ci`, tests, production build, then local verification.
 
-CI and the local verification command rebuild the site and fail if committed `dist`
-differs from source. This avoids asking judges to trust an opaque generated bundle
-while preserving the no-install launcher.
+The local verification command rebuilds the site and fails if committed `dist`
+differs from source. The repository does not currently claim an automated CI gate
+for this check. Formal local browser evidence separately records the tested commit
+and immutable artifact identities. Together these checks avoid asking judges to
+trust an opaque generated bundle while preserving the no-install launcher.
 
 ## Verification strategy
 
@@ -272,30 +279,45 @@ while preserving the no-install launcher.
 - ONNX FP32 output on Python-preprocessed tensors remains within the already
   demonstrated `1.2e-7` maximum absolute probability error and produces zero
   threshold flips on the committed demo set.
-- Browser preprocessing is evaluated end to end against `inference.py` on all ten
-  committed demo images. Release requires zero threshold flips and maximum absolute
-  probability error no greater than `0.01`.
-- Reference fixtures include EXIF rotation, non-square input, grayscale input, and
-  RGBA input so orientation and RGB conversion cannot pass accidentally.
+- Browser preprocessing tensor parity is evaluated against `inference.py` on 15
+  inputs: all ten committed demo images plus five committed edge/parity fixtures.
+  Every tensor must stay within mean absolute error `0.02` and maximum absolute
+  error `0.50`.
+- Built-app WebGPU and WASM acceptance runs the same 15 inputs. Each provider must
+  produce zero frozen-threshold flips and maximum absolute probability error no
+  greater than `0.01`.
+- The five fixtures cover EXIF rotation, non-square input, grayscale input, RGBA
+  input with hidden RGB values, and a synthetic near-threshold input so orientation,
+  RGB conversion, and threshold stability cannot pass accidentally.
 
 ### Fresh-clone acceptance tests
 
-Run from a newly cloned directory whose path contains both spaces and Chinese text:
+Run from a disposable tracked-file copy whose path contains both spaces and Chinese
+text. Exclude `.git`, `node_modules`, `.venv`, and ignored experiment models so the
+copy exercises the same no-install artifact set a fresh clone receives:
 
-1. Disable external network access.
-2. Double-click `web_demo/start-demo.bat` without running `npm install`.
+1. Intercept browser requests and fail the run if any origin is not the selected
+   loopback server.
+2. Run `web_demo/start-demo.bat --check` and then the normal launcher without
+   running `npm install`.
 3. Verify that the browser opens, the model hash passes, and no external request is
    attempted.
-4. Run all ten demo images through WebGPU and compare with the Python references.
-5. launch a browser with WebGPU disabled, verify WASM fallback, and compare results.
-6. Corrupt a disposable copy of the model and verify fail-fast hash diagnostics.
+4. Run all 15 inputs (ten demo images plus five fixtures) through WebGPU and compare
+   with the Python/FP32 ONNX references.
+5. Launch with the forced-WASM diagnostic query, verify WASM selection, and compare
+   the same 15 inputs.
+6. Corrupt a disposable copy of the model and remove the exact WASM asset in another
+   disposable copy; verify fail-fast artifact diagnostics.
 7. Occupy port 8765 and verify automatic loopback-port selection.
-8. Close the launcher and verify that the local server is no longer reachable.
+8. Terminate the launcher process tree and verify that the local server is no longer
+   reachable.
 
 ### Browser targets
 
-Verify current Microsoft Edge and Google Chrome on Windows. Firefox and Safari are
-best-effort through WASM and are not release-blocking for the Windows BAT workflow.
+Microsoft Edge on Windows is fully accepted for WebGPU and WASM in the formal
+evidence. Current Google Chrome on Windows remains a target browser, but no Chrome
+smoke or full acceptance result is recorded yet. Firefox and Safari are best-effort
+through WASM and are not release-blocking for the Windows BAT workflow.
 
 ## Documentation changes
 

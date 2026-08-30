@@ -1,22 +1,40 @@
 # Browser Model Deployment Experiment
 
+> **Formal deployment decision — 2026-08-30.** The team selected one frozen
+> **FP32 ONNX** model for the local judge-facing WebDemo. WebGPU is attempted
+> first and WASM is the compatibility fallback, but both providers load the
+> same `web_demo/models/baseline2_njr_fp32.onnx` file. FP16 and INT8 remain
+> experiment artifacts and are not deployed. See the
+> [formal local acceptance evidence](../web_demo_acceptance/README.md).
+
 This experiment answers one deployment question: can the frozen B2-NJR checkpoint
 run entirely in a judge's browser, without a continuously running inference server?
 
-## Decision
+## Historical experiment recommendation
 
-- Use **ONNX FP16 with ONNX Runtime Web WebGPU** as the primary browser model.
-- Use **ONNX FP32 with ONNX Runtime Web WASM** as the compatibility fallback.
-- Do **not** ship the current dynamic INT8 export. It is smaller, but it produced
+The following was the recommendation produced by this earlier size/runtime
+experiment. It is preserved as experiment history and is superseded by the dated
+formal deployment decision above:
+
+- The experiment recommended **ONNX FP16 with ONNX Runtime Web WebGPU** as the
+  primary browser model.
+- It recommended **ONNX FP32 with ONNX Runtime Web WASM** as the compatibility
+  fallback.
+- It rejected the current dynamic INT8 export. It was smaller, but it produced
   unacceptable probability drift and decision flips on the extended parity set.
-- Host the static frontend on Cloudflare Pages and the model files on R2 (or an
-  equivalent object store). Both accepted models exceed the
+- It proposed hosting a static frontend on Cloudflare Pages and model files on R2
+  (or an equivalent object store). The proposal cited the
   [25 MiB single-file Pages asset limit](https://developers.cloudflare.com/pages/platform/limits/#file-size),
-  and Cloudflare explicitly recommends R2 for larger files. R2's Standard class
-  currently includes a [monthly free tier](https://developers.cloudflare.com/r2/pricing/#free-tier).
-- Keep the existing PyTorch inference path as a local FastAPI plus Tunnel fallback
-  for development and the competition venue. It is not required by the normal
-  browser-only path.
+  Cloudflare's recommendation to use R2 for larger files, and the R2
+  [pricing/free-tier page](https://developers.cloudflare.com/r2/pricing/#free-tier).
+- It proposed keeping the PyTorch path behind local FastAPI plus a Tunnel for
+  development or competition-venue fallback.
+
+Cloudflare Pages, R2, FastAPI, and Tunnel are historical deployment proposals in
+this report. None is part of the formal offline local WebDemo or required by its
+clone-and-run workflow.
+
+## Interpretation boundary
 
 This is a deployment-parity result, not a new accuracy evaluation. The 67-image
 extended fixture is anonymous and unlabeled. Before claiming that FP16 preserves
@@ -90,8 +108,14 @@ fallback.
 
 ## Reproduce
 
-The checkpoint and generated ONNX models are intentionally ignored by Git. Download
-the release checkpoint to `checkpoints/baseline2_njr_best.pt` first.
+The release-hosted PyTorch checkpoint and experiment outputs under `web_models/`
+are intentionally ignored by Git. Download the release checkpoint to
+`checkpoints/baseline2_njr_best.pt` before reproducing this historical experiment.
+
+The formal deployment is a deliberate exception: the single verified
+`web_demo/models/baseline2_njr_fp32.onnx` file is committed through ordinary Git.
+It is not ignored, is not an LFS pointer, and is not automatically replaced by the
+experiment command below.
 
 ```powershell
 py -3.12 -m venv .venv
