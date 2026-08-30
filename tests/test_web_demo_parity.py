@@ -1,6 +1,7 @@
 import hashlib
 import json
 import math
+import shutil
 import tempfile
 import unittest
 from contextlib import nullcontext
@@ -65,6 +66,43 @@ def _tree_snapshot(root: Path) -> dict[str, bytes]:
         path.relative_to(root).as_posix(): path.read_bytes()
         for path in sorted(candidate for candidate in root.rglob("*") if candidate.is_file())
     }
+
+
+def _create_tiny_parity_repository(root: Path) -> Path:
+    source = root / "demo_images" / "f1.png"
+    source.parent.mkdir(parents=True)
+    shutil.copyfile(REPOSITORY_ROOT / EXPECTED_SOURCES[0], source)
+
+    model_bytes = b"deterministic fake ONNX bytes for generator tests\n"
+    model_directory = root / "web_demo" / "models"
+    model_directory.mkdir(parents=True)
+    (model_directory / "tiny_fp32.onnx").write_bytes(model_bytes)
+    (model_directory / "manifest.json").write_text(
+        json.dumps(
+            {
+                "model": {
+                    "file": "tiny_fp32.onnx",
+                    "bytes": len(model_bytes),
+                    "sha256": hashlib.sha256(model_bytes).hexdigest(),
+                    "input": {
+                        "name": "input",
+                        "dtype": "float32",
+                        "shape": [1, 3, 384, 384],
+                    },
+                    "output": {
+                        "name": "logits",
+                        "dtype": "float32",
+                        "shape": [1, 1],
+                    },
+                },
+                "threshold": {"aigc": 0.55657113},
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return source
 
 
 class ParityReferenceUnitTests(unittest.TestCase):
@@ -153,26 +191,26 @@ class ParityReferenceUnitTests(unittest.TestCase):
             self.assertEqual(exif_row["oriented_dimensions"], {"width": 80, "height": 120})
 
     def test_generating_twice_is_byte_identical(self):
-        source = REPOSITORY_ROOT / EXPECTED_SOURCES[0]
         with TemporaryDirectory() as temporary_directory:
-            temporary_root = Path(temporary_directory)
-            first = temporary_root / "first"
-            second = temporary_root / "second"
+            repository = Path(temporary_directory) / "repo"
+            source = _create_tiny_parity_repository(repository)
+            output = repository / "web_demo" / ".generated-tests" / "parity"
 
             generate_parity_references(
-                REPOSITORY_ROOT,
-                first,
+                repository,
+                output,
                 source_paths=[source],
                 runner=DeterministicFakeRunner(),
             )
+            first_snapshot = _tree_snapshot(output)
             generate_parity_references(
-                REPOSITORY_ROOT,
-                second,
+                repository,
+                output,
                 source_paths=[source],
                 runner=DeterministicFakeRunner(),
             )
 
-            self.assertEqual(_tree_snapshot(first), _tree_snapshot(second))
+            self.assertEqual(first_snapshot, _tree_snapshot(output))
 
     def test_stage_creation_does_not_use_restricted_tempfile_mkdtemp(self):
         source = REPOSITORY_ROOT / EXPECTED_SOURCES[0]
@@ -302,13 +340,48 @@ class ParityReferenceUnitTests(unittest.TestCase):
 
     def test_rejects_an_external_output_that_contains_a_protected_file(self):
         with TemporaryDirectory() as temporary_directory:
-            output = Path(temporary_directory) / "output"
+            repository = Path(temporary_directory) / "repo"
+            output = repository / "web_demo" / ".generated-tests" / "output"
             protected = output / "deployed-model.onnx"
-            protected.parent.mkdir()
+            protected.parent.mkdir(parents=True)
             protected.write_bytes(b"protected")
 
             with self.assertRaisesRegex(ValueError, "source/model files"):
-                _validated_output_path(REPOSITORY_ROOT, output, [protected])
+                _validated_output_path(repository, output, [protected])
+
+    def test_rejects_an_existing_external_directory_and_preserves_its_contents(self):
+        source = REPOSITORY_ROOT / EXPECTED_SOURCES[0]
+        with TemporaryDirectory() as temporary_directory:
+            output = Path(temporary_directory) / "external-output"
+            output.mkdir()
+            important = output / "important.txt"
+            important.write_bytes(b"must survive\n")
+
+            with self.assertRaisesRegex(ValueError, "external output.*must not already exist"):
+                generate_parity_references(
+                    REPOSITORY_ROOT,
+                    output,
+                    source_paths=[source],
+                    runner=DeterministicFakeRunner(),
+                )
+
+            self.assertEqual(_tree_snapshot(output), {"important.txt": b"must survive\n"})
+
+    def test_rejects_an_existing_external_file_and_preserves_it(self):
+        source = REPOSITORY_ROOT / EXPECTED_SOURCES[0]
+        with TemporaryDirectory() as temporary_directory:
+            output = Path(temporary_directory) / "important.txt"
+            output.write_bytes(b"must survive\n")
+
+            with self.assertRaisesRegex(ValueError, "external output.*must not already exist"):
+                generate_parity_references(
+                    REPOSITORY_ROOT,
+                    output,
+                    source_paths=[source],
+                    runner=DeterministicFakeRunner(),
+                )
+
+            self.assertEqual(output.read_bytes(), b"must survive\n")
 
     def test_rejects_a_source_path_that_escapes_the_repository(self):
         with TemporaryDirectory() as temporary_directory:
@@ -343,9 +416,6 @@ class ParityReferenceUnitTests(unittest.TestCase):
         source = REPOSITORY_ROOT / EXPECTED_SOURCES[0]
         with TemporaryDirectory() as temporary_directory:
             output = Path(temporary_directory) / "output"
-            output.mkdir()
-            sentinel = b'{"previous":"complete"}\n'
-            (output / "manifest.json").write_bytes(sentinel)
 
             with self.assertRaisesRegex(RuntimeError, "intentional inference failure"):
                 generate_parity_references(
@@ -355,8 +425,8 @@ class ParityReferenceUnitTests(unittest.TestCase):
                     runner=FailingRunner(),
                 )
 
-            self.assertEqual((output / "manifest.json").read_bytes(), sentinel)
-            self.assertEqual(_tree_snapshot(output), {"manifest.json": sentinel})
+            self.assertFalse(output.exists())
+            self.assertEqual(list(Path(temporary_directory).glob(".output.stage-*")), [])
 
 
 class ParityReferenceOnnxIntegrationTests(unittest.TestCase):

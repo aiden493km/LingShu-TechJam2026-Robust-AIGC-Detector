@@ -231,6 +231,11 @@ def _validated_output_path(
                 "repository output must be strictly below web_demo/.generated-tests: "
                 f"{resolved}"
             )
+    elif resolved.exists():
+        raise ValueError(
+            "external output destination must not already exist; "
+            f"choose a new path: {resolved}"
+        )
     for protected in protected_paths:
         protected_resolved = protected.resolve(strict=True)
         if protected_resolved == resolved or protected_resolved.is_relative_to(resolved):
