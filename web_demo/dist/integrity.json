@@ -37,9 +37,9 @@
       "sha256": "ec7869a78ed3304ea5660b375e2601d4f41cf71e5aea33c937e70edbf8a77786"
     },
     {
-      "path": "assets/index-CRyPVwIg.js",
+      "path": "assets/index-m-hAF3R9.js",
       "bytes": 427822,
-      "sha256": "e487e890d9496c6303a27518de49360b21a98949772f00f334f1aa5e46f9d2bd"
+      "sha256": "5134568cd4308b9d13da6f1c1fe65f2ed42aa7e90d422709cfc4373a14a425c5"
     },
     {
       "path": "assets/jsquash_magic_kernel_bg-Cq4C4bH5.wasm",
@@ -109,7 +109,7 @@
     {
       "path": "index.html",
       "bytes": 572,
-      "sha256": "0f274feea29eae38ead4476df5800a610bf15d6be409c4dce9dd8c1d4dbed496"
+      "sha256": "9ae087b8f624ae84611f085617df504d765fe9c043661adc453342f9cfcb88bb"
     }
   ]
 }

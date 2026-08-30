@@ -16,6 +16,7 @@ import {
   particleStartX,
   particleTrailAngle,
   particleVerticalOffset,
+  ROBUST_TRAIL_ANGLE_DEGREES,
   TITLE_TRAIL_ANGLE_DEGREES,
   TITLE_TRAIL_OFFSET_PX,
 } from '../../src/site/DissolveTitle';
@@ -60,13 +61,14 @@ describe('detector presentation', () => {
     expect(first).toContain('aria-hidden="true"');
   });
 
-  it('builds dense particles on tightening five- and nine-degree comet paths', () => {
+  it('builds dense particles on tightening three-, five-, and nine-degree comet paths', () => {
     const particles = buildTitleParticles();
 
     expect(particles).toHaveLength(3000);
+    expect(ROBUST_TRAIL_ANGLE_DEGREES).toBe(3);
     expect(TITLE_TRAIL_ANGLE_DEGREES).toBe(5);
     expect(DETECTOR_TRAIL_ANGLE_DEGREES).toBe(9);
-    expect(particleTrailAngle(0)).toBe(5);
+    expect(particleTrailAngle(0)).toBe(3);
     expect(particleTrailAngle(1)).toBe(5);
     expect(particleTrailAngle(2)).toBe(9);
     expect(new Set(particles.map(({ lineIndex }) => lineIndex))).toEqual(new Set([0, 1, 2]));

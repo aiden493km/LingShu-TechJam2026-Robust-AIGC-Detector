@@ -6,12 +6,13 @@ const PARTICLES_PER_LINE = 1000;
 const FRAME_INTERVAL_MS = 1000 / 30;
 export const TITLE_TRAIL_OFFSET_PX = 5;
 export const TITLE_TRAIL_ANGLE_DEGREES = 5;
+export const ROBUST_TRAIL_ANGLE_DEGREES = TITLE_TRAIL_ANGLE_DEGREES - 2;
 export const DETECTOR_TRAIL_ANGLE_DEGREES = 9;
 export const COMET_FLOW_BASE_CYCLES_PER_SECOND = 0.044;
 export const COMET_FLOW_ACCELERATION_POWER = 1.4;
 const COMET_FLOW_RATE_VARIATION = 0.01;
 const TITLE_TRAIL_SLOPES = [
-  Math.tan(TITLE_TRAIL_ANGLE_DEGREES * Math.PI / 180),
+  Math.tan(ROBUST_TRAIL_ANGLE_DEGREES * Math.PI / 180),
   Math.tan(TITLE_TRAIL_ANGLE_DEGREES * Math.PI / 180),
   Math.tan(DETECTOR_TRAIL_ANGLE_DEGREES * Math.PI / 180),
 ] as const;
@@ -59,6 +60,7 @@ export function particleStartX(lineRight: number, lineWidth: number) {
 }
 
 export function particleTrailAngle(lineIndex: TitleLineIndex) {
+  if (lineIndex === 0) return ROBUST_TRAIL_ANGLE_DEGREES;
   return lineIndex === 2 ? DETECTOR_TRAIL_ANGLE_DEGREES : TITLE_TRAIL_ANGLE_DEGREES;
 }
 
