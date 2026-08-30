@@ -22,6 +22,7 @@ class PortableRuntimeArtifactTests(unittest.TestCase):
     TOTAL_RUNTIME_BYTES = 36_103_844
     MODEL_BYTES = 88_123_029
     MODEL_SHA256 = "e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69"
+    MODEL_ARTIFACTS = {"baseline2_njr_fp32.onnx"}
     MODEL_ARTIFACT_SUFFIXES = {
         ".bin",
         ".ckpt",
@@ -44,6 +45,12 @@ class PortableRuntimeArtifactTests(unittest.TestCase):
 
     def test_portable_runtime_artifacts_match_expected_identity(self):
         runtime_dir = self.REPOSITORY_ROOT / "web_demo" / "runtimes"
+        actual_artifacts = {
+            path.relative_to(runtime_dir).as_posix()
+            for path in runtime_dir.rglob("*")
+            if path.is_file()
+        }
+        self.assertEqual(set(self.RUNTIME_ARTIFACTS), actual_artifacts)
         total_bytes = 0
 
         for filename, expected in self.RUNTIME_ARTIFACTS.items():
@@ -70,17 +77,15 @@ class PortableRuntimeArtifactTests(unittest.TestCase):
         self.assertEqual(self.MODEL_BYTES, model_path.stat().st_size)
         self.assertEqual(self.MODEL_SHA256, self._sha256(model_path))
 
-    def test_models_do_not_include_quantized_variants(self):
+    def test_models_only_include_expected_artifacts(self):
         model_dir = self.REPOSITORY_ROOT / "web_demo" / "models"
-        forbidden_tokens = ("fp16", "int8", "quant")
-        unexpected = sorted(
+        actual_artifacts = {
             path.relative_to(model_dir).as_posix()
             for path in model_dir.rglob("*")
             if path.is_file()
             and path.suffix.lower() in self.MODEL_ARTIFACT_SUFFIXES
-            and any(token in path.name.lower() for token in forbidden_tokens)
-        )
-        self.assertEqual([], unexpected)
+        }
+        self.assertEqual(self.MODEL_ARTIFACTS, actual_artifacts)
 
 
 if __name__ == "__main__":
