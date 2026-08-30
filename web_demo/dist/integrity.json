@@ -2,14 +2,44 @@
   "schema_version": 1,
   "files": [
     {
-      "path": "assets/index-DQGgHzSy.css",
-      "bytes": 8493,
-      "sha256": "968b9b54fca726a633dde64804a99c4ce22e382f87e590502d03544419ca4220"
+      "path": "assets/error_b1_b2_transition-DMNYAQao.png",
+      "bytes": 88254,
+      "sha256": "be46952288cea1c730ca5a5fff1967a1d4b7d595a094fd22a48a07fadaa67b43"
     },
     {
-      "path": "assets/index-Dik4I6Xg.js",
-      "bytes": 394161,
-      "sha256": "ed909db0893985f338ade8fca43d4254f6a340fb5e41226aeafec8eb802a4f68"
+      "path": "assets/error_clean_confusion-DAXpQHsX.png",
+      "bytes": 68879,
+      "sha256": "be16a2e7d247c749cf4e598c77974011ddb1b6c85b0e4ba28c4e435b68fba7a0"
+    },
+    {
+      "path": "assets/error_condition_rates-k99fYJaz.png",
+      "bytes": 78848,
+      "sha256": "1e095b635ed8364c8b2fff36e754077ca509814f170434791a9f7262f6113a12"
+    },
+    {
+      "path": "assets/error_failure_cases-BStEGoDz.png",
+      "bytes": 2487563,
+      "sha256": "9c41ef81e54cb5a0a122b74fa0ea57f228b2f770318f67d6a53cc60ffe23202a"
+    },
+    {
+      "path": "assets/external_benchmark-DGNTC_SC.png",
+      "bytes": 1584984,
+      "sha256": "a497795dc18cbd8404a3cbf85919171d50e9fa749f520d2f7718c657494f2411"
+    },
+    {
+      "path": "assets/final_heldout_results-Db95WU8r.png",
+      "bytes": 1193870,
+      "sha256": "283d0f41496032bf285a9d5583b398d89ea94686642fef4d2e27cd970bfd8583"
+    },
+    {
+      "path": "assets/index-CC6qHpkP.css",
+      "bytes": 34696,
+      "sha256": "ec7869a78ed3304ea5660b375e2601d4f41cf71e5aea33c937e70edbf8a77786"
+    },
+    {
+      "path": "assets/index-CRyPVwIg.js",
+      "bytes": 427822,
+      "sha256": "e487e890d9496c6303a27518de49360b21a98949772f00f334f1aa5e46f9d2bd"
     },
     {
       "path": "assets/jsquash_magic_kernel_bg-Cq4C4bH5.wasm",
@@ -32,6 +62,11 @@
       "sha256": "503d17cb7411b79781b9fad1cf0978f03cf06b050c7d399c730e914f473bf549"
     },
     {
+      "path": "assets/pipeline_overview-Epiowp5s.png",
+      "bytes": 1184343,
+      "sha256": "ad91f17c0f302c6c513839307d9dc0a6880d42fd26ec223eeb624a5d9b3f835f"
+    },
+    {
       "path": "assets/squoosh_png_bg-DAY7U9NW.wasm",
       "bytes": 181088,
       "sha256": "263d6e658808a74b72a1a99c5cc1d619237e70c150db6e41d5d84d3d117ab9be"
@@ -52,9 +87,29 @@
       "sha256": "30fb52fa2a80166d25ba7debf902218904ba1f05ccce9f959f722beff9e2f344"
     },
     {
+      "path": "brands/README.md",
+      "bytes": 330,
+      "sha256": "1f171dfcd8a77f7fa61c8cba1850bacb5113438868c01057430d8db171fbe3a3"
+    },
+    {
+      "path": "brands/github-mark.svg",
+      "bytes": 1559,
+      "sha256": "693d7abe6f899646cc2e96856723b45e95f71885a54910b2749f6decdf7e1ee1"
+    },
+    {
+      "path": "fonts/OFL-League-Gothic.txt",
+      "bytes": 4400,
+      "sha256": "44778c339892f79188c60b7471485dd5af92c59351c7f9629a00fc625c6cae5d"
+    },
+    {
+      "path": "fonts/league-gothic-latin.ttf",
+      "bytes": 37364,
+      "sha256": "54b176f16fec5bdbddb66153ce5ffe1def3c35b5e3a00b807b6aca687d2dd832"
+    },
+    {
       "path": "index.html",
-      "bytes": 534,
-      "sha256": "54668b1d4b52b821c1ad26b6cc567c070321910006e63a2bf4419466a3ea4bbe"
+      "bytes": 572,
+      "sha256": "0f274feea29eae38ead4476df5800a610bf15d6be409c4dce9dd8c1d4dbed496"
     }
   ]
 }
