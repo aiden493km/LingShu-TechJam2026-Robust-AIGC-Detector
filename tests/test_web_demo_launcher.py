@@ -556,7 +556,7 @@ with open(sys.argv[1], "a+b", buffering=0) as lock_file:
     )
     def test_real_command_reports_kernel_lock_infrastructure_failure(self):
         lock_path = self._create_runtime_lock_file()
-        lock_path.chmod(stat.S_IRUSR)
+        lock_path.chmod(0)
         try:
             result = self._run("--check")
         finally:
