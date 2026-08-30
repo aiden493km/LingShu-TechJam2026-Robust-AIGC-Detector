@@ -569,6 +569,61 @@ class RuntimeAndCliTests(unittest.TestCase):
         ]
         self.assertEqual(leaked_modules, [])
 
+    def test_verifier_loader_removes_a_module_after_keyboard_interrupt(self):
+        interrupted_verifier = self.root / "interrupted_verify_distribution.py"
+        interrupted_verifier.write_text("raise KeyboardInterrupt\n", encoding="utf-8")
+        copied_server, copied_verifier = self._load_copied_server(
+            interrupted_verifier
+        )
+
+        with self.assertRaises(KeyboardInterrupt):
+            copied_server._load_distribution_verifier()
+
+        leaked_modules = [
+            name
+            for name, module in sys.modules.items()
+            if (module_file := getattr(module, "__file__", None)) is not None
+            and Path(module_file).resolve() == copied_verifier
+        ]
+        self.assertEqual(leaked_modules, [])
+
+    def test_cli_reports_bundled_verifier_load_failures_without_tracebacks(self):
+        cases = {
+            "missing sibling": (None, None),
+            "syntax error": ("def verify_distribution(:\n", None),
+            "missing export": (
+                "VERIFIER_VERSION = 1\n",
+                'must define callable "verify_distribution"',
+            ),
+            "noncallable export": (
+                "verify_distribution = None\n",
+                'must define callable "verify_distribution"',
+            ),
+        }
+        for label, (verifier_source, expected_error) in cases.items():
+            with self.subTest(label=label):
+                tools_directory = self.root / label / "web_demo" / "tools"
+                tools_directory.mkdir(parents=True)
+                copied_server = tools_directory / "serve_demo.py"
+                copied_verifier = tools_directory / "verify_distribution.py"
+                shutil.copyfile(serve_demo_module.__file__, copied_server)
+                if verifier_source is not None:
+                    copied_verifier.write_text(verifier_source, encoding="utf-8")
+
+                completed = subprocess.run(
+                    [sys.executable, str(copied_server), "--check"],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+
+                self.assertNotEqual(completed.returncode, 0)
+                self.assertNotIn("Traceback", completed.stderr)
+                self.assertIn(
+                    str(copied_verifier) if expected_error is None else expected_error,
+                    completed.stderr,
+                )
+
     def test_validate_runtime_calls_task2_verifier_and_reports_all_errors(self):
         with mock.patch.object(
             serve_demo_module,

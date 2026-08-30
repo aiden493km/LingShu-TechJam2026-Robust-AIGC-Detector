@@ -333,10 +333,22 @@ def _load_distribution_verifier():
     sys.modules[module_name] = module
     try:
         spec.loader.exec_module(module)
-    except Exception:
+    except BaseException as error:
         sys.modules.pop(module_name, None)
-        raise
-    return module.verify_distribution
+        if not isinstance(error, Exception):
+            raise
+        raise RuntimeError(
+            f'Could not load distribution verifier from "{verifier_path}": {error}'
+        ) from error
+
+    verifier = getattr(module, "verify_distribution", None)
+    if not callable(verifier):
+        sys.modules.pop(module_name, None)
+        raise RuntimeError(
+            f'Distribution verifier at "{verifier_path}" must define callable '
+            '"verify_distribution"'
+        )
+    return verifier
 
 
 def verify_distribution(repository_root: Path) -> list[str]:
