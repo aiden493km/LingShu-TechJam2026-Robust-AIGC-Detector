@@ -82,61 +82,17 @@ record = {
     "argv": sys.argv[1:],
     "cwd": os.getcwd(),
     "executable": sys.executable,
+    "isolated_environment": {
+        name: value
+        for name, value in os.environ.items()
+        if name.upper().startswith("PYTHON")
+        or name.upper()
+        in {"VIRTUAL_ENV", "CONDA_PREFIX", "__PYVENV_LAUNCHER__"}
+    },
 }
 with Path(os.environ["LAUNCH_SERVER_LOG"]).open("a", encoding="utf-8") as output:
     output.write(json.dumps(record, ensure_ascii=False) + "\n")
 raise SystemExit(int(os.environ.get("FAKE_SERVER_EXIT", "0")))
-'''
-
-
-REAL_SERVER_VERIFY_STUB = r'''"""Test-only tiny verifier imported by the real server CLI."""
-
-import hashlib
-import json
-import os
-from pathlib import Path
-
-
-def verify_distribution(repository_root: Path) -> list[str]:
-    root = Path(repository_root).resolve()
-    errors: list[str] = []
-
-    try:
-        manifest = json.loads(
-            (root / "web_demo" / "models" / "manifest.json").read_text(encoding="utf-8")
-        )
-        model = manifest["model"]
-        model_bytes = (root / "web_demo" / "models" / model["file"]).read_bytes()
-        if len(model_bytes) != model["bytes"]:
-            errors.append("tiny model byte count mismatch")
-        if hashlib.sha256(model_bytes).hexdigest() != model["sha256"]:
-            errors.append("tiny model SHA-256 mismatch")
-    except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError) as error:
-        errors.append(f"could not validate tiny model fixture: {error}")
-
-    try:
-        dist = root / "web_demo" / "dist"
-        integrity = json.loads((dist / "integrity.json").read_text(encoding="utf-8"))
-        for entry in integrity["files"]:
-            content = (dist / entry["path"]).read_bytes()
-            if len(content) != entry["bytes"]:
-                errors.append(f"tiny dist byte count mismatch: {entry['path']}")
-            if hashlib.sha256(content).hexdigest() != entry["sha256"]:
-                errors.append(f"tiny dist SHA-256 mismatch: {entry['path']}")
-    except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError) as error:
-        errors.append(f"could not validate tiny dist fixture: {error}")
-
-    record = {
-        "root": str(root),
-        "cwd": os.getcwd(),
-        "validated": not errors,
-        "errors": errors,
-    }
-    Path(os.environ["REAL_SERVER_VERIFY_LOG"]).write_text(
-        json.dumps(record, ensure_ascii=False),
-        encoding="utf-8",
-    )
-    return errors
 '''
 
 
@@ -200,6 +156,20 @@ def _copy_launcher_tree(destination_root: Path) -> Path:
     return web_demo
 
 
+def _copy_windows_launcher_tree(destination_root: Path) -> Path:
+    web_demo = _copy_launcher_tree(destination_root)
+    bootstrap = SOURCE_WEB_DEMO / "tools" / "bootstrap_windows.ps1"
+    if not bootstrap.is_file():
+        raise AssertionError(f"bootstrap is missing: {bootstrap}")
+    shutil.copy2(bootstrap, web_demo / "tools" / bootstrap.name)
+
+    archive = SOURCE_WEB_DEMO / "runtimes" / "windows-x86_64-python.zip"
+    runtime_dir = web_demo / "runtimes"
+    runtime_dir.mkdir()
+    shutil.copy2(archive, runtime_dir / archive.name)
+    return web_demo
+
+
 def _server_records(log_path: Path) -> list[dict[str, object]]:
     if not log_path.exists():
         return []
@@ -217,11 +187,8 @@ class WindowsLauncherTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary_directory = TemporaryDirectory(prefix="LingShu 测试 路径 ")
         self.root = Path(self.temporary_directory.name) / "仓库 副本"
-        self.web_demo = _copy_launcher_tree(self.root)
-        self.fake_bin = self.root / "伪运行时 bin"
-        self.fake_bin.mkdir(parents=True)
+        self.web_demo = _copy_windows_launcher_tree(self.root)
         self.server_log = self.root / "服务器 参数.jsonl"
-        self.runtime_log = self.root / "解释器 选择.log"
         self.unrelated_cwd = self.root / "调用者 工作目录"
         self.unrelated_cwd.mkdir()
 
@@ -231,78 +198,24 @@ class WindowsLauncherTests(unittest.TestCase):
     def _base_environment(self) -> dict[str, str]:
         environment = os.environ.copy()
         system_root = Path(os.environ.get("SystemRoot", r"C:\Windows"))
-        environment["PATH"] = os.pathsep.join(
-            (str(self.fake_bin), str(system_root / "System32"), str(system_root))
-        )
+        environment["PATH"] = str(system_root / "System32")
         environment["LAUNCH_SERVER_LOG"] = str(self.server_log)
-        environment["LAUNCH_RUNTIME_LOG"] = str(self.runtime_log)
+        environment["PYTHONHOME"] = str(self.root / "hostile python home")
+        environment["PYTHONPATH"] = str(self.root / "hostile python path")
+        environment["PYTHONSTARTUP"] = str(self.root / "hostile startup.py")
+        environment["PYTHONDEBUG"] = "1"
+        environment["VIRTUAL_ENV"] = str(self.root / "hostile venv")
+        environment["CONDA_PREFIX"] = str(self.root / "hostile conda")
+        environment["__PYVENV_LAUNCHER__"] = str(self.root / "hostile launcher")
         return environment
 
-    def _write_python_wrapper(self, name: str, *, failing_probe: bool = False) -> None:
-        if name not in {"py", "python"}:
-            raise ValueError(name)
-        real_python = str(Path(sys.executable).resolve())
-        if name == "py":
-            probe_failure = "if \"%~2\"==\"-c\" exit /b 41\n" if failing_probe else ""
-            content = f'''@echo off
-setlocal DisableDelayedExpansion
-if "%~1"=="-3" goto :accepted
-exit /b 40
-:accepted
-if "%~2"=="-c" >>"%LAUNCH_RUNTIME_LOG%" echo py-probe
-if not "%~2"=="-c" >>"%LAUNCH_RUNTIME_LOG%" echo py-server
-{probe_failure}shift
-"{real_python}" %1 %2 %3 %4 %5 %6 %7 %8 %9
-exit /b %errorlevel%
-'''
-        else:
-            content = f'''@echo off
-setlocal DisableDelayedExpansion
-if "%~1"=="-c" >>"%LAUNCH_RUNTIME_LOG%" echo python-probe
-if not "%~1"=="-c" >>"%LAUNCH_RUNTIME_LOG%" echo python-server
-"{real_python}" %1 %2 %3 %4 %5 %6 %7 %8 %9
-exit /b %errorlevel%
-'''
-        _write_text(self.fake_bin / f"{name}.cmd", content, newline="\r\n")
-
-    def _install_repository_venv_python(self) -> Path:
-        venv_root = self.root / ".venv"
-        with _suppress_windows_error_dialogs():
-            result = subprocess.run(
-                [sys.executable, "-m", "venv", "--without-pip", str(venv_root)],
-                cwd=self.root,
-                stdin=subprocess.DEVNULL,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=30,
-                creationflags=subprocess.CREATE_NO_WINDOW,
-                check=False,
-            )
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        executable = venv_root / "Scripts" / "python.exe"
-        self.assertTrue(executable.is_file(), executable)
-        self.assertTrue((venv_root / "pyvenv.cfg").is_file(), venv_root / "pyvenv.cfg")
-        return executable
-
-    def _install_real_server_with_tiny_verifier(self) -> Path:
-        tools = self.web_demo / "tools"
-        shutil.copy2(SOURCE_WEB_DEMO / "tools" / "serve_demo.py", tools / "serve_demo.py")
-        _write_text(tools / "verify_distribution.py", REAL_SERVER_VERIFY_STUB)
-        return self.root / "real-server-verifier.json"
-
     def _run(self, *arguments: str, environment: dict[str, str] | None = None):
+        system_root = Path(os.environ.get("SystemRoot", r"C:\Windows"))
+        cmd_executable = str(system_root / "System32" / "cmd.exe")
         batch_command = "call " + subprocess.list2cmdline(
             [str(self.web_demo / "start-demo.bat"), *arguments]
         )
-        command = (
-            subprocess.list2cmdline(
-                [os.environ.get("ComSpec", r"C:\Windows\System32\cmd.exe")]
-            )
-            + " /d /c "
-            + batch_command
-        )
+        command = subprocess.list2cmdline([cmd_executable]) + " /d /c " + batch_command
         with _suppress_windows_error_dialogs():
             return subprocess.run(
                 command,
@@ -313,157 +226,58 @@ exit /b %errorlevel%
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                timeout=15,
+                timeout=60,
                 creationflags=subprocess.CREATE_NO_WINDOW,
                 check=False,
             )
 
-    def test_repository_venv_is_first_and_preserves_unicode_space_and_arguments(self):
-        venv_python = self._install_repository_venv_python()
-        self._write_python_wrapper("py")
-        self._write_python_wrapper("python")
-        arguments = ("--check", "--port", "43210", "--label", "参数 路径 !bang!")
+    def test_real_cmd_uses_bundled_runtime_and_reuses_cache(self):
+        first = self._run("--check")
+        second = self._run("--check")
+
+        for result in (first, second):
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(
+                "RUNTIME bundled CPython 3.12.10 (Windows x86_64)",
+                result.stdout,
+            )
+        self.assertIn("CACHE reused", second.stdout)
+
+        records = _server_records(self.server_log)
+        self.assertEqual(len(records), 2, records)
+        expected_python = (
+            self.web_demo
+            / ".runtime-cache"
+            / "windows-x86_64-4acbed6dd1c7"
+            / "python.exe"
+        )
+        for record in records:
+            self.assertEqual(record["argv"], ["--check"])
+            self.assertEqual(Path(str(record["cwd"])).resolve(), self.web_demo.resolve())
+            self.assertEqual(
+                os.path.normcase(str(Path(str(record["executable"])).resolve())),
+                os.path.normcase(str(expected_python.resolve())),
+            )
+            self.assertEqual(record["isolated_environment"], {})
+
+    def test_original_unicode_space_arguments_reach_child_unchanged(self):
+        arguments = ("--check", "--port", "43210", "--label", "参数 路径 中文")
 
         result = self._run(*arguments)
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(_runtime_events(self.runtime_log), [])
         records = _server_records(self.server_log)
         self.assertEqual(len(records), 1, records)
         self.assertEqual(records[0]["argv"], list(arguments))
-        self.assertEqual(Path(str(records[0]["cwd"])).resolve(), self.web_demo.resolve())
-        self.assertIn("仓库 副本", str(records[0]["cwd"]))
-        self.assertEqual(
-            os.path.normcase(str(Path(str(records[0]["executable"])).resolve())),
-            os.path.normcase(str(venv_python.resolve())),
-        )
 
-    def test_successful_py_dash_three_runs_server_without_python_fallback(self):
-        self._write_python_wrapper("py")
-        self._write_python_wrapper("python")
-
-        result = self._run("--check", "--port", "45678")
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(_runtime_events(self.runtime_log), ["py-probe", "py-server"])
-        self.assertEqual(_server_records(self.server_log)[0]["argv"], ["--check", "--port", "45678"])
-
-    def test_check_runs_real_server_cli_and_tiny_distribution_verifier(self):
-        self._write_python_wrapper("py")
-        self._write_python_wrapper("python")
-        verifier_log = self._install_real_server_with_tiny_verifier()
-        environment = self._base_environment()
-        environment["REAL_SERVER_VERIFY_LOG"] = str(verifier_log)
-
-        result = self._run("--check", "--port", "43123", environment=environment)
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("Distribution verification passed.", result.stdout)
-        self.assertEqual(_runtime_events(self.runtime_log), ["py-probe", "py-server"])
-        self.assertEqual(_server_records(self.server_log), [])
-        verification = json.loads(verifier_log.read_text(encoding="utf-8"))
-        self.assertEqual(Path(verification["root"]).resolve(), self.root.resolve())
-        self.assertEqual(Path(verification["cwd"]).resolve(), self.web_demo.resolve())
-        self.assertTrue(verification["validated"])
-
-    def test_probe_failing_py_falls_back_to_successful_python(self):
-        self._write_python_wrapper("py", failing_probe=True)
-        self._write_python_wrapper("python")
-
-        result = self._run("--check")
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(
-            _runtime_events(self.runtime_log),
-            ["py-probe", "python-probe", "python-server"],
-        )
-        self.assertEqual(len(_server_records(self.server_log)), 1)
-
-    def test_missing_all_runtimes_is_clear_nonzero_and_check_never_pauses(self):
-        result = self._run("--check")
-
-        combined_output = result.stdout + result.stderr
-        self.assertNotEqual(result.returncode, 0, combined_output)
-        self.assertIn("Python 3.11+", combined_output)
-        self.assertIn("python web_demo\\tools\\serve_demo.py", combined_output)
-        self.assertNotIn("Press any key", combined_output)
-        self.assertEqual(_runtime_events(self.runtime_log), [])
-        self.assertEqual(_server_records(self.server_log), [])
-
-    def test_successful_probe_returns_server_failure_without_later_fallback(self):
-        self._write_python_wrapper("py")
-        self._write_python_wrapper("python")
+    def test_child_exit_code_becomes_batch_exit_code(self):
         environment = self._base_environment()
         environment["FAKE_SERVER_EXIT"] = "37"
 
         result = self._run("--check", environment=environment)
 
         self.assertEqual(result.returncode, 37, result.stdout + result.stderr)
-        self.assertEqual(_runtime_events(self.runtime_log), ["py-probe", "py-server"])
         self.assertEqual(len(_server_records(self.server_log)), 1)
-
-    def test_batch_restores_callers_console_code_page_after_check(self):
-        self._write_python_wrapper("py")
-        self._write_python_wrapper("python")
-        driver = self.root / "code-page-driver.cmd"
-        code_page_log = self.root / "code-page-result.txt"
-        _write_text(
-            driver,
-            r'''@echo off
-setlocal DisableDelayedExpansion
-set "HOST_PAGE="
-for /f "delims=" %%C in ('chcp') do for %%P in (%%C) do set "HOST_PAGE=%%P"
-if not defined HOST_PAGE goto :unsupported
-chcp 437 >nul 2>&1
-if errorlevel 1 goto :unsupported
-for /f "delims=" %%C in ('chcp') do for %%P in (%%C) do set "BEFORE_PAGE=%%P"
-call "%TARGET_LAUNCHER%" --check
-set "LAUNCH_EXIT=%ERRORLEVEL%"
-for /f "delims=" %%C in ('chcp') do for %%P in (%%C) do set "AFTER_PAGE=%%P"
-chcp %HOST_PAGE% >nul 2>&1
->"%CODE_PAGE_LOG%" echo %BEFORE_PAGE% %AFTER_PAGE% %LAUNCH_EXIT%
-endlocal & exit /b 0
-
-:unsupported
-if defined HOST_PAGE chcp %HOST_PAGE% >nul 2>&1
->"%CODE_PAGE_LOG%" echo unsupported
-endlocal & exit /b 0
-''',
-            newline="\r\n",
-        )
-        environment = self._base_environment()
-        environment["TARGET_LAUNCHER"] = str(self.web_demo / "start-demo.bat")
-        environment["CODE_PAGE_LOG"] = str(code_page_log)
-        command = (
-            subprocess.list2cmdline(
-                [os.environ.get("ComSpec", r"C:\Windows\System32\cmd.exe")]
-            )
-            + " /d /c call "
-            + subprocess.list2cmdline([str(driver)])
-        )
-
-        with _suppress_windows_error_dialogs():
-            result = subprocess.run(
-                command,
-                cwd=self.unrelated_cwd,
-                env=environment,
-                stdin=subprocess.DEVNULL,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=15,
-                creationflags=subprocess.CREATE_NO_WINDOW,
-                check=False,
-            )
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        recorded = code_page_log.read_text(encoding="utf-8").strip()
-        if recorded == "unsupported":
-            self.skipTest("code page 437 is unavailable in the child cmd.exe")
-        before, after, launcher_exit = recorded.split()
-        self.assertEqual(launcher_exit, "0", result.stdout + result.stderr)
-        self.assertEqual(after, before)
 
 
 class PosixLauncherTests(unittest.TestCase):

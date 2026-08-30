@@ -1,4 +1,5 @@
 import hashlib
+import re
 import tarfile
 import unittest
 import zipfile
@@ -34,6 +35,41 @@ class PortableRuntimeArtifactTests(unittest.TestCase):
         ".safetensors",
         ".tflite",
     }
+
+    def test_windows_batch_is_exact_thin_bootstrap_wrapper(self):
+        launcher = self.REPOSITORY_ROOT / "web_demo" / "start-demo.bat"
+        expected = "\n".join(
+            (
+                "@echo off",
+                "setlocal DisableDelayedExpansion",
+                'set "BOOTSTRAP=%~dp0tools\\bootstrap_windows.ps1"',
+                '"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%BOOTSTRAP%" %*',
+                'set "DEMO_EXIT=%ERRORLEVEL%"',
+                'if not "%DEMO_EXIT%"=="0" if "%~1"=="" pause',
+                "endlocal & exit /b %DEMO_EXIT%",
+                "",
+            )
+        )
+        content = launcher.read_text(encoding="utf-8")
+
+        self.assertEqual(content, expected)
+        self.assertIsNone(
+            re.search(r"(?<![A-Za-z0-9_-])(?:py|python|pip)(?:\.exe)?(?![A-Za-z0-9_-])", content, re.I)
+        )
+        self.assertNotRegex(content, r"(?i)download|invoke-webrequest|curl|wget")
+
+    def test_windows_bootstrap_pins_runtime_artifact(self):
+        bootstrap = self.REPOSITORY_ROOT / "web_demo" / "tools" / "bootstrap_windows.ps1"
+        self.assertTrue(bootstrap.is_file(), bootstrap)
+        content = bootstrap.read_text(encoding="utf-8")
+        expected_pins = (
+            '$ArchiveName = "windows-x86_64-python.zip"',
+            "$ExpectedBytes = 11133606",
+            '$ExpectedSha256 = "4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3"',
+            '$CacheName = "windows-x86_64-4acbed6dd1c7"',
+            '$Entrypoint = "python.exe"',
+        )
+        self.assertEqual(content.splitlines()[:5], list(expected_pins))
 
     @staticmethod
     def _sha256(path):
