@@ -7,7 +7,7 @@ A robustness-aware image-level detector for distinguishing authentic images from
 
 **Final model: B2-NJR = Gaussian Noise + JPEG Compression + Resize**
 
-[Final Checkpoint Release](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.0.0) · [Direct Model Download](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/download/v1.0.0/baseline2_njr_best.pt) · [Local WebDemo](web_demo/README.md) · Demo Video *(in progress)*
+[Final Checkpoint Release](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.0.0) · [Direct Model Download](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/download/v1.0.0/baseline2_njr_best.pt) · [Local WebDemo](web_demo/README.md) · [Data & Robustness Pipeline (Chinese DOCX)](docs/Track5_数据处理与鲁棒性评测管线说明.docx) · Demo Video *(in progress)*
 
 ---
 
@@ -42,6 +42,14 @@ Our development path was:
 
 Development data uses **SID + WildFake** with designated train, validation, and
 held-out test splits.
+
+The [Chinese data-processing and robustness-evaluation pipeline report](docs/Track5_数据处理与鲁棒性评测管线说明.docx)
+documents the source-layer sampling, labels and metadata, split and duplicate
+audits, deterministic 384 × 384 preprocessing, Baseline 1 / Baseline 2 data
+construction, robustness protocol, and external-demo isolation used for project
+handoff. It is explanatory documentation, not a bundled dataset or a replacement
+for the committed scripts and machine-readable results. Dataset files and the
+original training manifests are not redistributed in this repository.
 
 The external post-freeze demonstration benchmark contains:
 
@@ -366,6 +374,7 @@ Dataset files are not redistributed in this repository. Obtain the datasets from
 │   └── figures/
 ├── browser_benchmark/
 ├── docs/
+│   ├── Track5_数据处理与鲁棒性评测管线说明.docx
 │   └── superpowers/
 ├── results/
 │   ├── ablation/

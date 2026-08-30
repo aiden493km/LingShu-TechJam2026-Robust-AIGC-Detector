@@ -86,6 +86,11 @@ new accuracy evaluation.
 ## Documentation and release boundaries
 
 - `README.md` is the public project overview and judge entry point.
+- `docs/Track5_数据处理与鲁棒性评测管线说明.docx` is the Chinese data-processing
+  and robustness-evaluation handoff report. Preserve its evidence boundary: it
+  explains the project pipeline but does not redistribute the datasets or
+  original training manifests, and it does not supersede committed scripts or
+  machine-readable results.
 - `web_demo/README.md` is the judge/developer runbook.
 - `docs/superpowers/specs/2026-08-30-offline-fp32-webdemo-design.md` records the
   implemented runtime architecture.
