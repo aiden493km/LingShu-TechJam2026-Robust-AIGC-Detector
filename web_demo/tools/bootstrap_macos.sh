@@ -10,8 +10,12 @@ umask 077
 
 temp_cache=''
 invalid_cache=''
+stale_quarantine=''
 lock_owned=0
 lock_path=''
+lock_owner_file=''
+lock_created=''
+lock_token=''
 cache_root=''
 last_probe_error=''
 
@@ -24,8 +28,8 @@ cleanup() {
   cleanup_status=$?
   trap - 0 1 2 15
 
-  if [ "$lock_owned" -eq 1 ] && [ -n "$lock_path" ] &&
-     [ -d "$lock_path" ] && [ ! -L "$lock_path" ]; then
+  if lock_owned_by_this_process; then
+    /bin/rm -f "$lock_owner_file" 2>/dev/null || :
     /bin/rmdir "$lock_path" 2>/dev/null || :
   fi
   if [ -n "$temp_cache" ] && [ -n "$cache_root" ] &&
@@ -37,6 +41,11 @@ cleanup() {
      [ "$(/usr/bin/dirname -- "$invalid_cache")" = "$cache_root" ] &&
      [ -d "$invalid_cache" ] && [ ! -L "$invalid_cache" ]; then
     /bin/rm -rf "$invalid_cache"
+  fi
+  if [ -n "$stale_quarantine" ] && [ -n "$cache_root" ] &&
+     [ "$(/usr/bin/dirname -- "$stale_quarantine")" = "$cache_root" ] &&
+     [ -d "$stale_quarantine" ] && [ ! -L "$stale_quarantine" ]; then
+    /bin/rm -rf "$stale_quarantine"
   fi
   exit "$cleanup_status"
 }
@@ -86,27 +95,167 @@ test_runtime_cache() {
   test_bundled_python "$candidate_cache/$ENTRYPOINT"
 }
 
+read_lock_owner() {
+  candidate_owner_file=$1
+  [ -f "$candidate_owner_file" ] && [ ! -L "$candidate_owner_file" ] || return 1
+
+  {
+    IFS= read -r owner_pid || return 1
+    IFS= read -r owner_created || return 1
+    IFS= read -r owner_token || return 1
+    if IFS= read -r owner_extra; then
+      return 1
+    fi
+  } < "$candidate_owner_file"
+
+  case "$owner_pid" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  case "$owner_created" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  case "$owner_token" in
+    ''|*[!0-9A-Fa-f-]*) return 1 ;;
+  esac
+  [ "$owner_pid" -gt 0 ] 2>/dev/null || return 1
+  [ "$owner_created" -gt 0 ] 2>/dev/null || return 1
+  [ "${#owner_token}" -eq 36 ] || return 1
+}
+
+lock_path_is_safe() {
+  [ -n "$lock_path" ] && [ -n "$cache_root" ] &&
+    [ "$(/usr/bin/dirname -- "$lock_path")" = "$cache_root" ] &&
+    [ -d "$lock_path" ] && [ ! -L "$lock_path" ]
+}
+
+lock_owned_by_this_process() {
+  [ "$lock_owned" -eq 1 ] && lock_path_is_safe &&
+    read_lock_owner "$lock_owner_file" &&
+    [ "$owner_pid" = "$$" ] &&
+    [ "$owner_created" = "$lock_created" ] &&
+    [ "$owner_token" = "$lock_token" ]
+}
+
+release_new_lock_after_metadata_failure() {
+  if lock_path_is_safe; then
+    if [ -e "$lock_owner_file" ] || [ -L "$lock_owner_file" ]; then
+      /bin/rm -f "$lock_owner_file" 2>/dev/null || :
+    fi
+    /bin/rmdir "$lock_path" 2>/dev/null || :
+  fi
+  lock_owned=0
+}
+
+write_lock_owner() {
+  lock_owner_file="$lock_path/.owner"
+  lock_token=$(/usr/bin/uuidgen 2>/dev/null) || return 1
+  case "$lock_token" in
+    ''|*[!0-9A-Fa-f-]*) return 1 ;;
+  esac
+  [ "${#lock_token}" -eq 36 ] || return 1
+  lock_created=$(/bin/date +%s 2>/dev/null) || return 1
+  case "$lock_created" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+
+  printf '%s\n%s\n%s\n' "$$" "$lock_created" "$lock_token" > "$lock_owner_file" ||
+    return 1
+  [ -f "$lock_owner_file" ] && [ ! -L "$lock_owner_file" ] || return 1
+  read_lock_owner "$lock_owner_file" &&
+    [ "$owner_pid" = "$$" ] &&
+    [ "$owner_created" = "$lock_created" ] &&
+    [ "$owner_token" = "$lock_token" ]
+}
+
+recover_stale_lock() {
+  stale_pid=$1
+  stale_created=$2
+  stale_token=$3
+  read_lock_owner "$lock_owner_file" &&
+    [ "$owner_pid" = "$stale_pid" ] &&
+    [ "$owner_created" = "$stale_created" ] &&
+    [ "$owner_token" = "$stale_token" ] || return 1
+
+  stale_guid=$(/usr/bin/uuidgen 2>/dev/null) || return 1
+  case "$stale_guid" in
+    ''|*[!0-9A-Fa-f-]*) return 1 ;;
+  esac
+  [ "${#stale_guid}" -eq 36 ] || return 1
+  stale_quarantine="$cache_root/$CACHE_NAME.lock.stale-$stale_guid"
+  if [ -e "$stale_quarantine" ] || [ -L "$stale_quarantine" ]; then
+    stale_quarantine=''
+    return 1
+  fi
+
+  if ! /bin/mv "$lock_path" "$stale_quarantine" 2>/dev/null; then
+    stale_quarantine=''
+    return 1
+  fi
+  [ "$(/usr/bin/dirname -- "$stale_quarantine")" = "$cache_root" ] &&
+    [ -d "$stale_quarantine" ] && [ ! -L "$stale_quarantine" ] ||
+    fail "Recovered runtime lock quarantine is unsafe: $stale_quarantine"
+  quarantine_owner_file="$stale_quarantine/.owner"
+  if ! read_lock_owner "$quarantine_owner_file" ||
+     [ "$owner_pid" != "$stale_pid" ] ||
+     [ "$owner_created" != "$stale_created" ] ||
+     [ "$owner_token" != "$stale_token" ]; then
+    abandoned_quarantine=$stale_quarantine
+    stale_quarantine=''
+    fail "Runtime lock ownership changed during recovery; left it untouched at $abandoned_quarantine"
+  fi
+  /bin/rm -rf "$stale_quarantine" ||
+    fail "Could not remove the recovered runtime lock: $stale_quarantine"
+  stale_quarantine=''
+}
+
 acquire_lock() {
   lock_attempts=0
-  while ! /bin/mkdir "$lock_path" 2>/dev/null; do
-    if [ -L "$lock_path" ] || { [ -e "$lock_path" ] && [ ! -d "$lock_path" ]; }; then
+  while :; do
+    if /bin/mkdir "$lock_path" 2>/dev/null; then
+      if ! write_lock_owner; then
+        release_new_lock_after_metadata_failure
+        fail "Could not record ownership for the runtime cache lock: $lock_path"
+      fi
+      lock_owned=1
+      return 0
+    fi
+
+    if ! lock_path_is_safe; then
       fail "Runtime cache lock must be a non-symlink directory: $lock_path"
     fi
+
+    lock_owner_file="$lock_path/.owner"
+    if read_lock_owner "$lock_owner_file"; then
+      lock_now=$(/bin/date +%s 2>/dev/null) ||
+        fail 'Could not read the current time while waiting for the runtime cache lock.'
+      if [ "$lock_now" -ge "$owner_created" ] 2>/dev/null &&
+         [ $((lock_now - owner_created)) -ge 2 ] &&
+         ! /bin/kill -0 "$owner_pid" 2>/dev/null; then
+        if recover_stale_lock "$owner_pid" "$owner_created" "$owner_token"; then
+          continue
+        fi
+      fi
+    fi
+
     lock_attempts=$((lock_attempts + 1))
-    [ "$lock_attempts" -lt 300 ] ||
-      fail 'Timed out waiting for another WebDemo runtime bootstrap.'
+    [ "$lock_attempts" -lt 80 ] ||
+      fail "Timed out after 8 seconds waiting for the runtime cache lock: $lock_path. Close any stuck WebDemo launcher and retry."
     /bin/sleep 0.1
   done
-  lock_owned=1
 }
 
 release_lock() {
   [ "$lock_owned" -eq 1 ] || return 0
-  [ -d "$lock_path" ] && [ ! -L "$lock_path" ] ||
-    fail "Runtime cache lock changed unexpectedly: $lock_path"
+  lock_owned_by_this_process ||
+    fail "Runtime cache lock ownership changed unexpectedly: $lock_path"
+  /bin/rm -f "$lock_owner_file" 2>/dev/null ||
+    fail "Could not remove runtime cache lock ownership: $lock_owner_file"
   /bin/rmdir "$lock_path" 2>/dev/null ||
     fail "Could not release the runtime cache lock: $lock_path"
   lock_owned=0
+  lock_owner_file=''
+  lock_created=''
+  lock_token=''
 }
 
 remove_invalid_fixed_cache() {

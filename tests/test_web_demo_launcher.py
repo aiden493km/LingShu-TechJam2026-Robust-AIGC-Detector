@@ -7,6 +7,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import time
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -426,6 +427,14 @@ class MacOSLauncherTests(unittest.TestCase):
             check=False,
         )
 
+    def _create_runtime_lock(self, *, owner_pid: int, created: int, token: str):
+        cache_root = self.web_demo / ".runtime-cache"
+        lock_path = cache_root / "macos-arm64-8b0f1fa71eab.lock"
+        lock_path.mkdir(parents=True)
+        metadata = f"{owner_pid}\n{created}\n{token}\n"
+        _write_text(lock_path / ".owner", metadata)
+        return lock_path, metadata
+
     def test_real_command_uses_bundled_runtime_and_reuses_cache(self):
         first = self._run("--check")
         second = self._run("--check")
@@ -474,6 +483,50 @@ class MacOSLauncherTests(unittest.TestCase):
         self.assertEqual(
             records[0]["argv"],
             ["--check", "--label", "参数 路径 中文"],
+        )
+
+    def test_real_command_recovers_stale_dead_owner_lock(self):
+        lock_path, _ = self._create_runtime_lock(
+            owner_pid=99_999_999,
+            created=int(time.time()) - 60,
+            token="00000000-0000-4000-8000-000000000001",
+        )
+
+        result = self._run("--check")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(lock_path.exists(), lock_path)
+        self.assertEqual(
+            list(lock_path.parent.glob(f"{lock_path.name}.stale-*")),
+            [],
+        )
+
+    def test_real_command_preserves_live_owner_lock_and_times_out_cleanly(self):
+        lock_path, metadata = self._create_runtime_lock(
+            owner_pid=os.getpid(),
+            created=int(time.time()) - 60,
+            token="00000000-0000-4000-8000-000000000002",
+        )
+        started = time.monotonic()
+
+        result = self._run("--check")
+
+        elapsed = time.monotonic() - started
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertLess(elapsed, 12, elapsed)
+        self.assertEqual(result.stdout, "")
+        error_lines = result.stderr.splitlines()
+        self.assertEqual(len(error_lines), 1, result.stderr)
+        self.assertTrue(error_lines[0].startswith("ERROR: "), result.stderr)
+        self.assertNotIn("trace", result.stderr.lower())
+        self.assertTrue(lock_path.is_dir(), lock_path)
+        self.assertEqual(
+            (lock_path / ".owner").read_text(encoding="utf-8"),
+            metadata,
+        )
+        self.assertEqual(
+            list(lock_path.parent.glob(f"{lock_path.name}.stale-*")),
+            [],
         )
 
 
