@@ -8,4 +8,3 @@ web_demo/start-demo.bat text eol=crlf
 web_demo/start-demo.sh text eol=lf
 web_demo/start-demo.command text eol=lf
 web_demo/tools/bootstrap_macos.sh text eol=lf
-docs/Track5_数据处理与鲁棒性评测管线说明.docx binary -diff -merge
