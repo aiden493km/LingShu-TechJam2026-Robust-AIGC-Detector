@@ -320,6 +320,7 @@ class PosixLauncherTests(unittest.TestCase):
         self.assertRegex(result.stdout, r"^100755 [0-9a-f]+ 0\s+web_demo/start-demo\.sh\s*$")
 
     @unittest.skipUnless(SH_EXECUTABLE, "POSIX sh is unavailable")
+    @unittest.skipIf(sys.platform == "darwin", "generic POSIX fallback excludes macOS")
     def test_shell_check_resolves_its_directory_and_returns_server_exit(self):
         sh = SH_EXECUTABLE
         assert sh is not None
@@ -570,7 +571,7 @@ with open(sys.argv[1], "a+b", buffering=0) as lock_file:
             error_lines[0],
             "ERROR: WebDemo bootstrap failed: "
             "Could not acquire/use the macOS runtime cache lock: "
-            f"{lock_path} (lockf status 73). "
+            f"{lock_path.resolve()} (lockf status 73). "
             "Check that the WebDemo runtime cache is writable and retry.",
         )
         self.assertNotIn("trace", result.stderr.lower())

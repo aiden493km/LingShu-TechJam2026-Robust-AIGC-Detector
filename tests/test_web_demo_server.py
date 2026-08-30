@@ -548,7 +548,10 @@ class RuntimeAndCliTests(unittest.TestCase):
                 sys.modules["verify_distribution"] = original_top_level_verifier
 
         self.assertFalse(decoy_marker.exists())
-        self.assertEqual(Path(verifier.__code__.co_filename).resolve(), copied_verifier)
+        self.assertEqual(
+            Path(verifier.__code__.co_filename).resolve(),
+            copied_verifier.resolve(),
+        )
 
     def test_verifier_loader_removes_a_module_that_fails_during_execution(self):
         broken_verifier = self.root / "broken_verify_distribution.py"
@@ -565,7 +568,7 @@ class RuntimeAndCliTests(unittest.TestCase):
             name
             for name, module in sys.modules.items()
             if (module_file := getattr(module, "__file__", None)) is not None
-            and Path(module_file).resolve() == copied_verifier
+            and Path(module_file).resolve() == copied_verifier.resolve()
         ]
         self.assertEqual(leaked_modules, [])
 
@@ -583,7 +586,7 @@ class RuntimeAndCliTests(unittest.TestCase):
             name
             for name, module in sys.modules.items()
             if (module_file := getattr(module, "__file__", None)) is not None
-            and Path(module_file).resolve() == copied_verifier
+            and Path(module_file).resolve() == copied_verifier.resolve()
         ]
         self.assertEqual(leaked_modules, [])
 
@@ -620,7 +623,9 @@ class RuntimeAndCliTests(unittest.TestCase):
                 self.assertNotEqual(completed.returncode, 0)
                 self.assertNotIn("Traceback", completed.stderr)
                 self.assertIn(
-                    str(copied_verifier) if expected_error is None else expected_error,
+                    str(copied_verifier.resolve())
+                    if expected_error is None
+                    else expected_error,
                     completed.stderr,
                 )
 

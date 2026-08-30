@@ -285,7 +285,7 @@ env_names=$(/usr/bin/env | /usr/bin/sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/
   fail 'Could not inspect the inherited environment.'
 for env_name in $env_names; do
   case "$env_name" in
-    PYTHON*|DYLD_*|VIRTUAL_ENV|CONDA_PREFIX|__PYVENV_LAUNCHER__)
+    [Pp][Yy][Tt][Hh][Oo][Nn]*|DYLD_*|VIRTUAL_ENV|CONDA_PREFIX|__PYVENV_LAUNCHER__)
       unset "$env_name"
       ;;
   esac
