@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { runtimeAssetFileName } from '../../vite.config';
+import { buildOutputDirectory, runtimeAssetFileName } from '../../vite.config';
 
 const ORT_RUNTIME_NAME = 'ort-wasm-simd-threaded.asyncify.wasm';
 
@@ -28,6 +28,12 @@ describe('static runtime build configuration', () => {
     );
   });
 
+  it('keeps the local build in dist and sends online builds to dist-online', () => {
+    expect(buildOutputDirectory()).toBe('dist');
+    expect(buildOutputDirectory('production')).toBe('dist');
+    expect(buildOutputDirectory('online')).toBe('dist-online');
+  });
+
   it('runs Vite, the ORT copier, and the integrity writer in strict order', async () => {
     const packageJson = JSON.parse(
       await readFile(new URL('../../package.json', import.meta.url), 'utf8'),
@@ -35,6 +41,16 @@ describe('static runtime build configuration', () => {
 
     expect(packageJson.scripts?.build).toBe(
       'node tools/normalize_build_inputs.mjs && vite build && node tools/copy_ort_runtime.mjs && node tools/write_dist_integrity.mjs',
+    );
+  });
+
+  it('runs the isolated online distribution pipeline in strict order', async () => {
+    const packageJson = JSON.parse(
+      await readFile(new URL('../../package.json', import.meta.url), 'utf8'),
+    ) as { scripts?: Record<string, string> };
+
+    expect(packageJson.scripts?.['build:online']).toBe(
+      'node tools/normalize_build_inputs.mjs && vite build --mode online && node tools/prepare_online_dist.mjs && node tools/copy_ort_runtime.mjs dist-online && node tools/write_dist_integrity.mjs dist-online && node tools/verify_online_dist.mjs',
     );
   });
 
@@ -88,6 +104,13 @@ describe('static runtime build configuration', () => {
     expect(gitignore).toContain('*.onnx');
     expect(gitignore).toContain('web_models/');
     expect(gitignore.match(/^!web_demo\/models\/baseline2_njr_fp32\.onnx$/gm)).toHaveLength(1);
+    expect(gitignore).toContain('web_demo/dist-online/');
+  });
+
+  it('excludes local and model-bearing content from Vercel uploads', async () => {
+    expect(await readFile(new URL('../../.vercelignore', import.meta.url), 'utf8')).toBe(
+      'dist/\ndist-online/\nmodels/*.onnx\n.generated-tests/\n.runtime-cache/\nruntime/\nstart-demo.bat\nstart-demo.command\nstart-demo.sh\n',
+    );
   });
 
   it('pins Vite input text and copied public text assets to LF', async () => {

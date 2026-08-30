@@ -261,10 +261,11 @@ export async function copyOrtRuntime(options = {}) {
 }
 
 async function runCli() {
-  if (process.argv.length !== 2) {
-    throw new Error('Usage: node tools/copy_ort_runtime.mjs');
+  const arguments_ = process.argv.slice(2);
+  if (arguments_.length > 1) {
+    throw new Error('Usage: node tools/copy_ort_runtime.mjs [dist-directory]');
   }
-  const result = await copyOrtRuntime();
+  const result = await copyOrtRuntime({ distDirectory: arguments_[0] });
   for (const copied of [result.mjs, result.wasm]) {
     console.log(
       `[ort-runtime] copied ${copied.bytes} bytes (${copied.sha256}) to ${copied.destinationPath}`,

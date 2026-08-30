@@ -3,6 +3,10 @@ import { defineConfig } from 'vitest/config';
 
 const ORT_RUNTIME_NAME = 'ort-wasm-simd-threaded.asyncify.wasm';
 
+export function buildOutputDirectory(mode?: string): string {
+  return mode === 'online' ? 'dist-online' : 'dist';
+}
+
 export function runtimeAssetFileName(asset: {
   name?: string | undefined;
   names?: readonly string[] | undefined;
@@ -14,11 +18,11 @@ export function runtimeAssetFileName(asset: {
     : 'assets/[name]-[hash][extname]';
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   base: '/',
   plugins: [react()],
   build: {
-    outDir: 'dist',
+    outDir: buildOutputDirectory(mode),
     assetsInlineLimit: 0,
     rollupOptions: {
       output: {
@@ -29,4 +33,4 @@ export default defineConfig({
   test: {
     environment: 'node',
   },
-});
+}));

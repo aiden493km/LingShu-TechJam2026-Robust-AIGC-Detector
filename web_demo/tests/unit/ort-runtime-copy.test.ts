@@ -10,8 +10,10 @@ import {
   rm,
   writeFile,
 } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 
 // @ts-expect-error The production utility is intentionally a plain ESM module.
@@ -95,6 +97,31 @@ describe('ORT runtime packaging', () => {
 
   it('derives the production dist directory from the utility module, not cwd', () => {
     expect(defaultDistDirectory().replaceAll('\\', '/')).toMatch(/\/web_demo\/dist\/$/);
+  });
+
+  it('accepts one output directory argument and rejects additional CLI arguments', async () => {
+    const root = await makeTemporaryDirectory();
+    const dist = join(root, 'custom-dist');
+    const webDemoRoot = fileURLToPath(new URL('../../', import.meta.url));
+    const copyResult = spawnSync(process.execPath, ['tools/copy_ort_runtime.mjs', dist], {
+      cwd: webDemoRoot,
+      encoding: 'utf8',
+    });
+
+    expect(copyResult.status, copyResult.stderr).toBe(0);
+    expect(await lstat(join(dist, 'assets', ORT_RUNTIME_NAME))).toMatchObject({
+      size: ORT_RUNTIME_BYTES,
+    });
+
+    const invalidResult = spawnSync(
+      process.execPath,
+      ['tools/copy_ort_runtime.mjs', dist, 'unexpected'],
+      { cwd: webDemoRoot, encoding: 'utf8' },
+    );
+    expect(invalidResult.status).toBe(1);
+    expect(invalidResult.stderr).toContain(
+      'Usage: node tools/copy_ort_runtime.mjs [dist-directory]',
+    );
   });
 
   it('rejects a source whose byte count differs from the frozen runtime', async () => {

@@ -12,6 +12,7 @@
     "record:acceptance-evidence": "node tools/record_acceptance_evidence.mjs",
     "typecheck": "tsc --noEmit",
     "build": "node tools/normalize_build_inputs.mjs && vite build && node tools/copy_ort_runtime.mjs && node tools/write_dist_integrity.mjs",
+    "build:online": "node tools/normalize_build_inputs.mjs && vite build --mode online && node tools/prepare_online_dist.mjs && node tools/copy_ort_runtime.mjs dist-online && node tools/write_dist_integrity.mjs dist-online && node tools/verify_online_dist.mjs",
     "verify:dist": "npm run build && git diff --exit-code -- dist"
   },
   "dependencies": {
