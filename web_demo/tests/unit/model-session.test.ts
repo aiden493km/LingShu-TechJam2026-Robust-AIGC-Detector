@@ -419,6 +419,49 @@ describe('manifest and streamed model loading', () => {
     expect(ortMock.create).not.toHaveBeenCalled();
   });
 
+  it('preserves an abort raised while model verification is pending', async () => {
+    const modelFixture = streamResponse({
+      chunks: [new Uint8Array(manifest.model.bytes)],
+    });
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(manifestJson), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(modelFixture.response);
+    let resolveVerification: (() => void) | undefined;
+    const verifySha256 = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveVerification = resolve;
+        }),
+    );
+    const hasAdapter = vi.fn().mockResolvedValue(true);
+    const create = vi.fn().mockResolvedValue(validSession());
+    const controller = new AbortController();
+    const abortError = new DOMException('Model load was cancelled', 'AbortError');
+
+    const loading = loadModelSession({
+      fetch: fetcher,
+      signal: controller.signal,
+      verifySha256,
+      hasWebGpuAdapter: hasAdapter,
+      create,
+    });
+    await vi.waitFor(() => expect(verifySha256).toHaveBeenCalledOnce());
+
+    controller.abort(abortError);
+    resolveVerification?.();
+
+    await expect(loading).rejects.toBe(abortError);
+    expect(hasAdapter).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+    expect(ortMock.create).not.toHaveBeenCalled();
+  });
+
   it.each([
     {
       name: 'mismatched Content-Length',

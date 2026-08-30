@@ -515,7 +515,9 @@ export async function fetchVerifiedModelBytes(
   options: VerifiedModelFetchOptions = {},
 ): Promise<Uint8Array> {
   const bytes = await fetchModelBytes(descriptor, options);
+  options.signal?.throwIfAborted();
   await (options.verifySha256 ?? verifyModelSha256)(bytes, descriptor.sha256);
+  options.signal?.throwIfAborted();
   return bytes;
 }
 
