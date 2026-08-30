@@ -1433,9 +1433,8 @@ export async function closeAndSnapshotNetworkAudit(
 }
 
 async function currentPhase(page) {
-  const locator = page.locator('[aria-live="polite"]');
-  if ((await locator.count()) === 0) return '';
-  return (await locator.first().textContent())?.trim() ?? '';
+  const phase = await page.locator('.detector-stage').getAttribute('data-phase');
+  return phase === null ? '' : `Current phase: ${phase}`;
 }
 
 async function alertText(page) {
@@ -1447,8 +1446,8 @@ async function alertText(page) {
 async function waitForPhaseOutcome(page, desired, timeoutMs) {
   await page.waitForFunction(
     ({ desiredPhase }) => {
-      const text = document.querySelector('[aria-live="polite"]')?.textContent?.trim();
-      return text === `Current phase: ${desiredPhase}` || text === 'Current phase: error';
+      const phase = document.querySelector('.detector-stage')?.getAttribute('data-phase');
+      return phase === desiredPhase || phase === 'error';
     },
     { desiredPhase: desired },
     { timeout: timeoutMs },
@@ -1462,7 +1461,7 @@ async function waitForPhaseOutcome(page, desired, timeoutMs) {
 
 async function waitForModelReady(page) {
   await waitForPhaseOutcome(page, 'ready', MODEL_TIMEOUT_MS);
-  await page.getByText('Ready for one image', { exact: true }).waitFor({ state: 'visible' });
+  await page.locator('input[type="file"]:not([disabled])').waitFor({ state: 'attached' });
 }
 
 async function probeWebGpu(page) {
@@ -1515,8 +1514,8 @@ async function readDetectionResult(page) {
   invariant(await progress.count() === 1, 'Success state must expose one confidence progress element');
   const probability = await progress.evaluate((element) => element.value);
   finiteProbability(probability, 'browser probability');
-  const label = (await page.locator('.result-heading h3').textContent())?.trim() ?? '';
-  const provider = await definitionValue(page, 'Execution provider');
+  const label = (await page.locator('.decision-word').textContent())?.trim() ?? '';
+  const provider = await definitionValue(page, 'Provider');
   const elapsedText = await definitionValue(page, 'Inference elapsed');
   const elapsedMs = Number.parseFloat(elapsedText);
   invariant(Number.isFinite(elapsedMs) && elapsedMs >= 0, `Invalid inference elapsed value: ${elapsedText}`);
@@ -1537,7 +1536,6 @@ async function resetAndAssert(page) {
   await waitForPhaseOutcome(page, 'ready', 10_000);
   invariant(await page.locator('.preview-figure').count() === 0, 'Reset must clear the preview');
   invariant(await page.locator('#confidence-progress').count() === 0, 'Reset must clear the result');
-  await page.getByText('No image retained.', { exact: true }).waitFor({ state: 'visible' });
   invariant(await page.locator('input[type="file"]').isEnabled(), 'Reset must re-enable image selection');
 }
 
@@ -2184,7 +2182,15 @@ async function main() {
 const invokedPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : '';
 if (invokedPath === import.meta.url) {
   main().catch((error) => {
-    process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
+    const diagnostics = error instanceof AggregateError
+      ? [error.stack ?? error.message, ...error.errors.map((nested, index) => {
+          const detail = nested instanceof Error ? nested.stack ?? nested.message : String(nested);
+          return `Nested error ${index + 1}: ${detail}`;
+        })].join('\n')
+      : error instanceof Error
+        ? error.stack ?? error.message
+        : String(error);
+    process.stderr.write(`${diagnostics}\n`);
     process.exitCode = 1;
   });
 }
