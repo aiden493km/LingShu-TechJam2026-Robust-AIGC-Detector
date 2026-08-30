@@ -1,4 +1,8 @@
 #!/bin/sh
+if [ "$(/usr/bin/uname -s 2>/dev/null)" = "Darwin" ]; then
+  SCRIPT_DIR=$(CDPATH= cd -- "$(/usr/bin/dirname -- "$0")" && pwd) || exit 1
+  exec "$SCRIPT_DIR/tools/bootstrap_macos.sh" "$@"
+fi
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 if [ -z "$SCRIPT_DIR" ]; then

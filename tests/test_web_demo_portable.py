@@ -1,5 +1,6 @@
 import hashlib
 import re
+import subprocess
 import tarfile
 import unittest
 import zipfile
@@ -35,6 +36,35 @@ class PortableRuntimeArtifactTests(unittest.TestCase):
         ".safetensors",
         ".tflite",
     }
+    ORIGINAL_POSIX_SUFFIX = br'''
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+if [ -z "$SCRIPT_DIR" ]; then
+  printf '%s\n' 'ERROR: Could not resolve the WebDemo directory.' >&2
+  exit 1
+fi
+
+cd "$SCRIPT_DIR" || {
+  printf '%s\n' "ERROR: Could not open the WebDemo directory: $SCRIPT_DIR" >&2
+  exit 1
+}
+
+if python3 -c 'import sys; raise SystemExit(sys.version_info < (3, 11))' >/dev/null 2>&1; then
+  exec python3 tools/serve_demo.py "$@"
+  exit $?
+fi
+
+if python -c 'import sys; raise SystemExit(sys.version_info < (3, 11))' >/dev/null 2>&1; then
+  exec python tools/serve_demo.py "$@"
+  exit $?
+fi
+
+printf '%s\n' \
+  'ERROR: Python 3.11+ is required to launch the LingShu WebDemo.' \
+  'Install Python 3.11 or newer, then try start-demo.sh again.' \
+  'Manual command from the repository root:' \
+  '  python web_demo/tools/serve_demo.py' >&2
+exit 1
+'''
 
     def test_windows_batch_is_exact_thin_bootstrap_wrapper(self):
         launcher = self.REPOSITORY_ROOT / "web_demo" / "start-demo.bat"
@@ -70,6 +100,93 @@ class PortableRuntimeArtifactTests(unittest.TestCase):
             '$Entrypoint = "python.exe"',
         )
         self.assertEqual(content.splitlines()[:5], list(expected_pins))
+
+    def test_macos_launchers_are_lf_only_and_git_executable(self):
+        relative_paths = (
+            "web_demo/start-demo.sh",
+            "web_demo/start-demo.command",
+            "web_demo/tools/bootstrap_macos.sh",
+        )
+        for relative_path in relative_paths:
+            with self.subTest(path=relative_path):
+                path = self.REPOSITORY_ROOT / relative_path
+                self.assertTrue(path.is_file(), path)
+                content = path.read_bytes()
+                self.assertNotIn(b"\r", content)
+                self.assertTrue(content.endswith(b"\n"))
+
+                result = subprocess.run(
+                    ["git", "ls-files", "--stage", "--", relative_path],
+                    cwd=self.REPOSITORY_ROOT,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertRegex(
+                    result.stdout,
+                    rf"^100755 [0-9a-f]+ 0\s+{re.escape(relative_path)}\s*$",
+                )
+
+    def test_macos_command_is_exact_thin_bootstrap_wrapper(self):
+        launcher = self.REPOSITORY_ROOT / "web_demo" / "start-demo.command"
+        self.assertTrue(launcher.is_file(), launcher)
+        expected = """#!/bin/sh
+SCRIPT_DIR=$(CDPATH= cd -- "$(/usr/bin/dirname -- "$0")" && pwd) || exit 1
+"$SCRIPT_DIR/tools/bootstrap_macos.sh" "$@"
+status=$?
+if [ "$status" -ne 0 ] && [ "$#" -eq 0 ]; then
+  printf '%s' 'Press Return to close this window...'
+  IFS= read -r _
+fi
+exit "$status"
+"""
+
+        self.assertEqual(launcher.read_text(encoding="utf-8"), expected)
+
+    def test_macos_bootstrap_pins_runtime_and_uses_only_stock_tools(self):
+        bootstrap = self.REPOSITORY_ROOT / "web_demo" / "tools" / "bootstrap_macos.sh"
+        self.assertTrue(bootstrap.is_file(), bootstrap)
+        content = bootstrap.read_text(encoding="utf-8")
+        expected_pins = (
+            "ARCHIVE_NAME='macos-arm64-python.tar.gz'",
+            "EXPECTED_BYTES='24970238'",
+            "EXPECTED_SHA256='8b0f1fa71eab7ca644e482c631807a1116fa848491051cd1c8d9429491de63a6'",
+            "CACHE_NAME='macos-arm64-8b0f1fa71eab'",
+            "ENTRYPOINT='python/bin/python3'",
+        )
+        self.assertEqual(content.splitlines()[1:6], list(expected_pins))
+        self.assertEqual(content.splitlines()[0], "#!/bin/sh")
+
+        self.assertIsNone(
+            re.search(r"(?i)(?:\bcurl\b|\bwget\b|\bpip3?\b|\bsudo\b|\bxattr\b|https?://|download)", content)
+        )
+        self.assertIsNone(
+            re.search(r"(?m)^[ \t]*(?:command[ \t]+-v[ \t]+)?(?:/usr/bin/)?python(?:3(?:\.\d+)*)?[ \t]", content)
+        )
+        self.assertIsNone(re.search(r"(?m)(?<![>&])&[ \t]*(?:#.*)?$", content))
+        for tool in (
+            "/usr/bin/uname",
+            "/usr/sbin/sysctl",
+            "/usr/bin/stat",
+            "/usr/bin/shasum",
+            "/usr/bin/tar",
+            "/bin/mv",
+        ):
+            self.assertIn(tool, content)
+
+    def test_posix_launcher_only_adds_exact_darwin_preamble(self):
+        launcher = self.REPOSITORY_ROOT / "web_demo" / "start-demo.sh"
+        preamble = b'''\
+if [ "$(/usr/bin/uname -s 2>/dev/null)" = "Darwin" ]; then
+  SCRIPT_DIR=$(CDPATH= cd -- "$(/usr/bin/dirname -- "$0")" && pwd) || exit 1
+  exec "$SCRIPT_DIR/tools/bootstrap_macos.sh" "$@"
+fi
+'''
+        expected = b"#!/bin/sh\n" + preamble + self.ORIGINAL_POSIX_SUFFIX
+
+        self.assertEqual(launcher.read_bytes(), expected)
 
     @staticmethod
     def _sha256(path):

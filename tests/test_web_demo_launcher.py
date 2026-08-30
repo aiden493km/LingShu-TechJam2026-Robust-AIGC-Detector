@@ -86,6 +86,7 @@ record = {
         name: value
         for name, value in os.environ.items()
         if name.upper().startswith("PYTHON")
+        or name.upper().startswith("DYLD_")
         or name.upper()
         in {"VIRTUAL_ENV", "CONDA_PREFIX", "__PYVENV_LAUNCHER__"}
     },
@@ -164,6 +165,24 @@ def _copy_windows_launcher_tree(destination_root: Path) -> Path:
     shutil.copy2(bootstrap, web_demo / "tools" / bootstrap.name)
 
     archive = SOURCE_WEB_DEMO / "runtimes" / "windows-x86_64-python.zip"
+    runtime_dir = web_demo / "runtimes"
+    runtime_dir.mkdir()
+    shutil.copy2(archive, runtime_dir / archive.name)
+    return web_demo
+
+
+def _copy_macos_launcher_tree(destination_root: Path) -> Path:
+    web_demo = _copy_launcher_tree(destination_root)
+    for relative_path in (
+        Path("start-demo.command"),
+        Path("tools") / "bootstrap_macos.sh",
+    ):
+        source = SOURCE_WEB_DEMO / relative_path
+        if not source.is_file():
+            raise AssertionError(f"launcher is missing: {source}")
+        shutil.copy2(source, web_demo / relative_path)
+
+    archive = SOURCE_WEB_DEMO / "runtimes" / "macos-arm64-python.tar.gz"
     runtime_dir = web_demo / "runtimes"
     runtime_dir.mkdir()
     shutil.copy2(archive, runtime_dir / archive.name)
@@ -366,6 +385,96 @@ exec "$REAL_PYTHON" "$@"
             self.assertEqual(len(records), 1, records)
             self.assertEqual(records[0]["argv"], ["--check", "--port", "41000"])
             self.assertEqual(Path(str(records[0]["cwd"])).resolve(), web_demo.resolve())
+
+
+@unittest.skipUnless(sys.platform == "darwin", "requires macOS")
+class MacOSLauncherTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary_directory = TemporaryDirectory(prefix="LingShu macOS 测试 ")
+        self.root = Path(self.temporary_directory.name) / "仓库 副本"
+        self.web_demo = _copy_macos_launcher_tree(self.root)
+        self.server_log = self.root / "服务器 参数.jsonl"
+
+    def tearDown(self) -> None:
+        self.temporary_directory.cleanup()
+
+    def _base_environment(self) -> dict[str, str]:
+        environment = os.environ.copy()
+        environment["LAUNCH_SERVER_LOG"] = str(self.server_log)
+        environment["PYTHONHOME"] = str(self.root / "hostile python home")
+        environment["PYTHONPATH"] = str(self.root / "hostile python path")
+        environment["PYTHONUSERBASE"] = str(self.root / "hostile user base")
+        environment["PYTHONSTARTUP"] = str(self.root / "hostile startup.py")
+        environment["PYTHONDEBUG"] = "1"
+        environment["VIRTUAL_ENV"] = str(self.root / "hostile venv")
+        environment["CONDA_PREFIX"] = str(self.root / "hostile conda")
+        environment["__PYVENV_LAUNCHER__"] = str(self.root / "hostile launcher")
+        environment["DYLD_TEST_HOSTILE"] = "must be removed"
+        return environment
+
+    def _run(self, *arguments: str, environment: dict[str, str] | None = None):
+        return subprocess.run(
+            ["./start-demo.command", *arguments],
+            cwd=self.web_demo,
+            env=self._base_environment() if environment is None else environment,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            check=False,
+        )
+
+    def test_real_command_uses_bundled_runtime_and_reuses_cache(self):
+        first = self._run("--check")
+        second = self._run("--check")
+
+        for result in (first, second):
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(
+                "RUNTIME bundled CPython 3.12.14 (macOS arm64)",
+                result.stdout,
+            )
+        self.assertIn("CACHE reused", second.stdout)
+
+        records = _server_records(self.server_log)
+        self.assertEqual(len(records), 2, records)
+        expected_python = (
+            self.web_demo
+            / ".runtime-cache"
+            / "macos-arm64-8b0f1fa71eab"
+            / "python"
+            / "bin"
+            / "python3"
+        )
+        for record in records:
+            self.assertEqual(record["argv"], ["--check"])
+            self.assertEqual(Path(str(record["cwd"])).resolve(), self.web_demo.resolve())
+            self.assertEqual(
+                Path(str(record["executable"])).resolve(),
+                expected_python.resolve(),
+            )
+            self.assertEqual(record["isolated_environment"], {})
+
+    def test_real_command_propagates_arguments_and_child_exit(self):
+        environment = self._base_environment()
+        environment["FAKE_SERVER_EXIT"] = "37"
+
+        result = self._run(
+            "--check",
+            "--label",
+            "参数 路径 中文",
+            environment=environment,
+        )
+
+        self.assertEqual(result.returncode, 37, result.stdout + result.stderr)
+        records = _server_records(self.server_log)
+        self.assertEqual(len(records), 1, records)
+        self.assertEqual(
+            records[0]["argv"],
+            ["--check", "--label", "参数 路径 中文"],
+        )
 
 
 if __name__ == "__main__":
