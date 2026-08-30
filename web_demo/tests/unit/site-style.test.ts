@@ -6,7 +6,9 @@ describe('Semantic Signal visual system', () => {
     const css = await readFile(new URL('../../src/app.css', import.meta.url), 'utf8');
 
     expect(css).toContain('.hero-grid');
-    expect(css).toMatch(/\.application-frame\s*\{[^}]*grid-template-rows:/s);
+    expect(css).toMatch(
+      /\.application-frame\s*\{[^}]*grid-template-rows:\s*minmax\(clamp\(38rem,\s*50vw,\s*52rem\),\s*77svh\)/s,
+    );
     expect(css).toMatch(/\.hero-grid\s*\{[^}]*grid-template-columns:/s);
     expect(css).toMatch(/\.evidence-strip\s*\{[^}]*width:\s*100%/s);
     expect(css).toContain('.site-rail');
@@ -31,7 +33,12 @@ describe('Semantic Signal visual system', () => {
     expect(css).toContain('.signal-field');
     expect(css).toContain('.analysis-workspace');
     expect(css).toMatch(/\.hero-description\s*\{[^}]*top:\s*83\.8%/s);
-    expect(css).toMatch(/\.hero-actions\s*\{[^}]*top:\s*88%/s);
+    expect(css).toMatch(/\.hero-action-cluster\s*\{[^}]*top:\s*88%/s);
+    expect(css).toMatch(/\.upload-contract\s*\{[^}]*color:\s*var\(--mid\)[^}]*opacity:\s*0\.72/s);
+    expect(css).not.toMatch(/\.upload-contract\s*\{[^}]*display:\s*none/s);
+    expect(css).toMatch(
+      /@media \(min-width: 761px\) and \(max-height: 820px\)\s*\{\s*\.application-frame\s*\{[^}]*grid-template-rows:\s*minmax\(50rem,\s*100svh\)/s,
+    );
     expect(css).toContain('.analysis-back');
     expect(css).toContain('.threshold-waveform');
     expect(css).toContain('.protocol-curve-cloud');
@@ -79,7 +86,8 @@ describe('Semantic Signal visual system', () => {
     expect(mobileCss).toMatch(/\.display-title\s*\{[^}]*top:\s*5\.2%/s);
     expect(mobileCss).toMatch(/\.local-field-card,\s*\.local-field-loading\s*\{[^}]*top:\s*2\.3%[^}]*right:\s*3\.5%[^}]*width:\s*7rem/s);
     expect(mobileCss).toMatch(/\.hero-description\s*\{[^}]*top:\s*65\.8%/s);
-    expect(mobileCss).toMatch(/\.hero-actions\s*\{[^}]*top:\s*72\.5%/s);
+    expect(mobileCss).toMatch(/\.hero-action-cluster\s*\{[^}]*top:\s*72\.5%[^}]*width:\s*86%/s);
+    expect(mobileCss).toMatch(/\.upload-contract\s*\{[^}]*white-space:\s*normal/s);
     expect(css).toContain('@media (prefers-reduced-motion: reduce)');
     expect(css).not.toMatch(/url\(["']?https?:/i);
   });

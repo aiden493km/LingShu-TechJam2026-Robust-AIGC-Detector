@@ -490,8 +490,10 @@ export function DetectorScreen({ state, selectFile, reset, retryModel, currentRo
             <LocalFieldCard state={state} />
             <p className="model-word">B2-NJR</p>
             <p className="hero-description">Local browser inference for robust real-vs-AIGC image detection.</p>
-            <div className="hero-actions"><IdleActions state={state} canSelect={canSelect} retryModel={retryModel} reset={reset} /><RouteLink className="secondary-action" href="#/technology">VIEW MODEL DETAILS</RouteLink></div>
-            <p className="upload-contract">One JPEG, PNG, or WebP still image · maximum 25 MiB</p>
+            <div className="hero-action-cluster">
+              <div className="hero-actions"><IdleActions state={state} canSelect={canSelect} retryModel={retryModel} reset={reset} /><RouteLink className="secondary-action" href="#/technology">VIEW MODEL DETAILS</RouteLink></div>
+              <p className="upload-contract">Single still JPEG, PNG, or WebP · 25 MiB maximum</p>
+            </div>
             {presentation === 'idle' && (state.phase === 'error' || model?.fallbackReason !== undefined) ? <div className="idle-phase-panel"><PhaseStatus state={state} />{model?.fallbackReason === undefined ? null : <p className="fallback-note">Compatibility note: {model.fallbackReason}. The same FP32 model is running with WASM.</p>}</div> : null}
           </section>
           <section className="analysis-layer" aria-hidden={presentation === 'idle'}>
