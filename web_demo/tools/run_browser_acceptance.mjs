@@ -42,6 +42,7 @@ const ORT_RUNTIME_RELATIVE = path.join(
   'ort-wasm-simd-threaded.asyncify.wasm',
 );
 const FROZEN_THRESHOLD = 0.55657113;
+const DISTRIBUTION_VERIFIED_LINE = 'VERIFIED FP32 model and WebDemo distribution';
 const MAX_PROBABILITY_ERROR = 0.01;
 const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
 const READY_TIMEOUT_MS = 120_000;
@@ -653,7 +654,7 @@ export function validateAcceptanceReport(value) {
   invariant(value.freshCopy.batchCheck.exitCode === 0, 'fresh-copy BAT --check must exit zero');
   invariant(
     typeof value.freshCopy.batchCheck.output === 'string' &&
-      value.freshCopy.batchCheck.output.includes('Distribution verification passed.'),
+      value.freshCopy.batchCheck.output.includes(DISTRIBUTION_VERIFIED_LINE),
     'fresh-copy BAT --check must record distribution verification',
   );
   const freshUrl = parseLocalRootUrl(value.freshCopy.serverUrl, 'acceptance report freshCopy.serverUrl');
@@ -1954,7 +1955,10 @@ async function runBatchCheck(repositoryRoot) {
   );
   const output = `${result.stdout}${result.stderr}`;
   invariant(result.code === 0, `Fresh-copy BAT --check failed:\n${output}`);
-  invariant(output.includes('Distribution verification passed.'), 'Fresh-copy BAT --check omitted verification success');
+  invariant(
+    output.includes(DISTRIBUTION_VERIFIED_LINE),
+    'Fresh-copy BAT --check omitted verification success',
+  );
   invariant(!output.includes('READY '), 'Fresh-copy BAT --check must not start a server');
   return { exitCode: result.code, output: output.replace(/\s+/g, ' ').trim() };
 }

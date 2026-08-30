@@ -581,7 +581,10 @@ describe('acceptance evidence schema', () => {
         trackedFileCount: 100,
         excluded: ['.git', 'node_modules', '.venv', 'web_models'],
         npmInstallRun: false,
-        batchCheck: { exitCode: 0, output: 'Distribution verification passed.' },
+        batchCheck: {
+          exitCode: 0,
+          output: 'VERIFIED FP32 model and WebDemo distribution',
+        },
         serverUrl: `${freshOrigin}/`,
         providers: {
           normal: providerEvidence('normal', 'WebGPU', freshOrigin),
