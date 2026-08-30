@@ -129,6 +129,7 @@ describe('frontend scaffold', () => {
     expect(html).toContain('>Ready</p>');
     expect(html).toContain('UPLOAD IMAGE');
     expect(html).toContain('VIEW MODEL DETAILS');
+    expect(html).toContain('Single still JPEG, PNG, or WebP · 25 MiB maximum');
     expect(html).toContain('MODEL NOW');
     expect(html).toContain('NO IMAGE SELECTED');
     expect(html).toContain('src="/brands/github-mark.svg"');
