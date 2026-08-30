@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "passed": true,
-  "generatedAt": "2026-08-30T01:40:12.293Z",
-  "testedCommit": "9833631b63341a2ea285655e6f03451965f7bd0c",
+  "generatedAt": "2026-08-30T02:21:01.248Z",
+  "testedCommit": "45e64db10b2411d6bf2034ca0119c0771677c7e7",
   "evidencePolicy": {
     "testedCommitMeaning": "Exact committed code and artifacts executed by browser acceptance and tensor parity.",
     "evidenceCommitRelationship": "The evidence-only commit is expected to have testedCommit as its direct parent."
@@ -53,11 +53,11 @@
   "sourceReports": {
     "browserAcceptance": {
       "path": "web_demo/.generated-tests/browser-acceptance/latest.json",
-      "sha256": "a1c739c0aaa30147c2420f63107dc758b531d8c1a4976892249007501bf67bf6"
+      "sha256": "b107ae9ab4ac5692599c59afbb572f4eb48e089958457b2ee6a77a2afdd99f63"
     },
     "preprocessParity": {
       "path": "web_demo/.generated-tests/parity/browser-results.json",
-      "sha256": "858c7d330b0cf549ff5c3402a5a00efe58d875388eeeb9ca0878df0741e28431"
+      "sha256": "d4762dfc7aa98efacfef69896a587c811e72b8861a15b1e698e9079d07b1bb85"
     },
     "parityManifest": {
       "path": "web_demo/.generated-tests/parity/manifest.json",
@@ -67,7 +67,7 @@
   "tensorParity": {
     "report": {
       "schema_version": 1,
-      "generated_at": "2026-08-30T01:40:04.572Z",
+      "generated_at": "2026-08-30T02:20:55.481Z",
       "manifest": {
         "path": "web_demo/.generated-tests/parity/manifest.json",
         "sha256": "cb6f9005beb6179c965d81046446e250e9568764294ac6d77627824d2c7e57d5"
@@ -92,39 +92,39 @@
         "failures": []
       },
       "request_urls": [
-        "http://127.0.0.1:6197/.generated-tests/parity/manifest.json",
-        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__f1.f32",
-        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__f2.f32",
-        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__f3.f32",
-        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__f4.f32",
-        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__f5.f32",
-        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__r1.f32",
-        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__r2.f32",
-        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__r3.f32",
-        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__r4.f32",
-        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__r5.f32",
-        "http://127.0.0.1:6197/.generated-tests/parity/tensors/web_demo__tests__fixtures__exif-orientation-6.f32",
-        "http://127.0.0.1:6197/.generated-tests/parity/tensors/web_demo__tests__fixtures__grayscale.f32",
-        "http://127.0.0.1:6197/.generated-tests/parity/tensors/web_demo__tests__fixtures__near-threshold-synthetic.f32",
-        "http://127.0.0.1:6197/.generated-tests/parity/tensors/web_demo__tests__fixtures__non-square.f32",
-        "http://127.0.0.1:6197/.generated-tests/parity/tensors/web_demo__tests__fixtures__rgba-hidden-rgb.f32",
-        "http://127.0.0.1:6197/@vite/client",
-        "http://127.0.0.1:6197/node_modules/.vite/deps/@jsquash_jpeg_decode__js.js?v=54dcc0d8",
-        "http://127.0.0.1:6197/node_modules/.vite/deps/@jsquash_png_decode__js.js?v=54dcc0d8",
-        "http://127.0.0.1:6197/node_modules/.vite/deps/@jsquash_resize.js?v=54dcc0d8",
-        "http://127.0.0.1:6197/node_modules/.vite/deps/@jsquash_webp_decode__js.js?v=54dcc0d8",
-        "http://127.0.0.1:6197/node_modules/@jsquash/jpeg/codec/dec/mozjpeg_dec.wasm",
-        "http://127.0.0.1:6197/node_modules/@jsquash/png/codec/pkg/squoosh_png_bg.wasm",
-        "http://127.0.0.1:6197/node_modules/@jsquash/resize/lib/resize/pkg/squoosh_resize_bg.wasm",
-        "http://127.0.0.1:6197/node_modules/vite/dist/client/env.mjs",
-        "http://127.0.0.1:6197/src/runtime/exif.ts",
-        "http://127.0.0.1:6197/src/runtime/preprocess.ts",
-        "http://127.0.0.1:6197/src/runtime/upload.ts",
-        "http://127.0.0.1:6197/tests/browser/preprocess-harness.html",
-        "http://127.0.0.1:6197/tests/browser/preprocess-harness.ts"
+        "http://127.0.0.1:3016/.generated-tests/parity/manifest.json",
+        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__f1.f32",
+        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__f2.f32",
+        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__f3.f32",
+        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__f4.f32",
+        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__f5.f32",
+        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__r1.f32",
+        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__r2.f32",
+        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__r3.f32",
+        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__r4.f32",
+        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__r5.f32",
+        "http://127.0.0.1:3016/.generated-tests/parity/tensors/web_demo__tests__fixtures__exif-orientation-6.f32",
+        "http://127.0.0.1:3016/.generated-tests/parity/tensors/web_demo__tests__fixtures__grayscale.f32",
+        "http://127.0.0.1:3016/.generated-tests/parity/tensors/web_demo__tests__fixtures__near-threshold-synthetic.f32",
+        "http://127.0.0.1:3016/.generated-tests/parity/tensors/web_demo__tests__fixtures__non-square.f32",
+        "http://127.0.0.1:3016/.generated-tests/parity/tensors/web_demo__tests__fixtures__rgba-hidden-rgb.f32",
+        "http://127.0.0.1:3016/@vite/client",
+        "http://127.0.0.1:3016/node_modules/.vite/deps/@jsquash_jpeg_decode__js.js?v=54dcc0d8",
+        "http://127.0.0.1:3016/node_modules/.vite/deps/@jsquash_png_decode__js.js?v=54dcc0d8",
+        "http://127.0.0.1:3016/node_modules/.vite/deps/@jsquash_resize.js?v=54dcc0d8",
+        "http://127.0.0.1:3016/node_modules/.vite/deps/@jsquash_webp_decode__js.js?v=54dcc0d8",
+        "http://127.0.0.1:3016/node_modules/@jsquash/jpeg/codec/dec/mozjpeg_dec.wasm",
+        "http://127.0.0.1:3016/node_modules/@jsquash/png/codec/pkg/squoosh_png_bg.wasm",
+        "http://127.0.0.1:3016/node_modules/@jsquash/resize/lib/resize/pkg/squoosh_resize_bg.wasm",
+        "http://127.0.0.1:3016/node_modules/vite/dist/client/env.mjs",
+        "http://127.0.0.1:3016/src/runtime/exif.ts",
+        "http://127.0.0.1:3016/src/runtime/preprocess.ts",
+        "http://127.0.0.1:3016/src/runtime/upload.ts",
+        "http://127.0.0.1:3016/tests/browser/preprocess-harness.html",
+        "http://127.0.0.1:3016/tests/browser/preprocess-harness.ts"
       ],
       "websocket_urls": [
-        "ws://127.0.0.1:6197/?token=gvn5zQP7pueW"
+        "ws://127.0.0.1:3016/?token=7qXM9bx9HKl2"
       ],
       "blocked_requests": [],
       "browser_errors": [],
@@ -823,8 +823,8 @@
   "browserAcceptance": {
     "schemaVersion": 1,
     "passed": true,
-    "generatedAt": "2026-08-30T01:39:34.974Z",
-    "commit": "9833631b63341a2ea285655e6f03451965f7bd0c",
+    "generatedAt": "2026-08-30T02:20:02.572Z",
+    "commit": "45e64db10b2411d6bf2034ca0119c0771677c7e7",
     "parityManifest": {
       "path": "web_demo/.generated-tests/parity/manifest.json",
       "sha256": "cb6f9005beb6179c965d81046446e250e9568764294ac6d77627824d2c7e57d5"
@@ -884,7 +884,7 @@
               "absoluteError": 1.9147905294669698e-7,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 233.4,
+              "elapsedMs": 245.4,
               "thresholdFlip": false
             },
             {
@@ -895,7 +895,7 @@
               "absoluteError": 8.209570023787194e-9,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 24.5,
+              "elapsedMs": 24.9,
               "thresholdFlip": false
             },
             {
@@ -906,7 +906,7 @@
               "absoluteError": 5.767387700750248e-8,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 27.4,
+              "elapsedMs": 22.3,
               "thresholdFlip": false
             },
             {
@@ -917,7 +917,7 @@
               "absoluteError": 4.149824399668489e-7,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 22.4,
+              "elapsedMs": 21,
               "thresholdFlip": false
             },
             {
@@ -928,7 +928,7 @@
               "absoluteError": 8.510969662367529e-8,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 21.7,
+              "elapsedMs": 24.4,
               "thresholdFlip": false
             },
             {
@@ -939,7 +939,7 @@
               "absoluteError": 0.001108635937982938,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 21.1,
+              "elapsedMs": 27.1,
               "thresholdFlip": false
             },
             {
@@ -950,7 +950,7 @@
               "absoluteError": 1.17657931529779e-12,
               "label": "Real",
               "provider": "WebGPU",
-              "elapsedMs": 24.3,
+              "elapsedMs": 24.2,
               "thresholdFlip": false
             },
             {
@@ -961,7 +961,7 @@
               "absoluteError": 2.739965046589792e-12,
               "label": "Real",
               "provider": "WebGPU",
-              "elapsedMs": 23.1,
+              "elapsedMs": 22.2,
               "thresholdFlip": false
             },
             {
@@ -972,7 +972,7 @@
               "absoluteError": 1.931830334027005e-12,
               "label": "Real",
               "provider": "WebGPU",
-              "elapsedMs": 22.5,
+              "elapsedMs": 22.6,
               "thresholdFlip": false
             },
             {
@@ -983,7 +983,7 @@
               "absoluteError": 1.362583831462794e-11,
               "label": "Real",
               "provider": "WebGPU",
-              "elapsedMs": 23.2,
+              "elapsedMs": 21,
               "thresholdFlip": false
             },
             {
@@ -994,7 +994,7 @@
               "absoluteError": 0.0024650450724319484,
               "label": "Real",
               "provider": "WebGPU",
-              "elapsedMs": 23,
+              "elapsedMs": 20.5,
               "thresholdFlip": false
             },
             {
@@ -1005,7 +1005,7 @@
               "absoluteError": 1.3016915431554154e-9,
               "label": "Real",
               "provider": "WebGPU",
-              "elapsedMs": 21.4,
+              "elapsedMs": 24.3,
               "thresholdFlip": false
             },
             {
@@ -1016,7 +1016,7 @@
               "absoluteError": 0.000014503507815843975,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 22.7,
+              "elapsedMs": 24.3,
               "thresholdFlip": false
             },
             {
@@ -1027,7 +1027,7 @@
               "absoluteError": 0.000005021909939562086,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 24.9,
+              "elapsedMs": 21.3,
               "thresholdFlip": false
             },
             {
@@ -1038,7 +1038,7 @@
               "absoluteError": 0.00019608284638994444,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 21.2,
+              "elapsedMs": 21.4,
               "thresholdFlip": false
             }
           ],
@@ -1088,7 +1088,7 @@
               "absoluteError": 1.9147595919921656e-7,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 430.9,
+              "elapsedMs": 418.2,
               "thresholdFlip": false
             },
             {
@@ -1099,7 +1099,7 @@
               "absoluteError": 8.212709845523136e-9,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 350,
+              "elapsedMs": 344.6,
               "thresholdFlip": false
             },
             {
@@ -1110,7 +1110,7 @@
               "absoluteError": 5.767364230635508e-8,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 338.4,
+              "elapsedMs": 360,
               "thresholdFlip": false
             },
             {
@@ -1121,7 +1121,7 @@
               "absoluteError": 4.1498102110182344e-7,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 384.1,
+              "elapsedMs": 352.7,
               "thresholdFlip": false
             },
             {
@@ -1132,7 +1132,7 @@
               "absoluteError": 8.508007387497685e-8,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 367.4,
+              "elapsedMs": 320.9,
               "thresholdFlip": false
             },
             {
@@ -1143,7 +1143,7 @@
               "absoluteError": 0.001108670614105134,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 382.5,
+              "elapsedMs": 337.1,
               "thresholdFlip": false
             },
             {
@@ -1154,7 +1154,7 @@
               "absoluteError": 1.17657931529779e-12,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 420.5,
+              "elapsedMs": 361,
               "thresholdFlip": false
             },
             {
@@ -1165,7 +1165,7 @@
               "absoluteError": 1.0154081122556458e-12,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 385.6,
+              "elapsedMs": 343.2,
               "thresholdFlip": false
             },
             {
@@ -1176,7 +1176,7 @@
               "absoluteError": 6.870561573883594e-12,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 361.1,
+              "elapsedMs": 338.3,
               "thresholdFlip": false
             },
             {
@@ -1187,7 +1187,7 @@
               "absoluteError": 1.8761679680387837e-11,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 345.1,
+              "elapsedMs": 357.5,
               "thresholdFlip": false
             },
             {
@@ -1198,7 +1198,7 @@
               "absoluteError": 0.0024652219798388907,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 336.1,
+              "elapsedMs": 365.8,
               "thresholdFlip": false
             },
             {
@@ -1209,7 +1209,7 @@
               "absoluteError": 3.347224375248965e-9,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 364.6,
+              "elapsedMs": 369.8,
               "thresholdFlip": false
             },
             {
@@ -1220,7 +1220,7 @@
               "absoluteError": 0.000018167064806617894,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 378.8,
+              "elapsedMs": 320.9,
               "thresholdFlip": false
             },
             {
@@ -1231,7 +1231,7 @@
               "absoluteError": 0.0000050212228677182225,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 361,
+              "elapsedMs": 415.4,
               "thresholdFlip": false
             },
             {
@@ -1242,7 +1242,7 @@
               "absoluteError": 0.0001960790858787087,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 387,
+              "elapsedMs": 331.4,
               "thresholdFlip": false
             }
           ],
@@ -1251,6 +1251,652 @@
           "workflowChecks": false,
           "requestOrigins": [
             "http://127.0.0.1:8766"
+          ],
+          "webSocketOrigins": [],
+          "requestPaths": {
+            "/": 1,
+            "/assets/index-Dik4I6Xg.js": 1,
+            "/assets/index-DQGgHzSy.css": 1,
+            "/assets/mozjpeg_dec-muSO2n8T.wasm": 1,
+            "/assets/ort-wasm-simd-threaded.asyncify.mjs": 4,
+            "/assets/ort-wasm-simd-threaded.asyncify.wasm": 1,
+            "/assets/squoosh_png_bg-DAY7U9NW.wasm": 1,
+            "/assets/squoosh_resize_bg-YY9xfwUg.wasm": 1,
+            "/models/baseline2_njr_fp32.onnx": 1,
+            "/models/manifest.json": 1
+          },
+          "consoleMessages": []
+        },
+        "wasm": {
+          "mode": "wasm",
+          "expectedProvider": "WASM",
+          "gpu": {
+            "apiAvailable": true,
+            "adapterAvailable": true,
+            "adapterInfo": {
+              "vendor": "nvidia",
+              "architecture": "ampere",
+              "device": "",
+              "description": ""
+            }
+          },
+          "webGpuDisabledByHarness": false,
+          "fallbackNote": null,
+          "fallbackNoteVisible": false,
+          "crossOriginIsolated": true,
+          "images": [
+            {
+              "source": "demo_images/f1.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999985694885254,
+              "probability": 0.9999983780125662,
+              "absoluteError": 1.9147595919921656e-7,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 420.5,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f2.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999996423721313,
+              "probability": 0.9999996341594215,
+              "absoluteError": 8.212709845523136e-9,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 339,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f3.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999998807907104,
+              "probability": 0.9999999384643528,
+              "absoluteError": 5.767364230635508e-8,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 357.8,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f4.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.999998927116394,
+              "probability": 0.9999985121353729,
+              "absoluteError": 4.1498102110182344e-7,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 346.9,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f5.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999974966049194,
+              "probability": 0.9999974115248456,
+              "absoluteError": 8.508007387497685e-8,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 365.7,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r1.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9982048273086548,
+              "probability": 0.9993134979227599,
+              "absoluteError": 0.001108670614105134,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 332.8,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r2.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 2.4952137778200267e-7,
+              "probability": 2.4952255436131797e-7,
+              "absoluteError": 1.17657931529779e-12,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 351.5,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r3.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 3.5798055364466563e-7,
+              "probability": 3.579795382365534e-7,
+              "absoluteError": 1.0154081122556458e-12,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 414,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r4.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 6.592869681298907e-7,
+              "probability": 6.592800975683169e-7,
+              "absoluteError": 6.870561573883594e-12,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 331.1,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r5.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.0000017951260815607384,
+              "probability": 0.000001795107319881058,
+              "absoluteError": 1.8761679680387837e-11,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 332.1,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/exif-orientation-6.jpg",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.018864585206083574,
+              "probability": 0.016399363226244683,
+              "absoluteError": 0.0024652219798388907,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 316.4,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/grayscale.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.00019502631489033554,
+              "probability": 0.0001950296621147108,
+              "absoluteError": 3.347224375248965e-9,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 355.3,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/near-threshold-synthetic.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.5583520990260026,
+              "probability": 0.558333931961196,
+              "absoluteError": 0.000018167064806617894,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 366.5,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/non-square.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.9998849326211937,
+              "probability": 0.999879911398326,
+              "absoluteError": 0.0000050212228677182225,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 325,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/rgba-hidden-rgb.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.9918543603122597,
+              "probability": 0.9920504393981384,
+              "absoluteError": 0.0001960790858787087,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 321.4,
+              "thresholdFlip": false
+            }
+          ],
+          "maxAbsoluteError": 0.0024652219798388907,
+          "thresholdFlips": 0,
+          "workflowChecks": true,
+          "requestOrigins": [
+            "http://127.0.0.1:8766"
+          ],
+          "webSocketOrigins": [],
+          "requestPaths": {
+            "/?provider=wasm": 1,
+            "/assets/index-Dik4I6Xg.js": 1,
+            "/assets/index-DQGgHzSy.css": 1,
+            "/assets/mozjpeg_dec-muSO2n8T.wasm": 1,
+            "/assets/ort-wasm-simd-threaded.asyncify.mjs": 4,
+            "/assets/ort-wasm-simd-threaded.asyncify.wasm": 1,
+            "/assets/squoosh_png_bg-DAY7U9NW.wasm": 1,
+            "/assets/squoosh_resize_bg-YY9xfwUg.wasm": 1,
+            "/models/baseline2_njr_fp32.onnx": 1,
+            "/models/manifest.json": 1
+          },
+          "consoleMessages": [
+            "warning: The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+          ]
+        }
+      },
+      "terminationUnreachable": true
+    },
+    "artifactFailures": {
+      "corruptModel": {
+        "exitCode": 1,
+        "diagnostic": "Distribution verification failed: - model SHA-256 mismatch: expected e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69, found e6982c7e97eec32a1c5534697f1b0bf2274c33fc88d34e808e8ea4c8a328a937 for baseline2_njr_fp32.onnx"
+      },
+      "missingWasm": {
+        "exitCode": 1,
+        "diagnostic": "Distribution verification failed: - dist must contain exactly the approved ORT runtime files (assets/ort-wasm-simd-threaded.asyncify.mjs, assets/ort-wasm-simd-threaded.asyncify.wasm); found 1: assets/ort-wasm-simd-threaded.asyncify.mjs - ORT runtime assets/ort-wasm-simd-threaded.asyncify.wasm is missing or is not a regular file - dist/integrity.json lists files absent from dist: assets/ort-wasm-simd-threaded.asyncify.wasm"
+      }
+    },
+    "freshCopy": {
+      "directoryName": "LingShu 评委 本地复现",
+      "sourceCommit": "45e64db10b2411d6bf2034ca0119c0771677c7e7",
+      "trackedFileCount": 129,
+      "excluded": [
+        ".git",
+        "node_modules",
+        ".venv",
+        "web_models"
+      ],
+      "npmInstallRun": false,
+      "batchCheck": {
+        "exitCode": 0,
+        "output": "Distribution verification passed."
+      },
+      "serverUrl": "http://127.0.0.1:8765/",
+      "providers": {
+        "normal": {
+          "mode": "normal",
+          "expectedProvider": "WebGPU",
+          "gpu": {
+            "apiAvailable": true,
+            "adapterAvailable": true,
+            "adapterInfo": {
+              "vendor": "nvidia",
+              "architecture": "ampere",
+              "device": "",
+              "description": ""
+            }
+          },
+          "webGpuDisabledByHarness": false,
+          "fallbackNote": null,
+          "fallbackNoteVisible": false,
+          "crossOriginIsolated": true,
+          "images": [
+            {
+              "source": "demo_images/f1.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999985694885254,
+              "probability": 0.9999983780094724,
+              "absoluteError": 1.9147905294669698e-7,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 258.4,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f2.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999996423721313,
+              "probability": 0.9999996341625613,
+              "absoluteError": 8.209570023787194e-9,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 31.5,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f3.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999998807907104,
+              "probability": 0.9999999384645875,
+              "absoluteError": 5.767387700750248e-8,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 20.6,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f4.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.999998927116394,
+              "probability": 0.9999985121339541,
+              "absoluteError": 4.149824399668489e-7,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 21.9,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f5.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999974966049194,
+              "probability": 0.9999974114952228,
+              "absoluteError": 8.510969662367529e-8,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 22.3,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r1.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9982048273086548,
+              "probability": 0.9993134632466377,
+              "absoluteError": 0.001108635937982938,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 23.8,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r2.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 2.4952137778200267e-7,
+              "probability": 2.4952255436131797e-7,
+              "absoluteError": 1.17657931529779e-12,
+              "label": "Real",
+              "provider": "WebGPU",
+              "elapsedMs": 23.4,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r3.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 3.5798055364466563e-7,
+              "probability": 3.579832936097122e-7,
+              "absoluteError": 2.739965046589792e-12,
+              "label": "Real",
+              "provider": "WebGPU",
+              "elapsedMs": 23,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r4.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 6.592869681298907e-7,
+              "probability": 6.592888999602248e-7,
+              "absoluteError": 1.931830334027005e-12,
+              "label": "Real",
+              "provider": "WebGPU",
+              "elapsedMs": 23.2,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r5.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.0000017951260815607384,
+              "probability": 0.0000017951124557224238,
+              "absoluteError": 1.362583831462794e-11,
+              "label": "Real",
+              "provider": "WebGPU",
+              "elapsedMs": 20.5,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/exif-orientation-6.jpg",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.018864585206083574,
+              "probability": 0.016399540133651625,
+              "absoluteError": 0.0024650450724319484,
+              "label": "Real",
+              "provider": "WebGPU",
+              "elapsedMs": 20.9,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/grayscale.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.00019502631489033554,
+              "probability": 0.0001950276165818787,
+              "absoluteError": 1.3016915431554154e-9,
+              "label": "Real",
+              "provider": "WebGPU",
+              "elapsedMs": 19.9,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/near-threshold-synthetic.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.5583520990260026,
+              "probability": 0.5583375955181867,
+              "absoluteError": 0.000014503507815843975,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 21.9,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/non-square.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.9998849326211937,
+              "probability": 0.9998799107112541,
+              "absoluteError": 0.000005021909939562086,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 21.7,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/rgba-hidden-rgb.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.9918543603122597,
+              "probability": 0.9920504431586497,
+              "absoluteError": 0.00019608284638994444,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 21.4,
+              "thresholdFlip": false
+            }
+          ],
+          "maxAbsoluteError": 0.0024650450724319484,
+          "thresholdFlips": 0,
+          "workflowChecks": false,
+          "requestOrigins": [
+            "http://127.0.0.1:8765"
+          ],
+          "webSocketOrigins": [],
+          "requestPaths": {
+            "/": 1,
+            "/assets/index-Dik4I6Xg.js": 1,
+            "/assets/index-DQGgHzSy.css": 1,
+            "/assets/mozjpeg_dec-muSO2n8T.wasm": 1,
+            "/assets/ort-wasm-simd-threaded.asyncify.mjs": 4,
+            "/assets/ort-wasm-simd-threaded.asyncify.wasm": 1,
+            "/assets/squoosh_png_bg-DAY7U9NW.wasm": 1,
+            "/assets/squoosh_resize_bg-YY9xfwUg.wasm": 1,
+            "/models/baseline2_njr_fp32.onnx": 1,
+            "/models/manifest.json": 1
+          },
+          "consoleMessages": [
+            "warning: The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127",
+            "warning: The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127",
+            "warning: The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+          ]
+        },
+        "fallback": {
+          "mode": "fallback",
+          "expectedProvider": "WASM",
+          "gpu": {
+            "apiAvailable": false,
+            "adapterAvailable": false,
+            "adapterInfo": null
+          },
+          "webGpuDisabledByHarness": true,
+          "fallbackNote": "Compatibility note: WebGPU adapter unavailable. The same FP32 model is running with WASM.",
+          "fallbackNoteVisible": true,
+          "crossOriginIsolated": true,
+          "images": [
+            {
+              "source": "demo_images/f1.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999985694885254,
+              "probability": 0.9999983780125662,
+              "absoluteError": 1.9147595919921656e-7,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 473.8,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f2.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999996423721313,
+              "probability": 0.9999996341594215,
+              "absoluteError": 8.212709845523136e-9,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 396.7,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f3.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999998807907104,
+              "probability": 0.9999999384643528,
+              "absoluteError": 5.767364230635508e-8,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 383.6,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f4.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.999998927116394,
+              "probability": 0.9999985121353729,
+              "absoluteError": 4.1498102110182344e-7,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 335.5,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f5.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999974966049194,
+              "probability": 0.9999974115248456,
+              "absoluteError": 8.508007387497685e-8,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 334.8,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r1.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9982048273086548,
+              "probability": 0.9993134979227599,
+              "absoluteError": 0.001108670614105134,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 409.7,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r2.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 2.4952137778200267e-7,
+              "probability": 2.4952255436131797e-7,
+              "absoluteError": 1.17657931529779e-12,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 347.2,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r3.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 3.5798055364466563e-7,
+              "probability": 3.579795382365534e-7,
+              "absoluteError": 1.0154081122556458e-12,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 355.9,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r4.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 6.592869681298907e-7,
+              "probability": 6.592800975683169e-7,
+              "absoluteError": 6.870561573883594e-12,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 343.3,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r5.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.0000017951260815607384,
+              "probability": 0.000001795107319881058,
+              "absoluteError": 1.8761679680387837e-11,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 351.2,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/exif-orientation-6.jpg",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.018864585206083574,
+              "probability": 0.016399363226244683,
+              "absoluteError": 0.0024652219798388907,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 357.6,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/grayscale.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.00019502631489033554,
+              "probability": 0.0001950296621147108,
+              "absoluteError": 3.347224375248965e-9,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 344.2,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/near-threshold-synthetic.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.5583520990260026,
+              "probability": 0.558333931961196,
+              "absoluteError": 0.000018167064806617894,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 373.8,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/non-square.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.9998849326211937,
+              "probability": 0.999879911398326,
+              "absoluteError": 0.0000050212228677182225,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 345.9,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/rgba-hidden-rgb.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.9918543603122597,
+              "probability": 0.9920504393981384,
+              "absoluteError": 0.0001960790858787087,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 364.1,
+              "thresholdFlip": false
+            }
+          ],
+          "maxAbsoluteError": 0.0024652219798388907,
+          "thresholdFlips": 0,
+          "workflowChecks": false,
+          "requestOrigins": [
+            "http://127.0.0.1:8765"
           ],
           "webSocketOrigins": [],
           "requestPaths": {
@@ -1304,7 +1950,7 @@
               "absoluteError": 8.212709845523136e-9,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 320.2,
+              "elapsedMs": 364,
               "thresholdFlip": false
             },
             {
@@ -1313,658 +1959,12 @@
               "referenceProbability": 0.9999998807907104,
               "probability": 0.9999999384643528,
               "absoluteError": 5.767364230635508e-8,
-              "label": "AIGC",
-              "provider": "WASM",
-              "elapsedMs": 314.8,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/f4.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.999998927116394,
-              "probability": 0.9999985121353729,
-              "absoluteError": 4.1498102110182344e-7,
-              "label": "AIGC",
-              "provider": "WASM",
-              "elapsedMs": 319.8,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/f5.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.9999974966049194,
-              "probability": 0.9999974115248456,
-              "absoluteError": 8.508007387497685e-8,
-              "label": "AIGC",
-              "provider": "WASM",
-              "elapsedMs": 348.8,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/r1.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.9982048273086548,
-              "probability": 0.9993134979227599,
-              "absoluteError": 0.001108670614105134,
-              "label": "AIGC",
-              "provider": "WASM",
-              "elapsedMs": 331.9,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/r2.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 2.4952137778200267e-7,
-              "probability": 2.4952255436131797e-7,
-              "absoluteError": 1.17657931529779e-12,
-              "label": "Real",
-              "provider": "WASM",
-              "elapsedMs": 358.3,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/r3.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 3.5798055364466563e-7,
-              "probability": 3.579795382365534e-7,
-              "absoluteError": 1.0154081122556458e-12,
-              "label": "Real",
-              "provider": "WASM",
-              "elapsedMs": 351.1,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/r4.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 6.592869681298907e-7,
-              "probability": 6.592800975683169e-7,
-              "absoluteError": 6.870561573883594e-12,
-              "label": "Real",
-              "provider": "WASM",
-              "elapsedMs": 335.8,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/r5.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.0000017951260815607384,
-              "probability": 0.000001795107319881058,
-              "absoluteError": 1.8761679680387837e-11,
-              "label": "Real",
-              "provider": "WASM",
-              "elapsedMs": 336.7,
-              "thresholdFlip": false
-            },
-            {
-              "source": "web_demo/tests/fixtures/exif-orientation-6.jpg",
-              "reference": "pillow_fp32_onnx",
-              "referenceProbability": 0.018864585206083574,
-              "probability": 0.016399363226244683,
-              "absoluteError": 0.0024652219798388907,
-              "label": "Real",
-              "provider": "WASM",
-              "elapsedMs": 339.7,
-              "thresholdFlip": false
-            },
-            {
-              "source": "web_demo/tests/fixtures/grayscale.png",
-              "reference": "pillow_fp32_onnx",
-              "referenceProbability": 0.00019502631489033554,
-              "probability": 0.0001950296621147108,
-              "absoluteError": 3.347224375248965e-9,
-              "label": "Real",
-              "provider": "WASM",
-              "elapsedMs": 337.3,
-              "thresholdFlip": false
-            },
-            {
-              "source": "web_demo/tests/fixtures/near-threshold-synthetic.png",
-              "reference": "pillow_fp32_onnx",
-              "referenceProbability": 0.5583520990260026,
-              "probability": 0.558333931961196,
-              "absoluteError": 0.000018167064806617894,
-              "label": "AIGC",
-              "provider": "WASM",
-              "elapsedMs": 353.5,
-              "thresholdFlip": false
-            },
-            {
-              "source": "web_demo/tests/fixtures/non-square.png",
-              "reference": "pillow_fp32_onnx",
-              "referenceProbability": 0.9998849326211937,
-              "probability": 0.999879911398326,
-              "absoluteError": 0.0000050212228677182225,
-              "label": "AIGC",
-              "provider": "WASM",
-              "elapsedMs": 356.5,
-              "thresholdFlip": false
-            },
-            {
-              "source": "web_demo/tests/fixtures/rgba-hidden-rgb.png",
-              "reference": "pillow_fp32_onnx",
-              "referenceProbability": 0.9918543603122597,
-              "probability": 0.9920504393981384,
-              "absoluteError": 0.0001960790858787087,
-              "label": "AIGC",
-              "provider": "WASM",
-              "elapsedMs": 376.6,
-              "thresholdFlip": false
-            }
-          ],
-          "maxAbsoluteError": 0.0024652219798388907,
-          "thresholdFlips": 0,
-          "workflowChecks": true,
-          "requestOrigins": [
-            "http://127.0.0.1:8766"
-          ],
-          "webSocketOrigins": [],
-          "requestPaths": {
-            "/?provider=wasm": 1,
-            "/assets/index-Dik4I6Xg.js": 1,
-            "/assets/index-DQGgHzSy.css": 1,
-            "/assets/mozjpeg_dec-muSO2n8T.wasm": 1,
-            "/assets/ort-wasm-simd-threaded.asyncify.mjs": 4,
-            "/assets/ort-wasm-simd-threaded.asyncify.wasm": 1,
-            "/assets/squoosh_png_bg-DAY7U9NW.wasm": 1,
-            "/assets/squoosh_resize_bg-YY9xfwUg.wasm": 1,
-            "/models/baseline2_njr_fp32.onnx": 1,
-            "/models/manifest.json": 1
-          },
-          "consoleMessages": [
-            "warning: The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
-          ]
-        }
-      },
-      "terminationUnreachable": true
-    },
-    "artifactFailures": {
-      "corruptModel": {
-        "exitCode": 1,
-        "diagnostic": "Distribution verification failed: - model SHA-256 mismatch: expected e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69, found e6982c7e97eec32a1c5534697f1b0bf2274c33fc88d34e808e8ea4c8a328a937 for baseline2_njr_fp32.onnx"
-      },
-      "missingWasm": {
-        "exitCode": 1,
-        "diagnostic": "Distribution verification failed: - dist must contain exactly the approved ORT runtime files (assets/ort-wasm-simd-threaded.asyncify.mjs, assets/ort-wasm-simd-threaded.asyncify.wasm); found 1: assets/ort-wasm-simd-threaded.asyncify.mjs - ORT runtime assets/ort-wasm-simd-threaded.asyncify.wasm is missing or is not a regular file - dist/integrity.json lists files absent from dist: assets/ort-wasm-simd-threaded.asyncify.wasm"
-      }
-    },
-    "freshCopy": {
-      "directoryName": "LingShu 评委 本地复现",
-      "sourceCommit": "9833631b63341a2ea285655e6f03451965f7bd0c",
-      "trackedFileCount": 127,
-      "excluded": [
-        ".git",
-        "node_modules",
-        ".venv",
-        "web_models"
-      ],
-      "npmInstallRun": false,
-      "batchCheck": {
-        "exitCode": 0,
-        "output": "Distribution verification passed."
-      },
-      "serverUrl": "http://127.0.0.1:8765/",
-      "providers": {
-        "normal": {
-          "mode": "normal",
-          "expectedProvider": "WebGPU",
-          "gpu": {
-            "apiAvailable": true,
-            "adapterAvailable": true,
-            "adapterInfo": {
-              "vendor": "nvidia",
-              "architecture": "ampere",
-              "device": "",
-              "description": ""
-            }
-          },
-          "webGpuDisabledByHarness": false,
-          "fallbackNote": null,
-          "fallbackNoteVisible": false,
-          "crossOriginIsolated": true,
-          "images": [
-            {
-              "source": "demo_images/f1.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.9999985694885254,
-              "probability": 0.9999983780094724,
-              "absoluteError": 1.9147905294669698e-7,
-              "label": "AIGC",
-              "provider": "WebGPU",
-              "elapsedMs": 232.7,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/f2.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.9999996423721313,
-              "probability": 0.9999996341625613,
-              "absoluteError": 8.209570023787194e-9,
-              "label": "AIGC",
-              "provider": "WebGPU",
-              "elapsedMs": 29.7,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/f3.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.9999998807907104,
-              "probability": 0.9999999384645875,
-              "absoluteError": 5.767387700750248e-8,
-              "label": "AIGC",
-              "provider": "WebGPU",
-              "elapsedMs": 23.4,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/f4.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.999998927116394,
-              "probability": 0.9999985121339541,
-              "absoluteError": 4.149824399668489e-7,
-              "label": "AIGC",
-              "provider": "WebGPU",
-              "elapsedMs": 22.5,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/f5.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.9999974966049194,
-              "probability": 0.9999974114952228,
-              "absoluteError": 8.510969662367529e-8,
-              "label": "AIGC",
-              "provider": "WebGPU",
-              "elapsedMs": 23.7,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/r1.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.9982048273086548,
-              "probability": 0.9993134632466377,
-              "absoluteError": 0.001108635937982938,
-              "label": "AIGC",
-              "provider": "WebGPU",
-              "elapsedMs": 22.5,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/r2.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 2.4952137778200267e-7,
-              "probability": 2.4952255436131797e-7,
-              "absoluteError": 1.17657931529779e-12,
-              "label": "Real",
-              "provider": "WebGPU",
-              "elapsedMs": 23,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/r3.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 3.5798055364466563e-7,
-              "probability": 3.579832936097122e-7,
-              "absoluteError": 2.739965046589792e-12,
-              "label": "Real",
-              "provider": "WebGPU",
-              "elapsedMs": 23,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/r4.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 6.592869681298907e-7,
-              "probability": 6.592888999602248e-7,
-              "absoluteError": 1.931830334027005e-12,
-              "label": "Real",
-              "provider": "WebGPU",
-              "elapsedMs": 22.4,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/r5.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.0000017951260815607384,
-              "probability": 0.0000017951124557224238,
-              "absoluteError": 1.362583831462794e-11,
-              "label": "Real",
-              "provider": "WebGPU",
-              "elapsedMs": 23.2,
-              "thresholdFlip": false
-            },
-            {
-              "source": "web_demo/tests/fixtures/exif-orientation-6.jpg",
-              "reference": "pillow_fp32_onnx",
-              "referenceProbability": 0.018864585206083574,
-              "probability": 0.016399540133651625,
-              "absoluteError": 0.0024650450724319484,
-              "label": "Real",
-              "provider": "WebGPU",
-              "elapsedMs": 21.7,
-              "thresholdFlip": false
-            },
-            {
-              "source": "web_demo/tests/fixtures/grayscale.png",
-              "reference": "pillow_fp32_onnx",
-              "referenceProbability": 0.00019502631489033554,
-              "probability": 0.0001950276165818787,
-              "absoluteError": 1.3016915431554154e-9,
-              "label": "Real",
-              "provider": "WebGPU",
-              "elapsedMs": 24.7,
-              "thresholdFlip": false
-            },
-            {
-              "source": "web_demo/tests/fixtures/near-threshold-synthetic.png",
-              "reference": "pillow_fp32_onnx",
-              "referenceProbability": 0.5583520990260026,
-              "probability": 0.5583375955181867,
-              "absoluteError": 0.000014503507815843975,
-              "label": "AIGC",
-              "provider": "WebGPU",
-              "elapsedMs": 24,
-              "thresholdFlip": false
-            },
-            {
-              "source": "web_demo/tests/fixtures/non-square.png",
-              "reference": "pillow_fp32_onnx",
-              "referenceProbability": 0.9998849326211937,
-              "probability": 0.9998799107112541,
-              "absoluteError": 0.000005021909939562086,
-              "label": "AIGC",
-              "provider": "WebGPU",
-              "elapsedMs": 22.2,
-              "thresholdFlip": false
-            },
-            {
-              "source": "web_demo/tests/fixtures/rgba-hidden-rgb.png",
-              "reference": "pillow_fp32_onnx",
-              "referenceProbability": 0.9918543603122597,
-              "probability": 0.9920504431586497,
-              "absoluteError": 0.00019608284638994444,
-              "label": "AIGC",
-              "provider": "WebGPU",
-              "elapsedMs": 20.7,
-              "thresholdFlip": false
-            }
-          ],
-          "maxAbsoluteError": 0.0024650450724319484,
-          "thresholdFlips": 0,
-          "workflowChecks": false,
-          "requestOrigins": [
-            "http://127.0.0.1:8765"
-          ],
-          "webSocketOrigins": [],
-          "requestPaths": {
-            "/": 1,
-            "/assets/index-Dik4I6Xg.js": 1,
-            "/assets/index-DQGgHzSy.css": 1,
-            "/assets/mozjpeg_dec-muSO2n8T.wasm": 1,
-            "/assets/ort-wasm-simd-threaded.asyncify.mjs": 4,
-            "/assets/ort-wasm-simd-threaded.asyncify.wasm": 1,
-            "/assets/squoosh_png_bg-DAY7U9NW.wasm": 1,
-            "/assets/squoosh_resize_bg-YY9xfwUg.wasm": 1,
-            "/models/baseline2_njr_fp32.onnx": 1,
-            "/models/manifest.json": 1
-          },
-          "consoleMessages": [
-            "warning: The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127",
-            "warning: The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127",
-            "warning: The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
-          ]
-        },
-        "fallback": {
-          "mode": "fallback",
-          "expectedProvider": "WASM",
-          "gpu": {
-            "apiAvailable": false,
-            "adapterAvailable": false,
-            "adapterInfo": null
-          },
-          "webGpuDisabledByHarness": true,
-          "fallbackNote": "Compatibility note: WebGPU adapter unavailable. The same FP32 model is running with WASM.",
-          "fallbackNoteVisible": true,
-          "crossOriginIsolated": true,
-          "images": [
-            {
-              "source": "demo_images/f1.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.9999985694885254,
-              "probability": 0.9999983780125662,
-              "absoluteError": 1.9147595919921656e-7,
-              "label": "AIGC",
-              "provider": "WASM",
-              "elapsedMs": 456.6,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/f2.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.9999996423721313,
-              "probability": 0.9999996341594215,
-              "absoluteError": 8.212709845523136e-9,
-              "label": "AIGC",
-              "provider": "WASM",
-              "elapsedMs": 340.9,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/f3.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.9999998807907104,
-              "probability": 0.9999999384643528,
-              "absoluteError": 5.767364230635508e-8,
-              "label": "AIGC",
-              "provider": "WASM",
-              "elapsedMs": 344.1,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/f4.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.999998927116394,
-              "probability": 0.9999985121353729,
-              "absoluteError": 4.1498102110182344e-7,
-              "label": "AIGC",
-              "provider": "WASM",
-              "elapsedMs": 349.2,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/f5.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.9999974966049194,
-              "probability": 0.9999974115248456,
-              "absoluteError": 8.508007387497685e-8,
               "label": "AIGC",
               "provider": "WASM",
               "elapsedMs": 351.6,
               "thresholdFlip": false
             },
             {
-              "source": "demo_images/r1.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.9982048273086548,
-              "probability": 0.9993134979227599,
-              "absoluteError": 0.001108670614105134,
-              "label": "AIGC",
-              "provider": "WASM",
-              "elapsedMs": 371.1,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/r2.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 2.4952137778200267e-7,
-              "probability": 2.4952255436131797e-7,
-              "absoluteError": 1.17657931529779e-12,
-              "label": "Real",
-              "provider": "WASM",
-              "elapsedMs": 374.4,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/r3.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 3.5798055364466563e-7,
-              "probability": 3.579795382365534e-7,
-              "absoluteError": 1.0154081122556458e-12,
-              "label": "Real",
-              "provider": "WASM",
-              "elapsedMs": 379.9,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/r4.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 6.592869681298907e-7,
-              "probability": 6.592800975683169e-7,
-              "absoluteError": 6.870561573883594e-12,
-              "label": "Real",
-              "provider": "WASM",
-              "elapsedMs": 336.2,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/r5.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.0000017951260815607384,
-              "probability": 0.000001795107319881058,
-              "absoluteError": 1.8761679680387837e-11,
-              "label": "Real",
-              "provider": "WASM",
-              "elapsedMs": 355.9,
-              "thresholdFlip": false
-            },
-            {
-              "source": "web_demo/tests/fixtures/exif-orientation-6.jpg",
-              "reference": "pillow_fp32_onnx",
-              "referenceProbability": 0.018864585206083574,
-              "probability": 0.016399363226244683,
-              "absoluteError": 0.0024652219798388907,
-              "label": "Real",
-              "provider": "WASM",
-              "elapsedMs": 337.7,
-              "thresholdFlip": false
-            },
-            {
-              "source": "web_demo/tests/fixtures/grayscale.png",
-              "reference": "pillow_fp32_onnx",
-              "referenceProbability": 0.00019502631489033554,
-              "probability": 0.0001950296621147108,
-              "absoluteError": 3.347224375248965e-9,
-              "label": "Real",
-              "provider": "WASM",
-              "elapsedMs": 342.7,
-              "thresholdFlip": false
-            },
-            {
-              "source": "web_demo/tests/fixtures/near-threshold-synthetic.png",
-              "reference": "pillow_fp32_onnx",
-              "referenceProbability": 0.5583520990260026,
-              "probability": 0.558333931961196,
-              "absoluteError": 0.000018167064806617894,
-              "label": "AIGC",
-              "provider": "WASM",
-              "elapsedMs": 454.3,
-              "thresholdFlip": false
-            },
-            {
-              "source": "web_demo/tests/fixtures/non-square.png",
-              "reference": "pillow_fp32_onnx",
-              "referenceProbability": 0.9998849326211937,
-              "probability": 0.999879911398326,
-              "absoluteError": 0.0000050212228677182225,
-              "label": "AIGC",
-              "provider": "WASM",
-              "elapsedMs": 363,
-              "thresholdFlip": false
-            },
-            {
-              "source": "web_demo/tests/fixtures/rgba-hidden-rgb.png",
-              "reference": "pillow_fp32_onnx",
-              "referenceProbability": 0.9918543603122597,
-              "probability": 0.9920504393981384,
-              "absoluteError": 0.0001960790858787087,
-              "label": "AIGC",
-              "provider": "WASM",
-              "elapsedMs": 345.1,
-              "thresholdFlip": false
-            }
-          ],
-          "maxAbsoluteError": 0.0024652219798388907,
-          "thresholdFlips": 0,
-          "workflowChecks": false,
-          "requestOrigins": [
-            "http://127.0.0.1:8765"
-          ],
-          "webSocketOrigins": [],
-          "requestPaths": {
-            "/": 1,
-            "/assets/index-Dik4I6Xg.js": 1,
-            "/assets/index-DQGgHzSy.css": 1,
-            "/assets/mozjpeg_dec-muSO2n8T.wasm": 1,
-            "/assets/ort-wasm-simd-threaded.asyncify.mjs": 4,
-            "/assets/ort-wasm-simd-threaded.asyncify.wasm": 1,
-            "/assets/squoosh_png_bg-DAY7U9NW.wasm": 1,
-            "/assets/squoosh_resize_bg-YY9xfwUg.wasm": 1,
-            "/models/baseline2_njr_fp32.onnx": 1,
-            "/models/manifest.json": 1
-          },
-          "consoleMessages": []
-        },
-        "wasm": {
-          "mode": "wasm",
-          "expectedProvider": "WASM",
-          "gpu": {
-            "apiAvailable": true,
-            "adapterAvailable": true,
-            "adapterInfo": {
-              "vendor": "nvidia",
-              "architecture": "ampere",
-              "device": "",
-              "description": ""
-            }
-          },
-          "webGpuDisabledByHarness": false,
-          "fallbackNote": null,
-          "fallbackNoteVisible": false,
-          "crossOriginIsolated": true,
-          "images": [
-            {
-              "source": "demo_images/f1.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.9999985694885254,
-              "probability": 0.9999983780125662,
-              "absoluteError": 1.9147595919921656e-7,
-              "label": "AIGC",
-              "provider": "WASM",
-              "elapsedMs": 449,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/f2.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.9999996423721313,
-              "probability": 0.9999996341594215,
-              "absoluteError": 8.212709845523136e-9,
-              "label": "AIGC",
-              "provider": "WASM",
-              "elapsedMs": 354,
-              "thresholdFlip": false
-            },
-            {
-              "source": "demo_images/f3.png",
-              "reference": "demo_predictions_cpu",
-              "referenceProbability": 0.9999998807907104,
-              "probability": 0.9999999384643528,
-              "absoluteError": 5.767364230635508e-8,
-              "label": "AIGC",
-              "provider": "WASM",
-              "elapsedMs": 364.7,
-              "thresholdFlip": false
-            },
-            {
               "source": "demo_images/f4.png",
               "reference": "demo_predictions_cpu",
               "referenceProbability": 0.999998927116394,
@@ -1972,7 +1972,7 @@
               "absoluteError": 4.1498102110182344e-7,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 342.5,
+              "elapsedMs": 366.2,
               "thresholdFlip": false
             },
             {
@@ -1983,7 +1983,7 @@
               "absoluteError": 8.508007387497685e-8,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 361.9,
+              "elapsedMs": 369.1,
               "thresholdFlip": false
             },
             {
@@ -1994,7 +1994,7 @@
               "absoluteError": 0.001108670614105134,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 356.2,
+              "elapsedMs": 397,
               "thresholdFlip": false
             },
             {
@@ -2005,7 +2005,7 @@
               "absoluteError": 1.17657931529779e-12,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 353.6,
+              "elapsedMs": 400,
               "thresholdFlip": false
             },
             {
@@ -2016,7 +2016,7 @@
               "absoluteError": 1.0154081122556458e-12,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 391.7,
+              "elapsedMs": 346.8,
               "thresholdFlip": false
             },
             {
@@ -2027,7 +2027,7 @@
               "absoluteError": 6.870561573883594e-12,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 384.8,
+              "elapsedMs": 357.6,
               "thresholdFlip": false
             },
             {
@@ -2038,7 +2038,7 @@
               "absoluteError": 1.8761679680387837e-11,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 350.7,
+              "elapsedMs": 353.8,
               "thresholdFlip": false
             },
             {
@@ -2049,7 +2049,7 @@
               "absoluteError": 0.0024652219798388907,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 370.3,
+              "elapsedMs": 320,
               "thresholdFlip": false
             },
             {
@@ -2060,7 +2060,7 @@
               "absoluteError": 3.347224375248965e-9,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 377.5,
+              "elapsedMs": 329,
               "thresholdFlip": false
             },
             {
@@ -2071,7 +2071,7 @@
               "absoluteError": 0.000018167064806617894,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 417.9,
+              "elapsedMs": 327.7,
               "thresholdFlip": false
             },
             {
@@ -2082,7 +2082,7 @@
               "absoluteError": 0.0000050212228677182225,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 382.1,
+              "elapsedMs": 350.9,
               "thresholdFlip": false
             },
             {
@@ -2093,7 +2093,7 @@
               "absoluteError": 0.0001960790858787087,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 378.5,
+              "elapsedMs": 350.3,
               "thresholdFlip": false
             }
           ],
