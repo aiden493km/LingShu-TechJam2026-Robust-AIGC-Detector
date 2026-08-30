@@ -176,17 +176,20 @@ exit "$status"
         ):
             self.assertIn(tool, content)
 
-    def test_macos_bootstrap_uses_kernel_lock_file_descriptor(self):
+    def test_macos_bootstrap_uses_compatible_kernel_lock_command(self):
         bootstrap = self.REPOSITORY_ROOT / "web_demo" / "tools" / "bootstrap_macos.sh"
         content = bootstrap.read_text(encoding="utf-8")
 
         for fragment in (
-            'exec 9>>"$lock_path"',
-            '/usr/bin/lockf -s -t 8 9',
-            'exec 9>&-',
+            '/usr/bin/env "LINGSHU_MACOS_CACHE_TOKEN=$cache_phase_token"',
+            '/usr/bin/lockf -s -t 8 -k "$lock_path"',
+            '"$bootstrap_script" --internal-cache-phase "$cache_phase_token"',
+            'if [ "${1-}" = \'--internal-cache-phase\' ] && [ -n "${LINGSHU_MACOS_CACHE_TOKEN-}" ]; then',
         ):
             self.assertIn(fragment, content)
         for forbidden in (
+            "exec 9",
+            "/usr/bin/lockf -s -t 8 9",
             ".owner",
             ".stale-",
             "owner_pid",

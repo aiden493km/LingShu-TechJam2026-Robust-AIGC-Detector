@@ -10,7 +10,6 @@ umask 077
 
 temp_cache=''
 invalid_cache=''
-lock_fd_open=0
 lock_path=''
 cache_root=''
 last_probe_error=''
@@ -24,19 +23,15 @@ cleanup() {
   cleanup_status=$?
   trap - 0 1 2 15
 
-  if [ "$lock_fd_open" -eq 1 ]; then
-    exec 9>&-
-    lock_fd_open=0
-  fi
   if [ -n "$temp_cache" ] && [ -n "$cache_root" ] &&
      [ "$(/usr/bin/dirname -- "$temp_cache")" = "$cache_root" ] &&
      [ -d "$temp_cache" ] && [ ! -L "$temp_cache" ]; then
-    /bin/rm -rf "$temp_cache"
+    /bin/rm -rf "$temp_cache" 2>/dev/null || :
   fi
   if [ -n "$invalid_cache" ] && [ -n "$cache_root" ] &&
      [ "$(/usr/bin/dirname -- "$invalid_cache")" = "$cache_root" ] &&
      [ -d "$invalid_cache" ] && [ ! -L "$invalid_cache" ]; then
-    /bin/rm -rf "$invalid_cache"
+    /bin/rm -rf "$invalid_cache" 2>/dev/null || :
   fi
   exit "$cleanup_status"
 }
@@ -98,28 +93,25 @@ lock_file_is_safe() {
     [ -f "$lock_path" ] && [ ! -L "$lock_path" ]
 }
 
-acquire_lock() {
+run_cache_phase() {
+  phase_name=$1
+  shift
   lock_path_is_safe ||
     fail "Runtime cache lock must be a regular non-symlink direct child: $lock_path"
   [ -x /usr/bin/lockf ] ||
     fail 'Required macOS kernel lock utility is missing: /usr/bin/lockf'
 
-  exec 9>>"$lock_path" || fail "Could not open the runtime cache lock: $lock_path"
-  lock_fd_open=1
-  if ! lock_file_is_safe; then
-    release_lock
-    fail "Runtime cache lock became unsafe while opening: $lock_path"
-  fi
-  if ! /usr/bin/lockf -s -t 8 9 2>/dev/null; then
-    release_lock
+  cache_phase_output=$(
+    /usr/bin/env "LINGSHU_MACOS_CACHE_TOKEN=$cache_phase_token" \
+      /usr/bin/lockf -s -t 8 -k "$lock_path" \
+      "$bootstrap_script" --internal-cache-phase "$cache_phase_token" \
+      "$phase_name" "$cache_root" "$fixed_cache" "$lock_path" "$@"
+  )
+  cache_phase_status=$?
+  if [ "$cache_phase_status" -eq 75 ]; then
     fail "Timed out after 8 seconds waiting for the runtime cache lock: $lock_path. Close any stuck WebDemo launcher and retry."
   fi
-}
-
-release_lock() {
-  [ "$lock_fd_open" -eq 1 ] || return 0
-  exec 9>&-
-  lock_fd_open=0
+  [ "$cache_phase_status" -eq 0 ] || exit "$cache_phase_status"
 }
 
 remove_invalid_fixed_cache() {
@@ -138,14 +130,74 @@ remove_invalid_fixed_cache() {
       ;;
   esac
   invalid_cache="$cache_root/$CACHE_NAME.invalid-$cache_guid"
-  /bin/mv "$fixed_cache" "$invalid_cache" ||
+  /bin/mv "$fixed_cache" "$invalid_cache" 2>/dev/null ||
     fail "Could not quarantine the invalid runtime cache: $fixed_cache"
   [ -d "$invalid_cache" ] && [ ! -L "$invalid_cache" ] &&
     [ "$(/usr/bin/dirname -- "$invalid_cache")" = "$cache_root" ] ||
     fail "Quarantined runtime cache is unsafe: $invalid_cache"
-  /bin/rm -rf "$invalid_cache" ||
+  /bin/rm -rf "$invalid_cache" 2>/dev/null ||
     fail "Could not remove the quarantined runtime cache: $invalid_cache"
   invalid_cache=''
+}
+
+run_internal_cache_phase() {
+  [ "${1-}" = '--internal-cache-phase' ] ||
+    fail 'Invalid internal cache-phase invocation.'
+  internal_token=${2-}
+  [ -n "${LINGSHU_MACOS_CACHE_TOKEN-}" ] &&
+    [ "${LINGSHU_MACOS_CACHE_TOKEN-}" = "$internal_token" ] ||
+    fail 'Internal cache-phase authorization failed.'
+  case "$internal_token" in
+    ''|*[!0-9A-Fa-f-]*) fail 'Internal cache-phase token is invalid.' ;;
+  esac
+  [ "${#internal_token}" -eq 36 ] ||
+    fail 'Internal cache-phase token is invalid.'
+  unset LINGSHU_MACOS_CACHE_TOKEN
+
+  phase_name=${3-}
+  [ "${4-}" = "$cache_root" ] &&
+    [ "${5-}" = "$fixed_cache" ] &&
+    [ "${6-}" = "$lock_path" ] ||
+    fail 'Internal cache-phase paths do not match this WebDemo.'
+  [ -d "$cache_root" ] && [ ! -L "$cache_root" ] && lock_file_is_safe ||
+    fail 'Internal cache-phase paths are unsafe.'
+
+  case "$phase_name" in
+    phase1)
+      [ "$#" -eq 6 ] || fail 'Internal phase1 argument count is invalid.'
+      if test_runtime_cache "$fixed_cache"; then
+        printf '%s\n' 'reused'
+      else
+        remove_invalid_fixed_cache
+        printf '%s\n' 'build'
+      fi
+      ;;
+    phase2)
+      [ "$#" -eq 7 ] || fail 'Internal phase2 argument count is invalid.'
+      candidate_temp=$7
+      [ "$(/usr/bin/dirname -- "$candidate_temp")" = "$cache_root" ] &&
+        [ -d "$candidate_temp" ] && [ ! -L "$candidate_temp" ] ||
+        fail 'Internal phase2 temporary runtime is unsafe.'
+      case "$candidate_temp" in
+        "$cache_root/$CACHE_NAME.tmp."*) ;;
+        *) fail 'Internal phase2 temporary runtime name is invalid.' ;;
+      esac
+      if test_runtime_cache "$fixed_cache"; then
+        printf '%s\n' 'reused'
+      else
+        remove_invalid_fixed_cache
+        test_runtime_cache "$candidate_temp" ||
+          fail 'Internal phase2 temporary runtime failed validation.'
+        /bin/mv "$candidate_temp" "$fixed_cache" 2>/dev/null ||
+          fail "Could not install the bundled runtime cache: $fixed_cache"
+        printf '%s\n' 'created'
+      fi
+      ;;
+    *)
+      fail 'Internal cache phase is invalid.'
+      ;;
+  esac
+  exit 0
 }
 
 system_name=$(/usr/bin/uname -s 2>/dev/null) ||
@@ -161,6 +213,7 @@ script_dir=$(CDPATH= cd -- "$(/usr/bin/dirname -- "$0")" && pwd) ||
   fail 'Could not resolve the macOS bootstrap directory.'
 web_demo=$(CDPATH= cd -- "$script_dir/.." && pwd) ||
   fail 'Could not resolve the WebDemo directory.'
+bootstrap_script="$script_dir/bootstrap_macos.sh"
 archive_path="$web_demo/runtimes/$ARCHIVE_NAME"
 serve_demo="$web_demo/tools/serve_demo.py"
 cache_root="$web_demo/.runtime-cache"
@@ -178,6 +231,11 @@ for env_name in $env_names; do
 done
 unset PYTHONHOME PYTHONPATH PYTHONUSERBASE VIRTUAL_ENV CONDA_PREFIX __PYVENV_LAUNCHER__
 
+if [ "${1-}" = '--internal-cache-phase' ] && [ -n "${LINGSHU_MACOS_CACHE_TOKEN-}" ]; then
+  run_internal_cache_phase "$@"
+fi
+unset LINGSHU_MACOS_CACHE_TOKEN
+
 [ -f "$archive_path" ] && [ ! -L "$archive_path" ] ||
   fail "Bundled runtime archive must be a regular non-symlink file: $archive_path"
 actual_bytes=$(/usr/bin/stat -f '%z' "$archive_path" 2>/dev/null) ||
@@ -191,6 +249,8 @@ actual_sha=${actual_sha%% *}
   fail "Bundled runtime archive SHA-256 mismatch for $ARCHIVE_NAME. Restore the committed archive and retry."
 [ -f "$serve_demo" ] && [ ! -L "$serve_demo" ] ||
   fail "WebDemo server entry point is missing or unsafe: $serve_demo"
+[ -f "$bootstrap_script" ] && [ ! -L "$bootstrap_script" ] ||
+  fail "macOS bootstrap entry point is missing or unsafe: $bootstrap_script"
 
 if [ -L "$cache_root" ] || { [ -e "$cache_root" ] && [ ! -d "$cache_root" ]; }; then
   fail "Runtime cache root must be a non-symlink directory: $cache_root"
@@ -203,13 +263,20 @@ fi
   fail "Runtime cache root is unsafe: $cache_root"
 
 cache_state=''
-acquire_lock
-if test_runtime_cache "$fixed_cache"; then
-  cache_state='reused'
-else
-  remove_invalid_fixed_cache
-fi
-release_lock
+cache_phase_token=$(/usr/bin/uuidgen 2>/dev/null) ||
+  fail 'Could not create a unique internal cache-phase token.'
+case "$cache_phase_token" in
+  ''|*[!0-9A-Fa-f-]*) fail 'Could not create a valid internal cache-phase token.' ;;
+esac
+[ "${#cache_phase_token}" -eq 36 ] ||
+  fail 'Could not create a valid internal cache-phase token.'
+
+run_cache_phase phase1
+case "$cache_phase_output" in
+  reused) cache_state='reused' ;;
+  build) ;;
+  *) fail "Internal phase1 returned an invalid result: $cache_phase_output" ;;
+esac
 
 if [ -z "$cache_state" ]; then
   temp_cache=$(/usr/bin/mktemp -d "$cache_root/$CACHE_NAME.tmp.XXXXXXXX") ||
@@ -227,17 +294,19 @@ if [ -z "$cache_state" ]; then
   printf '%s\n' "$EXPECTED_SHA256" > "$temp_cache/.complete-sha256" ||
     fail "Could not mark the extracted runtime complete: $temp_cache"
 
-  acquire_lock
-  if test_runtime_cache "$fixed_cache"; then
-    cache_state='reused'
-  else
-    remove_invalid_fixed_cache
-    /bin/mv "$temp_cache" "$fixed_cache" ||
-      fail "Could not install the bundled runtime cache: $fixed_cache"
-    temp_cache=''
-    cache_state='created'
-  fi
-  release_lock
+  run_cache_phase phase2 "$temp_cache"
+  case "$cache_phase_output" in
+    reused)
+      cache_state='reused'
+      ;;
+    created)
+      temp_cache=''
+      cache_state='created'
+      ;;
+    *)
+      fail "Internal phase2 returned an invalid result: $cache_phase_output"
+      ;;
+  esac
 
   if [ -n "$temp_cache" ]; then
     [ -d "$temp_cache" ] && [ ! -L "$temp_cache" ] &&
