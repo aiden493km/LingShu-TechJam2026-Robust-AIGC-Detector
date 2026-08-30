@@ -1,1 +1,4 @@
 web_demo/models/baseline2_njr_fp32.onnx binary -diff -merge
+web_demo/dist/** -text
+web_demo/dist/assets/ort-wasm-simd-threaded.asyncify.mjs binary -diff -merge
+web_demo/dist/assets/ort-wasm-simd-threaded.asyncify.wasm binary -diff -merge

@@ -91,6 +91,7 @@ export interface LoadModelSessionOptions extends ModelFetchOptions {
 }
 
 const WASM_PATH = '/assets/ort-wasm-simd-threaded.asyncify.wasm';
+const WASM_MJS_PATH = '/assets/ort-wasm-simd-threaded.asyncify.mjs';
 const DIAGNOSTIC_LIMIT = 300;
 let ortConfigured = false;
 
@@ -150,7 +151,7 @@ export function configureOrtRuntime(environment: RuntimeEnvironment = currentEnv
     Number.isFinite(reportedConcurrency) && reportedConcurrency >= 1
       ? Math.floor(reportedConcurrency)
       : 1;
-  ort.env.wasm.wasmPaths = { wasm: WASM_PATH };
+  ort.env.wasm.wasmPaths = { mjs: WASM_MJS_PATH, wasm: WASM_PATH };
   ort.env.wasm.proxy = false;
   ort.env.wasm.numThreads = environment.crossOriginIsolated
     ? Math.min(4, hardwareConcurrency)

@@ -15,7 +15,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 // @ts-expect-error The production utility is intentionally a plain ESM module.
-import { copyOrtRuntime, defaultDistDirectory, ORT_RUNTIME_BYTES, ORT_RUNTIME_NAME, ORT_RUNTIME_SHA256, resolveOrtRuntimeSource } from '../../tools/copy_ort_runtime.mjs';
+import { copyOrtRuntime, defaultDistDirectory, ORT_RUNTIME_BYTES, ORT_RUNTIME_MJS_BYTES, ORT_RUNTIME_MJS_NAME, ORT_RUNTIME_MJS_SHA256, ORT_RUNTIME_NAME, ORT_RUNTIME_SHA256, resolveOrtRuntimeMjsSource, resolveOrtRuntimeSource } from '../../tools/copy_ort_runtime.mjs';
 
 const temporaryDirectories: string[] = [];
 
@@ -51,6 +51,18 @@ afterEach(async () => {
 });
 
 describe('ORT runtime packaging', () => {
+  it('keeps both frozen runtime artifacts byte-exact across Git checkouts', async () => {
+    const attributes = await readFile(new URL('../../../.gitattributes', import.meta.url), 'utf8');
+
+    expect(attributes).toContain('web_demo/dist/** -text');
+    expect(attributes).toContain(
+      'web_demo/dist/assets/ort-wasm-simd-threaded.asyncify.mjs binary -diff -merge',
+    );
+    expect(attributes).toContain(
+      'web_demo/dist/assets/ort-wasm-simd-threaded.asyncify.wasm binary -diff -merge',
+    );
+  });
+
   it('resolves the pinned asyncify runtime through the package export', async () => {
     const source = resolveOrtRuntimeSource();
     const stats = await lstat(source);
@@ -61,6 +73,24 @@ describe('ORT runtime packaging', () => {
     expect(stats.isFile()).toBe(true);
     expect(stats.isSymbolicLink()).toBe(false);
     expect(stats.size).toBe(25_749_873);
+    expect(await sha256(source)).toBe(
+      '503d17cb7411b79781b9fad1cf0978f03cf06b050c7d399c730e914f473bf549',
+    );
+  });
+
+  it('resolves the pinned asyncify worker entrypoint through the package export', async () => {
+    const source = resolveOrtRuntimeMjsSource();
+    const stats = await lstat(source);
+
+    expect(source.replaceAll('\\', '/')).toMatch(
+      /\/onnxruntime-web\/dist\/ort-wasm-simd-threaded\.asyncify\.mjs$/,
+    );
+    expect(stats.isFile()).toBe(true);
+    expect(stats.isSymbolicLink()).toBe(false);
+    expect(stats.size).toBe(51_407);
+    expect(await sha256(source)).toBe(
+      '5d25483158d53d8f34d0e9c06a654d56c8dca4ebdf370ea0982ef11315a00e0e',
+    );
   });
 
   it('derives the production dist directory from the utility module, not cwd', () => {
@@ -106,14 +136,40 @@ describe('ORT runtime packaging', () => {
     const result = await copyOrtRuntime({ sourcePath: source, distDirectory: dist });
     const destination = join(dist, 'assets', ORT_RUNTIME_NAME);
 
+    const mjsSource = resolveOrtRuntimeMjsSource();
+    const mjsDestination = join(dist, 'assets', ORT_RUNTIME_MJS_NAME);
     expect(result).toEqual({
-      bytes: ORT_RUNTIME_BYTES,
-      destinationPath: destination,
-      sha256: ORT_RUNTIME_SHA256,
-      sourcePath: source,
+      mjs: {
+        bytes: ORT_RUNTIME_MJS_BYTES,
+        destinationPath: mjsDestination,
+        sha256: ORT_RUNTIME_MJS_SHA256,
+        sourcePath: mjsSource,
+      },
+      wasm: {
+        bytes: ORT_RUNTIME_BYTES,
+        destinationPath: destination,
+        sha256: ORT_RUNTIME_SHA256,
+        sourcePath: source,
+      },
     });
-    expect(await sha256(destination)).toBe(result.sha256);
-    expect(await readdir(join(dist, 'assets'))).toEqual([ORT_RUNTIME_NAME]);
+    expect(await sha256(destination)).toBe(result.wasm.sha256);
+    expect(await sha256(mjsDestination)).toBe(result.mjs.sha256);
+    expect((await readdir(join(dist, 'assets'))).sort()).toEqual(
+      [ORT_RUNTIME_MJS_NAME, ORT_RUNTIME_NAME].sort(),
+    );
+  });
+
+  it('rejects an asyncify worker entrypoint whose byte count differs from the frozen runtime', async () => {
+    const root = await makeTemporaryDirectory();
+    const mjsSource = join(root, ORT_RUNTIME_MJS_NAME);
+    await writeFile(mjsSource, Uint8Array.of(0, 1, 2));
+
+    await expect(
+      copyOrtRuntime({
+        mjsSourcePath: mjsSource,
+        distDirectory: join(root, 'dist'),
+      }),
+    ).rejects.toThrow(/MJS source byte count.*51407.*found 3/i);
   });
 
   it('rejects an additional asyncify runtime sibling before copying', async () => {
@@ -142,6 +198,19 @@ describe('ORT runtime packaging', () => {
 
     await expect(copyOrtRuntime({ sourcePath: source, distDirectory: dist })).rejects.toThrow(
       /additional ORT runtime sibling.*jsep/i,
+    );
+  });
+
+  it('rejects an unexpected ORT JavaScript runtime sibling before copying', async () => {
+    const root = await makeTemporaryDirectory();
+    const source = resolveOrtRuntimeSource();
+    const dist = join(root, 'dist');
+    const assets = join(dist, 'assets');
+    await mkdir(assets, { recursive: true });
+    await writeFile(join(assets, 'ort-wasm-simd-threaded.jsep.mjs'), 'duplicate');
+
+    await expect(copyOrtRuntime({ sourcePath: source, distDirectory: dist })).rejects.toThrow(
+      /additional ORT runtime.*jsep\.mjs/i,
     );
   });
 
@@ -207,7 +276,12 @@ describe('ORT runtime packaging', () => {
         sourcePath: source,
         distDirectory: dist,
         testHooks: {
-          afterCopy: async ({ destinationPath }: { destinationPath: string }) => {
+          afterCopy: async ({
+            destinationPaths,
+          }: {
+            destinationPaths: { wasm: string };
+          }) => {
+            const destinationPath = destinationPaths.wasm;
             const bytes = await readFile(destinationPath);
             bytes[0] = 1;
             await writeFile(destinationPath, bytes);

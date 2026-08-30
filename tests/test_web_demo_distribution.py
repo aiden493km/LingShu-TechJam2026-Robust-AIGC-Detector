@@ -9,6 +9,7 @@ from unittest.mock import patch
 from web_demo.tools.verify_distribution import (
     FROZEN_CONTRACT,
     FROZEN_ORT_RUNTIME,
+    FROZEN_ORT_RUNTIME_MJS,
     FrozenContract,
     FrozenOrtRuntime,
     verify_distribution,
@@ -19,6 +20,8 @@ TEST_MODEL = b"small deterministic ONNX stand-in\n"
 TEST_MODEL_FILE = "tiny_fp32.onnx"
 TEST_ORT_RUNTIME = b"small deterministic ORT runtime stand-in\n"
 TEST_ORT_RUNTIME_PATH = "assets/ort-wasm-simd-threaded.asyncify.wasm"
+TEST_ORT_RUNTIME_MJS = b"small deterministic ORT worker entrypoint stand-in\n"
+TEST_ORT_RUNTIME_MJS_PATH = "assets/ort-wasm-simd-threaded.asyncify.mjs"
 
 
 def _contract_for(
@@ -42,6 +45,19 @@ def _runtime_contract_for(
 ) -> FrozenOrtRuntime:
     return FrozenOrtRuntime(
         path=TEST_ORT_RUNTIME_PATH,
+        bytes=len(runtime) if byte_count is None else byte_count,
+        sha256=hashlib.sha256(runtime).hexdigest() if sha256 is None else sha256,
+    )
+
+
+def _runtime_mjs_contract_for(
+    runtime: bytes = TEST_ORT_RUNTIME_MJS,
+    *,
+    sha256: str | None = None,
+    byte_count: int | None = None,
+) -> FrozenOrtRuntime:
+    return FrozenOrtRuntime(
+        path=TEST_ORT_RUNTIME_MJS_PATH,
         bytes=len(runtime) if byte_count is None else byte_count,
         sha256=hashlib.sha256(runtime).hexdigest() if sha256 is None else sha256,
     )
@@ -77,10 +93,17 @@ def _write_valid_tree(
     model: bytes = TEST_MODEL,
     runtime_contract: FrozenOrtRuntime | None = None,
     runtime: bytes = TEST_ORT_RUNTIME,
+    runtime_mjs_contract: FrozenOrtRuntime | None = None,
+    runtime_mjs: bytes = TEST_ORT_RUNTIME_MJS,
 ) -> FrozenContract:
     selected_contract = _contract_for(model) if contract is None else contract
     selected_runtime = (
         _runtime_contract_for(runtime) if runtime_contract is None else runtime_contract
+    )
+    selected_runtime_mjs = (
+        _runtime_mjs_contract_for(runtime_mjs)
+        if runtime_mjs_contract is None
+        else runtime_mjs_contract
     )
     models = root / "web_demo" / "models"
     dist = root / "web_demo" / "dist"
@@ -104,6 +127,9 @@ def _write_valid_tree(
     runtime_path = dist.joinpath(*selected_runtime.path.split("/"))
     runtime_path.parent.mkdir(parents=True, exist_ok=True)
     runtime_path.write_bytes(runtime)
+    runtime_mjs_path = dist.joinpath(*selected_runtime_mjs.path.split("/"))
+    runtime_mjs_path.parent.mkdir(parents=True, exist_ok=True)
+    runtime_mjs_path.write_bytes(runtime_mjs)
     _write_json(
         dist / "integrity.json",
         {"schema_version": 1, "files": _dist_entries(dist)},
@@ -116,12 +142,18 @@ def _verify_test_tree(
     contract: FrozenContract,
     *,
     runtime_contract: FrozenOrtRuntime | None = None,
+    runtime_mjs_contract: FrozenOrtRuntime | None = None,
 ) -> list[str]:
     return verify_distribution(
         root,
         contract=contract,
         runtime_contract=(
             _runtime_contract_for() if runtime_contract is None else runtime_contract
+        ),
+        runtime_mjs_contract=(
+            _runtime_mjs_contract_for()
+            if runtime_mjs_contract is None
+            else runtime_mjs_contract
         ),
     )
 
@@ -142,6 +174,15 @@ class FrozenContractTests(unittest.TestCase):
         self.assertEqual(
             FROZEN_ORT_RUNTIME.sha256,
             "503d17cb7411b79781b9fad1cf0978f03cf06b050c7d399c730e914f473bf549",
+        )
+        self.assertEqual(
+            FROZEN_ORT_RUNTIME_MJS.path,
+            "assets/ort-wasm-simd-threaded.asyncify.mjs",
+        )
+        self.assertEqual(FROZEN_ORT_RUNTIME_MJS.bytes, 51407)
+        self.assertEqual(
+            FROZEN_ORT_RUNTIME_MJS.sha256,
+            "5d25483158d53d8f34d0e9c06a654d56c8dca4ebdf370ea0982ef11315a00e0e",
         )
 
 
@@ -300,7 +341,67 @@ class VerifyDistributionTests(unittest.TestCase):
             errors = _verify_test_tree(root, contract)
 
         self.assertTrue(
-            any("exactly one ORT" in error and "jsep.wasm" in error for error in errors),
+            any("approved ORT runtime" in error and "jsep.wasm" in error for error in errors),
+            errors,
+        )
+
+    def test_reports_a_missing_ort_worker_entrypoint_even_when_integrity_is_current(self):
+        with TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            contract = _write_valid_tree(root)
+            dist = root / "web_demo" / "dist"
+            (dist / "assets" / "ort-wasm-simd-threaded.asyncify.mjs").unlink()
+            _write_json(
+                dist / "integrity.json",
+                {"schema_version": 1, "files": _dist_entries(dist)},
+            )
+
+            errors = _verify_test_tree(root, contract)
+
+        self.assertTrue(
+            any("ORT runtime" in error and "asyncify.mjs" in error and "missing" in error for error in errors),
+            errors,
+        )
+
+    def test_reports_a_tampered_ort_worker_entrypoint_even_when_integrity_is_current(self):
+        with TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            contract = _write_valid_tree(root)
+            dist = root / "web_demo" / "dist"
+            (dist / "assets" / "ort-wasm-simd-threaded.asyncify.mjs").write_bytes(
+                b"tampered worker"
+            )
+            _write_json(
+                dist / "integrity.json",
+                {"schema_version": 1, "files": _dist_entries(dist)},
+            )
+
+            errors = _verify_test_tree(root, contract)
+
+        self.assertTrue(
+            any("ORT runtime byte count" in error and "asyncify.mjs" in error for error in errors),
+            errors,
+        )
+        self.assertTrue(
+            any("ORT runtime SHA-256" in error and "asyncify.mjs" in error for error in errors),
+            errors,
+        )
+
+    def test_reports_an_unexpected_ort_mjs_variant_even_when_integrity_is_current(self):
+        with TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            contract = _write_valid_tree(root)
+            dist = root / "web_demo" / "dist"
+            (dist / "assets" / "ort-wasm-simd-threaded.jsep.mjs").write_bytes(b"duplicate")
+            _write_json(
+                dist / "integrity.json",
+                {"schema_version": 1, "files": _dist_entries(dist)},
+            )
+
+            errors = _verify_test_tree(root, contract)
+
+        self.assertTrue(
+            any("approved ORT runtime" in error and "jsep.mjs" in error for error in errors),
             errors,
         )
 

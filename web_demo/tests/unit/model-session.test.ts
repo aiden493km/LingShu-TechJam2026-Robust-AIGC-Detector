@@ -137,6 +137,7 @@ describe('ORT boundary', () => {
     });
 
     expect(ortMock.env.wasm.wasmPaths).toEqual({
+      mjs: '/assets/ort-wasm-simd-threaded.asyncify.mjs',
       wasm: '/assets/ort-wasm-simd-threaded.asyncify.wasm',
     });
     expect(ortMock.env.wasm.proxy).toBe(false);

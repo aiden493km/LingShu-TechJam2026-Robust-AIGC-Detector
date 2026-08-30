@@ -14,7 +14,7 @@ from typing import Any, Sequence
 HASH_CHUNK_BYTES = 1024 * 1024
 LFS_POINTER_PREFIX = b"version https://git-lfs.github.com/spec/v1"
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
-ORT_WASM_PATTERN = re.compile(r"^ort.*\.wasm$", re.IGNORECASE)
+ORT_RUNTIME_PATTERN = re.compile(r"^ort.*\.(?:mjs|wasm)$", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -45,6 +45,12 @@ FROZEN_ORT_RUNTIME = FrozenOrtRuntime(
     path="assets/ort-wasm-simd-threaded.asyncify.wasm",
     bytes=25749873,
     sha256="503d17cb7411b79781b9fad1cf0978f03cf06b050c7d399c730e914f473bf549",
+)
+
+FROZEN_ORT_RUNTIME_MJS = FrozenOrtRuntime(
+    path="assets/ort-wasm-simd-threaded.asyncify.mjs",
+    bytes=51407,
+    sha256="5d25483158d53d8f34d0e9c06a654d56c8dca4ebdf370ea0982ef11315a00e0e",
 )
 
 
@@ -327,35 +333,12 @@ def _enumerate_dist_files(
     return files
 
 
-def _verify_ort_runtime(
+def _verify_ort_runtime_file(
     dist_directory: Path,
     contract: FrozenOrtRuntime,
     errors: list[str],
 ) -> None:
-    candidates = sorted(
-        (
-            candidate
-            for candidate in dist_directory.rglob("*")
-            if ORT_WASM_PATTERN.fullmatch(candidate.name) is not None
-        ),
-        key=lambda path: path.as_posix().lower(),
-    )
-    candidate_names = [
-        candidate.relative_to(dist_directory).as_posix() for candidate in candidates
-    ]
-    if len(candidates) != 1:
-        names = ", ".join(candidate_names) or "none"
-        errors.append(
-            "dist must contain exactly one ORT runtime WASM "
-            f"({contract.path}); found {len(candidates)}: {names}"
-        )
-
     expected_path = dist_directory.joinpath(*PurePosixPath(contract.path).parts)
-    if len(candidates) == 1 and candidate_names[0] != contract.path:
-        errors.append(
-            f'ORT runtime must use exact path "{contract.path}"; found "{candidate_names[0]}"'
-        )
-
     if expected_path.is_symlink():
         errors.append(f"ORT runtime {contract.path} must be a regular file, not a symlink")
         return
@@ -390,9 +373,39 @@ def _verify_ort_runtime(
         errors.append(f"could not read ORT runtime {contract.path}: {error}")
 
 
+def _verify_ort_runtimes(
+    dist_directory: Path,
+    contracts: Sequence[FrozenOrtRuntime],
+    errors: list[str],
+) -> None:
+    candidates = sorted(
+        (
+            candidate
+            for candidate in dist_directory.rglob("*")
+            if ORT_RUNTIME_PATTERN.fullmatch(candidate.name) is not None
+        ),
+        key=lambda path: path.as_posix().lower(),
+    )
+    candidate_names = [
+        candidate.relative_to(dist_directory).as_posix() for candidate in candidates
+    ]
+    expected_names = sorted(contract.path for contract in contracts)
+    if sorted(candidate_names) != expected_names:
+        expected = ", ".join(expected_names)
+        found = ", ".join(candidate_names) or "none"
+        errors.append(
+            "dist must contain exactly the approved ORT runtime files "
+            f"({expected}); found {len(candidates)}: {found}"
+        )
+
+    for contract in contracts:
+        _verify_ort_runtime_file(dist_directory, contract, errors)
+
+
 def _verify_dist(
     root: Path,
     runtime_contract: FrozenOrtRuntime,
+    runtime_mjs_contract: FrozenOrtRuntime,
     errors: list[str],
 ) -> None:
     dist_directory = root / "web_demo" / "dist"
@@ -403,7 +416,11 @@ def _verify_dist(
         errors.append("web_demo/dist is missing or is not a directory")
         return
 
-    _verify_ort_runtime(dist_directory, runtime_contract, errors)
+    _verify_ort_runtimes(
+        dist_directory,
+        (runtime_mjs_contract, runtime_contract),
+        errors,
+    )
 
     integrity_path = dist_directory / "integrity.json"
     if integrity_path.is_symlink():
@@ -462,13 +479,14 @@ def verify_distribution(
     *,
     contract: FrozenContract = FROZEN_CONTRACT,
     runtime_contract: FrozenOrtRuntime = FROZEN_ORT_RUNTIME,
+    runtime_mjs_contract: FrozenOrtRuntime = FROZEN_ORT_RUNTIME_MJS,
 ) -> list[str]:
     """Return every frozen-model or static-distribution validation error."""
 
     resolved_root = Path(root).resolve()
     errors: list[str] = []
     _verify_model(resolved_root, contract, errors)
-    _verify_dist(resolved_root, runtime_contract, errors)
+    _verify_dist(resolved_root, runtime_contract, runtime_mjs_contract, errors)
     return errors
 
 

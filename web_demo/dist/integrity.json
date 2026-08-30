@@ -2,14 +2,14 @@
   "schema_version": 1,
   "files": [
     {
-      "path": "assets/index-BiSrUD_A.js",
-      "bytes": 394094,
-      "sha256": "b13fc08662d04a5ac1fd67f4515b9ee2a88015ede4dcdf233f10afe8c37c7ced"
-    },
-    {
       "path": "assets/index-DQGgHzSy.css",
       "bytes": 8493,
       "sha256": "968b9b54fca726a633dde64804a99c4ce22e382f87e590502d03544419ca4220"
+    },
+    {
+      "path": "assets/index-Dik4I6Xg.js",
+      "bytes": 394161,
+      "sha256": "ed909db0893985f338ade8fca43d4254f6a340fb5e41226aeafec8eb802a4f68"
     },
     {
       "path": "assets/jsquash_magic_kernel_bg-Cq4C4bH5.wasm",
@@ -20,6 +20,11 @@
       "path": "assets/mozjpeg_dec-muSO2n8T.wasm",
       "bytes": 166470,
       "sha256": "a7c4b12169817e779ff4af137981393ae924944e167ad1bd95747c9199162d3e"
+    },
+    {
+      "path": "assets/ort-wasm-simd-threaded.asyncify.mjs",
+      "bytes": 51407,
+      "sha256": "5d25483158d53d8f34d0e9c06a654d56c8dca4ebdf370ea0982ef11315a00e0e"
     },
     {
       "path": "assets/ort-wasm-simd-threaded.asyncify.wasm",
@@ -49,7 +54,7 @@
     {
       "path": "index.html",
       "bytes": 534,
-      "sha256": "02c51f2ec8414332208265b96161891dade40d1399fd496468f88f21502b45a8"
+      "sha256": "54668b1d4b52b821c1ad26b6cc567c070321910006e63a2bf4419466a3ea4bbe"
     }
   ]
 }
