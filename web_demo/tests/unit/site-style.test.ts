@@ -61,7 +61,9 @@ describe('Semantic Signal visual system', () => {
 
   it('keeps fonts local and preserves mobile and reduced-motion contracts', async () => {
     const css = await readFile(new URL('../../src/app.css', import.meta.url), 'utf8');
-    const mobileCss = css.match(/@media \(max-width: 760px\)\s*\{([\s\S]*?)\n\}\n\n@media \(max-width: 430px\)/)?.[1] ?? '';
+    const mobileCss = css.match(
+      /@media \(max-width: 760px\)\s*\{([\s\S]*?)\r?\n\}\r?\n\r?\n@media \(max-width: 430px\)/,
+    )?.[1] ?? '';
 
     expect(css).toContain("font-family: 'League Gothic'");
     expect(css).toContain('/fonts/league-gothic-latin.ttf');

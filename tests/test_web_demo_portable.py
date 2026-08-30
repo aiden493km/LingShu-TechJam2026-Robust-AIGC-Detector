@@ -285,6 +285,10 @@ class PortableDocumentationAndWorkflowTests(unittest.TestCase):
     TASK4_COMMIT = "3036c0cad46934aa83ac4fe0574b99e6cd99a1fa"
     GIT_ATTRIBUTES = (
         "web_demo/models/baseline2_njr_fp32.onnx binary -diff -merge",
+        "web_demo/index.html text eol=lf",
+        "web_demo/public/brands/*.md text eol=lf",
+        "web_demo/public/brands/*.svg text eol=lf",
+        "web_demo/public/fonts/*.txt text eol=lf",
         "web_demo/dist/** -text",
         "web_demo/dist/assets/ort-wasm-simd-threaded.asyncify.mjs binary -diff -merge",
         "web_demo/dist/assets/ort-wasm-simd-threaded.asyncify.wasm binary -diff -merge",
