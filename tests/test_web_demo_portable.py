@@ -280,5 +280,156 @@ fi
         self.assertEqual(self.MODEL_ARTIFACTS, actual_artifacts)
 
 
+class PortableDocumentationAndWorkflowTests(unittest.TestCase):
+    REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+    TASK4_COMMIT = "3036c0cad46934aa83ac4fe0574b99e6cd99a1fa"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.root_readme = (cls.REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
+        cls.web_readme = (cls.REPOSITORY_ROOT / "web_demo" / "README.md").read_text(
+            encoding="utf-8"
+        )
+
+    @staticmethod
+    def _single_line(text):
+        return re.sub(r"\s+", " ", text).strip()
+
+    def assertDocumentsRegex(self, pattern, message):
+        combined = self._single_line(f"{self.root_readme}\n{self.web_readme}")
+        self.assertRegex(combined, pattern, message)
+
+    def test_judge_quick_starts_are_ordered_and_portable(self):
+        for name, content in (
+            ("README.md", self.root_readme),
+            ("web_demo/README.md", self.web_readme),
+        ):
+            with self.subTest(readme=name):
+                normalized = self._single_line(content)
+                self.assertIn("start-demo.bat", normalized)
+                self.assertIn("start-demo.command", normalized)
+                self.assertRegex(
+                    normalized,
+                    r"(?i)clone.*double-click.*READY.*(?:choose|select).*image",
+                )
+
+        self.assertDocumentsRegex(r"(?i)bundled", "the bundled runtime must be explicit")
+        self.assertDocumentsRegex(r"(?i)offline", "the offline launch must be explicit")
+        self.assertDocumentsRegex(
+            r"(?i)(?:do not|does not|no)[^.]{0,100}(?:install|installation)[^.]{0,100}Python",
+            "judges must not be told to install Python",
+        )
+        self.assertDocumentsRegex(
+            r"(?i)(?:do not|does not|no)[^.]{0,120}(?:Node(?:\.js)?|npm|packages?)",
+            "judges must not be told to install Node or packages",
+        )
+        self.assertDocumentsRegex(
+            r"(?i)(?:do not|does not|no)[^.]{0,120}(?:inference )?server",
+            "judges must not be told to provision an inference server",
+        )
+        self.assertDocumentsRegex(r"(?i)Windows[^.]{0,80}x86-64", "Windows architecture is bounded")
+        self.assertDocumentsRegex(
+            r"(?i)(?:Apple Silicon|macOS[^.]{0,80}(?:arm64|ARM64))",
+            "the packaged macOS architecture is bounded",
+        )
+        self.assertDocumentsRegex(
+            r"(?i)Intel macOS[^.]{0,120}(?:not (?:bundled|packaged)|no bundled runtime)",
+            "Intel macOS must be identified as outside this portable slice",
+        )
+
+    def test_judge_docs_describe_the_frozen_local_contract(self):
+        self.assertDocumentsRegex(r"baseline2_njr_fp32\.onnx", "the exact FP32 model is named")
+        self.assertDocumentsRegex(r"0\.55657113", "the frozen threshold is named")
+        self.assertDocumentsRegex(
+            r"(?i)web_demo/\.runtime-cache/",
+            "the repository-local runtime cache path is documented",
+        )
+        self.assertDocumentsRegex(
+            r"(?i)(?:first|initial)[^.]{0,120}(?:create|extract|populate)[^.]{0,120}cache",
+            "first-launch cache creation is explained",
+        )
+        self.assertDocumentsRegex(
+            r"(?i)(?:later|subsequent|next)[^.]{0,120}(?:reuse|reuses|reused)[^.]{0,120}cache",
+            "later cache reuse is explained",
+        )
+        self.assertDocumentsRegex(
+            r"8765[^.]{0,40}8784[^.]{0,120}(?:ephemeral|operating system)",
+            "automatic loopback port fallback is documented",
+        )
+        self.assertDocumentsRegex(
+            r"(?i)(?:127\.0\.0\.1|loopback-only|loopback only).{0,200}(?:private|privacy|upload|external)",
+            "loopback-only privacy is documented",
+        )
+        self.assertDocumentsRegex(r"Ctrl\+C", "the keyboard stop path is documented")
+        self.assertDocumentsRegex(
+            r"(?i)(?:close|closing)[^.]{0,80}(?:launcher )?window[^.]{0,80}stop",
+            "the window stop path is documented",
+        )
+        self.assertDocumentsRegex(r"--check", "the integrity-only mode is documented")
+        self.assertDocumentsRegex(r"--no-browser", "the no-browser mode is documented")
+
+    def test_macos_gatekeeper_guidance_uses_supported_ui_flow(self):
+        normalized = self._single_line(self.web_readme)
+        self.assertRegex(
+            normalized,
+            r"(?i)System Settings[^.]{0,80}Privacy\s*(?:&|and)\s*Security[^.]{0,80}Open Anyway",
+        )
+        self.assertRegex(normalized, r"(?i)bundled interpreter")
+        gatekeeper_start = normalized.lower().find("gatekeeper")
+        self.assertGreaterEqual(gatekeeper_start, 0)
+        gatekeeper_guidance = normalized[gatekeeper_start : gatekeeper_start + 800]
+        self.assertNotRegex(gatekeeper_guidance, r"(?i)\bsudo\b|\bxattr\b")
+
+    def test_package_measurements_are_labeled_with_their_scope(self):
+        normalized = self._single_line(self.web_readme)
+        for value in (
+            self.TASK4_COMMIT,
+            "166,912,403 bytes",
+            "159.180072 MiB",
+            "36,103,844 bytes",
+            "34.431309 MiB",
+        ):
+            self.assertIn(value, normalized)
+        self.assertRegex(
+            normalized,
+            r"(?i)tracked Git blob size.{0,240}not.{0,120}(?:checkout|history|clone transfer)",
+        )
+
+    def test_portable_workflow_has_both_required_smoke_jobs(self):
+        workflow = self.REPOSITORY_ROOT / ".github" / "workflows" / "web-demo-portable.yml"
+        self.assertTrue(workflow.is_file(), workflow)
+        content = workflow.read_text(encoding="utf-8")
+
+        self.assertRegex(content, r"(?m)^name: WebDemo portable launchers$")
+        for trigger in ("push:", "pull_request:"):
+            self.assertIn(trigger, content)
+        for watched_path in (
+            "web_demo/**",
+            "tests/test_web_demo_*.py",
+            ".github/workflows/web-demo-portable.yml",
+        ):
+            self.assertEqual(content.count(watched_path), 2)
+
+        self.assertRegex(content, r"(?m)^  windows:$")
+        self.assertRegex(content, r"(?m)^    runs-on: windows-latest$")
+        self.assertRegex(content, r"(?m)^  apple-silicon:$")
+        self.assertRegex(content, r"(?m)^    runs-on: macos-15$")
+        self.assertEqual(content.count("uses: actions/checkout@v4"), 2)
+        self.assertEqual(content.count("uses: actions/setup-python@v5"), 2)
+        self.assertEqual(content.count('python-version: "3.12"'), 2)
+        unittest_command = (
+            "python -B -m unittest tests.test_web_demo_server "
+            "tests.test_web_demo_launcher tests.test_web_demo_portable -v"
+        )
+        self.assertEqual(content.count(unittest_command), 2)
+        self.assertIn(r"cmd.exe /d /c web_demo\start-demo.bat --check", content)
+        self.assertIn("/bin/sh web_demo/start-demo.command --check", content)
+
+        self.assertDocumentsRegex(
+            r"(?i)CI smoke[^.]{0,160}(?:not|does not)[^.]{0,160}(?:Finder|real browser inference)",
+            "docs must bound what the CI smoke proves",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

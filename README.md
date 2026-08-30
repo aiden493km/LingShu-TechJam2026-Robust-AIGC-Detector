@@ -177,22 +177,36 @@ The following visual shows the **intended presentation format** for representati
 
 ## Deployment and Web Demo
 
-The repository provides two local inference paths. The Python CLI recursively reads
-an image directory, performs EXIF correction / RGB conversion / 384 × 384 bicubic
-resize / ImageNet normalization, loads the frozen PyTorch checkpoint, and writes
-continuous AIGC confidence scores to JSON.
+### Judge quick start: bundled and offline
 
-The functional offline FP32 WebDemo is implemented and formally tested. From a
-complete clone or extracted ZIP, a Windows judge can double-click
-`web_demo/start-demo.bat`, wait for the verified local model to load, then choose
-one JPEG, PNG, or WebP image. Normal launch requires Python 3.11+ and a current
-Microsoft Edge installation, but no Node.js, npm install, model download, Git LFS,
-API key, Internet connection, or continuously running inference server.
+| Windows x86-64 | macOS on Apple Silicon |
+|---|---|
+| Clone or fully extract the repository, double-click `web_demo/start-demo.bat`, wait for the printed `READY` URL, then select an image. | Clone or fully extract the repository, double-click `web_demo/start-demo.command`, wait for the printed `READY` URL, then select an image. |
 
-Inference runs inside the browser. WebGPU is attempted first and automatically
-falls back to WASM with the same FP32 ONNX file. The local server binds only to
-`127.0.0.1`; the application does not upload the selected image to an external
-origin or to the Python server.
+Both launchers use a bundled CPython runtime and the included browser application.
+Judges do not need to install Python, Node.js, npm packages, or an inference server,
+and normal use is offline after the repository is obtained. This portable slice is
+packaged for Windows x86-64 and Apple Silicon macOS; Intel macOS is not packaged in
+this slice.
+
+The demo uses exactly `baseline2_njr_fp32.onnx` at the frozen threshold
+`0.55657113`. The first launch verifies and extracts the platform runtime to
+`web_demo/.runtime-cache/`; later launches reuse that cache. The local server is
+loopback-only at `127.0.0.1`: it tries ports 8765–8784 and then an operating-system
+ephemeral port. The selected image stays in the browser and is not uploaded to the
+local server or an external service.
+
+Keep the launcher window open. Press `Ctrl+C` there or close the launcher window
+to stop the server. Pass `--check` to verify the portable package without opening
+a port, or `--no-browser` to print the local URL without opening a browser.
+
+If macOS Gatekeeper blocks the bundled interpreter, open **System Settings →
+Privacy & Security → Open Anyway**, then retry `start-demo.command`. The portable
+CI smoke checks the launchers and package on both operating systems; it is not a
+substitute for a Finder double-click or real browser inference.
+
+The WebDemo runs browser-side inference: WebGPU is attempted first and
+automatically falls back to WASM with the same FP32 ONNX file.
 
 The committed acceptance record covers source and Unicode-path fresh-copy runs,
 WebGPU, automatic fallback, and forced WASM: 90 browser inferences with zero frozen-
@@ -202,10 +216,6 @@ accuracy benchmark.
 
 [Judge and developer guide](web_demo/README.md) ·
 [Formal acceptance evidence](results/web_demo_acceptance/README.md)
-
-The earlier FP16/INT8/browser-size spike is preserved as
-[historical deployment research](results/web_model_experiment/README.md). Its
-recommendations are superseded by the formal decision to deploy one FP32 model.
 
 The image below remains a **concept visual direction** for the later high-polish
 design slice; it is not a screenshot of the current functional inference screen.

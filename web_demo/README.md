@@ -2,166 +2,99 @@
 
 ## Judge quick start
 
-> Submission handoff: use the submitted Git revision that contains this
-> `web_demo/` directory and its model. Before this feature branch is merged and
-> published, do not assume that an older default-branch checkout already contains
-> the WebDemo.
+Clone the submitted revision, then follow the four-step row for your computer:
 
-1. Clone the submitted repository revision, or download that revision with
-   GitHub's **Download ZIP** and extract it completely.
-2. Double-click `web_demo/start-demo.bat`.
-3. Keep the launcher window open and wait for the local browser tab. If the default
-   browser is not Edge, copy the printed `READY http://127.0.0.1:.../` URL into a
-   current Microsoft Edge window. The page is ready when it reports that the
-   verified FP32 model is loaded.
-4. Choose or drop one JPEG, PNG, or WebP still image and read the AIGC confidence,
-   Real/AIGC decision, and execution provider.
+| Windows x86-64 | macOS on Apple Silicon |
+|---|---|
+| 1. Clone or fully extract the repository.<br>2. Double-click `web_demo/start-demo.bat`.<br>3. Wait for the printed `READY` URL and model-ready page.<br>4. Select or drop an image. | 1. Clone or fully extract the repository.<br>2. Double-click `web_demo/start-demo.command`.<br>3. Wait for the printed `READY` URL and model-ready page.<br>4. Select or drop an image. |
 
-The formally validated Windows judge path requires Python 3.11 or newer and a
-current Microsoft Edge installation. The production site, FP32 ONNX model, and
-browser runtime are already included. After the repository has been obtained,
-normal launch and inference require no Node.js, npm install, pip install, Git LFS,
-model download, API key, Internet connection, or inference server.
+The portable slice bundles its CPython runtime, production browser files, and exact
+FP32 model. Judges do not need to install Python, Node.js, npm packages, or an
+inference server. Normal launch and inference are offline after the repository is
+obtained. Windows is packaged only for x86-64 and macOS only for Apple Silicon;
+Intel macOS has no bundled runtime in this slice.
 
-## What happens at launch
+## What the portable launcher does
 
-The launcher first verifies the committed model and every production asset. It
-then starts a Python-standard-library server bound only to `127.0.0.1`, selects an
-available loopback port beginning at 8765, and opens that local URL in the default
-browser.
+The launcher verifies the committed distribution and runtime archive. On the first
+launch it extracts the runtime and creates the cache at
+`web_demo/.runtime-cache/`; subsequent launches verify and reuse the cache. It then
+serves the included application only on `127.0.0.1`, tries ports 8765–8784 in
+order, and uses an operating-system ephemeral port if all twenty are occupied.
+Wait for the exact `READY http://127.0.0.1:.../` line before using the page.
 
-The browser loads the 88,123,029-byte (84.04 MiB) FP32 model from the local checkout
-into browser memory. This is a local disk-to-browser transfer, not an Internet
-download. First-load time therefore varies with the judge's disk, CPU, browser,
-and security software; the recorded timings are not a promise for another
-computer.
+The browser loads `baseline2_njr_fp32.onnx` from the local checkout and performs
+inference in the page. WebGPU is attempted first and WASM is the automatic
+compatibility path for the same FP32 file. A score at or above the frozen threshold
+`0.55657113` is labeled `AIGC`; a lower score is labeled `Real`.
 
-The page attempts WebGPU first. If WebGPU is unavailable or session creation fails,
-it automatically uses WASM with the **same FP32 ONNX file**. The provider shown in
-the result is the provider that actually ran; there is no FP16, INT8, remote-API,
-or mock-result fallback.
+## Privacy, options, and shutdown
 
-## Input limits and result meaning
+The loopback-only server provides static files and the model. The selected image is
+decoded and analyzed in the browser; the application does not upload its bytes to
+the server or an external service, deliberately persist them, or log or hash them.
+Browser and operating-system memory management remain outside the application's
+control.
 
-- One still image at a time: JPEG, PNG, or WebP, validated from its bytes.
+Keep the launcher window open during use. Press `Ctrl+C` in that window, or close
+the launcher window, to stop the server. Closing only the browser tab does not stop
+it.
+
+The same options work after either launcher filename:
+
+| Option | Effect |
+|---|---|
+| `--check` | Verify the model, assets, and bundled runtime without opening a browser or binding a port. |
+| `--no-browser` | Start locally but do not open a browser; copy the printed `READY` URL yourself. |
+
+## macOS Gatekeeper
+
+The bundled interpreter is not signed with a Developer ID. If Gatekeeper blocks
+it, open **System Settings → Privacy & Security → Open Anyway**, approve the
+interpreter, and retry `web_demo/start-demo.command`.
+
+## Input limits
+
+- One still JPEG, PNG, or WebP image at a time, validated from its bytes.
 - Maximum file size: 25 MiB.
 - Maximum geometry: 16,384 pixels on either side and 33,554,432 total pixels.
 - Animated, malformed, truncated, TIFF, and BMP inputs are rejected before
   inference.
-- The displayed confidence is the estimated probability that the image is
-  AI-generated. A probability greater than or equal to the frozen threshold
-  `0.55657113` is labeled `AIGC`; a lower probability is labeled `Real`.
 
 Use **Reset** to release the current preview and analyze another image. The model
 session remains loaded for the next inference.
 
-## Privacy and shutdown
+## Package measurements
 
-The selected image is decoded and analyzed by the browser application. The
-application code does not upload its bytes to the local Python process, send them
-to an external origin, log or hash them, or deliberately persist them. The Python
-process only serves the committed static site, manifest, runtime files, and model
-over loopback. The formally exercised runtime made no request to a CDN, analytics
-service, model host, API, or other remote origin. Browser and operating-system
-memory management remain outside the application's control.
+At Task 4 implementation commit
+`3036c0cad46934aa83ac4fe0574b99e6cd99a1fa`, the tracked Git blob size is
+`166,912,403 bytes` (`159.180072 MiB`); this is not checkout size, repository
+history size, or clone transfer size. The two bundled runtime archives total
+exactly `36,103,844 bytes` (`34.431309 MiB`).
 
-Keep the launcher window open while using the page. Press `Ctrl+C` in that window,
-or close the launcher window, to stop the local server; the local page will then
-become unreachable. Closing only the browser tab does not stop the launcher.
+## Troubleshooting and verification boundary
 
-## Validation and manual launch commands
+- If a browser tab does not open, keep the launcher running and copy its printed
+  `READY` URL. `--no-browser` makes this workflow explicit.
+- If distribution verification fails, obtain and fully extract the submitted
+  revision again rather than substituting files; the checkout is incomplete,
+  stale, or modified if a recorded path, byte count, or hash does not match.
+- Initial model verification and the 88,123,029-byte local model load can take
+  longer on a slower disk or CPU. Wait for the model-ready page before selecting
+  an image.
+- WASM is an intended path using the exact same FP32 model when WebGPU is
+  unavailable.
+- If an image is rejected, choose a non-animated JPEG, PNG, or WebP within the
+  byte and geometry limits; renaming an extension does not change its format.
 
-Run these commands from the repository root in Windows PowerShell:
+A current Microsoft Edge was used for the formal Windows browser acceptance run.
+Other browsers use the same application and WASM compatibility path, but no claim
+is made here that CI smoke alone validates their headed behavior.
 
-```powershell
-# Verify all committed runtime artifacts without opening a browser or a port.
-.\web_demo\start-demo.bat --check
-
-# Start normally with an explicit Python command.
-python .\web_demo\tools\serve_demo.py
-
-# Start without opening the default browser; use the printed READY URL.
-python .\web_demo\tools\serve_demo.py --no-browser
-
-# Require one specific loopback port. This fails clearly if the port is occupied.
-python .\web_demo\tools\serve_demo.py --port 8766
-```
-
-The examples use `python`. If the launcher instead finds `py -3` or the repository
-`.venv\Scripts\python.exe`, use that successful interpreter prefix for the three
-manual `serve_demo.py` commands.
-
-Without `--port`, the server tries `127.0.0.1:8765` through
-`127.0.0.1:8784`, then asks the operating system for another available loopback
-port. On macOS or Linux, run `./web_demo/start-demo.sh` from a terminal.
-
-## Browser status
-
-- **Microsoft Edge:** the formal Windows 11 automation used headless Edge
-  `151.0.4129.107`; its harness passed `--enable-unsafe-webgpu` to exercise WebGPU
-  and also exercised WASM. This validates both application paths under the recorded
-  harness, not every headed Edge installation or graphics-driver configuration.
-- **Google Chrome:** an intended Windows project target, but a separate complete
-  formal Chrome acceptance run has not yet been recorded. The committed formal
-  evidence is Edge-only.
-- **Firefox and Safari:** best-effort compatibility through WASM; they are not
-  release-blocking targets for the Windows one-click workflow.
-
-For judging, use a current Microsoft Edge release when possible.
-
-## Troubleshooting
-
-### The launcher says Python is missing or too old
-
-Install or repair Python 3.11 or newer, then open a new terminal and check:
-
-```powershell
-py -3 --version
-python --version
-```
-
-At least one command must resolve to Python 3.11+. The launcher tests a repository
-`.venv` first, then `py -3`, then `python`; it accepts an interpreter only after a
-real version probe succeeds.
-
-### Windows reports that `python312.dll` is missing
-
-That dialog indicates an incomplete Python 3.12 installation or a stale virtual
-environment, not a missing WebDemo model. Do not download an individual DLL from
-an unofficial DLL site and do not copy `python.exe` by itself. Repair or reinstall
-Python from the official Python distribution. If this is a developer checkout
-with an old repository `.venv`, rename that local environment out of the way or
-recreate it from the repaired interpreter, then retry the BAT launcher.
-
-### `Distribution verification failed`
-
-Read every path/hash error printed in the launcher. The checkout or extracted ZIP
-is incomplete, stale, or modified if the model, WASM/MJS runtime, production build,
-or integrity manifest does not match. Obtain and fully extract the submitted
-revision again; do not substitute a model from an untrusted source.
-
-### The browser tab does not open
-
-Keep the launcher window open and copy the printed `READY http://127.0.0.1:.../`
-address into Edge. Alternatively, start with `--no-browser` and open that exact
-address manually. Do not replace `127.0.0.1` with a LAN address.
-
-### Model loading appears slow
-
-Wait for the 84.04 MiB local FP32 load to finish. Initial verification and browser
-session creation are machine-specific. A subsequent image normally reuses the
-loaded session; do not close the launcher between images.
-
-### The page reports WASM instead of WebGPU
-
-This is the intended compatibility path and still uses the exact FP32 model. Update
-Edge and the graphics driver if WebGPU is desired. If both WebGPU and WASM fail,
-copy the page's diagnostic details and run the `--check` command above.
-
-### An image is rejected
-
-Choose one non-animated JPEG, PNG, or WebP within the byte and geometry limits.
-Changing only a filename extension does not change the encoded format.
+The `WebDemo portable launchers` CI smoke runs unit tests and `--check` on Windows
+and Apple Silicon macOS. It is not a substitute for Finder double-click behavior
+or real browser inference; the formal browser acceptance evidence remains under
+[`results/web_demo_acceptance/`](../results/web_demo_acceptance/).
 
 ## Developer setup and audit gates
 
@@ -219,12 +152,6 @@ separately trained model. Its contract is `input` float32 `[1,3,384,384]` to
 `logits` float32 `[1,1]`, followed by sigmoid and the frozen threshold. The model
 is ordinary Git content rather than Git LFS, so a complete submitted clone or ZIP
 contains real model bytes without an LFS client.
-
-The dated browser experiment report retains FP16 and INT8 measurements as
-historical research. The team's formal local-demo decision is FP32 only: FP16 was
-not selected for the CPU/WASM path, and the tested dynamic INT8 variants showed
-unacceptable drift and threshold flips. Shipping one model also keeps WebGPU and
-WASM on one auditable identity.
 
 ## Browser runtime dependency licenses
 
