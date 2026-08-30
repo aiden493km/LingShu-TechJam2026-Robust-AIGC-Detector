@@ -2,10 +2,17 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { APP_NAME, consumeSelectedFiles, DetectorScreen } from '../../src/App';
+import {
+  APP_NAME,
+  consumeSelectedFiles,
+  DetectorScreen,
+  requestImageSelection,
+} from '../../src/App';
 import type { DetectorState } from '../../src/detector/machine';
 import type { RuntimeEnvironmentSnapshot } from '../../src/runtime/capabilities';
 import type { LoadedModelSession } from '../../src/runtime/model-session';
+import { DetectorEvidence } from '../../src/site/DetectorEvidence';
+import type { RecentDetection } from '../../src/site/session-history';
 
 const runtimeEnvironment: RuntimeEnvironmentSnapshot = {
   userAgent: 'Judge Browser 1.0 (Local)',
@@ -53,7 +60,11 @@ describe('frontend scaffold', () => {
 
     expect(html).toContain(APP_NAME);
     expect(html).toContain('Local FP32 · no upload');
-    expect(html).toContain('Loading model');
+    expect(html).toContain('>Pending</p>');
+    expect(html).toContain('class="local-field-loading"');
+    expect(html).not.toContain('class="local-field-card"');
+    expect(html).not.toContain('class="idle-phase-panel"');
+    expect(html).toContain('LOADING LOCAL MODEL');
     expect(html).toContain('<progress');
     expect(html).toContain('44061514');
     expect(html).toContain('JPEG, PNG, or WebP');
@@ -91,7 +102,7 @@ describe('frontend scaffold', () => {
     expect(html).toContain('1600 × 900');
     expect(html).toContain('900 × 1600');
     expect(html).toContain('AIGC confidence');
-    expect(html).toContain('0.777300');
+    expect(html).toContain('0.77729986');
     expect(html).toContain('AIGC');
     expect(html).toContain('0.55657113');
     expect(html).toContain('WASM');
@@ -99,6 +110,101 @@ describe('frontend scaffold', () => {
     expect(html).toContain('v1.0.0');
     expect(html).toContain('FP32');
     expect(html).toContain('WebGPU adapter unavailable');
+    expect(html).toContain('IMAGE IN MEMORY');
+    expect(html).not.toContain('NO IMAGE UPLOAD');
+    expect(html).toContain('aria-label="Choose a replacement image"');
+    expect(html).not.toContain('aria-label="Reset detector"');
+  });
+
+  it('renders the approved Semantic Signal idle hero around the existing upload control', () => {
+    const html = render({ phase: 'ready', model: model() });
+
+    expect(html).toContain('data-presentation="idle"');
+    expect(html).toContain('class="display-title"');
+    expect(html).toContain('ROBUST');
+    expect(html).toContain('AIGC');
+    expect(html).toContain('DETECTOR');
+    expect(html).toContain('class="model-word"');
+    expect(html).toContain('class="local-field-card is-ready"');
+    expect(html).toContain('>Ready</p>');
+    expect(html).toContain('UPLOAD IMAGE');
+    expect(html).toContain('VIEW MODEL DETAILS');
+    expect(html).toContain('MODEL NOW');
+    expect(html).toContain('NO IMAGE SELECTED');
+    expect(html).toContain('src="/brands/github-mark.svg"');
+    expect(html).toContain('aria-controls="contact-popover"');
+    expect(html).toContain('class="contact-popover"');
+    expect(html).toContain('zhiyi012@e.ntu.edu.sg');
+    expect(html).toContain('COPY EMAIL');
+    expect(html).toContain('CONTACT');
+    expect(html).toContain('LOCAL PRIVACY');
+    expect(html).toContain('IN-MEMORY ONLY');
+    expect(html).not.toContain('class="privacy-note"');
+    expect(html).toContain('FROZEN THRESHOLD');
+    expect(html).toContain('aria-label="Frozen threshold waveform from 0.0 to 1.0"');
+    expect(html).toContain('ROBUSTNESS PROTOCOL');
+    expect(html).toContain('NJR · 14 FIXED CONDITIONS');
+    expect(html).not.toContain('MODEL DEVELOPMENT LOG');
+    expect(html).toContain('class="evidence-strip"');
+    expect(html).not.toContain('class="signal-field"');
+  });
+
+  it('renders all three successful session thumbnails without replacing earlier entries', () => {
+    const recentDetections: readonly RecentDetection[] = ['three', 'two', 'one'].map(
+      (id, index) => ({
+        id,
+        thumbnailUrl: `data:image/jpeg;base64,${id}`,
+        fileName: `${id}.png`,
+        label: index === 1 ? 'Real' : 'AIGC',
+        confidence: 0.9 - index * 0.1,
+      }),
+    );
+    const html = renderToStaticMarkup(
+      createElement(DetectorEvidence, {
+        score: 0.9,
+        recentDetections,
+      }),
+    );
+
+    expect(html).toContain('three.png');
+    expect(html).toContain('two.png');
+    expect(html).toContain('one.png');
+    expect(html.match(/class="recent-thumbnail"/g)).toHaveLength(3);
+    expect(html.match(/class="recent-verdict/g)).toHaveLength(3);
+    expect(html.match(/>AIGC<\/figcaption>/g)).toHaveLength(2);
+    expect(html).toContain('>REAL</figcaption>');
+  });
+
+  it('resolves a successful upload into the image-left result-right analysis state', () => {
+    const html = render({
+      phase: 'success',
+      model: model(),
+      image: {
+        fileName: 'judge-image.png',
+        previewUrl: 'blob:judge-image',
+        originalWidth: 1024,
+        originalHeight: 1024,
+        orientedWidth: 1024,
+        orientedHeight: 1024,
+      },
+      result: {
+        logit: 14.9,
+        probability: 0.99999966,
+        label: 'AIGC',
+        provider: 'wasm',
+        elapsedMs: 18.2,
+      },
+    });
+
+    expect(html).toContain('data-presentation="analysis"');
+    expect(html).toContain('class="analysis-workspace"');
+    expect(html).toContain('ANALYSIS COMPLETE');
+    expect(html).toContain('0.99999966');
+    expect(html).toContain('REPLACE IMAGE');
+    expect(html).toContain('RECENT IMAGES');
+    expect(html).toContain('aria-label="Back to detector home"');
+    expect(html).toContain('class="back-arrow"');
+    expect(html).not.toContain('←');
   });
 
   it('renders distinct recovery controls for model and workflow errors', () => {
@@ -149,7 +255,6 @@ describe('frontend scaffold', () => {
     expect(html).toContain(webGpuMessage);
     expect(html).toContain(wasmMessage);
     expect(html).not.toContain('AIGC confidence');
-    expect(html).not.toContain('Frozen threshold');
   });
 
   it('labels an uncompleted adapter probe as unknown instead of unavailable', () => {
@@ -181,5 +286,13 @@ describe('frontend scaffold', () => {
     input.value = 'C:\\fakepath\\same-image.png';
     expect(consumeSelectedFiles(input)).toEqual([file]);
     expect(input.value).toBe('');
+  });
+
+  it('opens the existing file picker without resetting the completed result first', () => {
+    const click = vi.fn();
+
+    requestImageSelection({ click });
+
+    expect(click).toHaveBeenCalledOnce();
   });
 });

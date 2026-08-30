@@ -28,6 +28,21 @@ inference in the page. WebGPU is attempted first and WASM is the automatic
 compatibility path for the same FP32 file. A score at or above the frozen threshold
 `0.55657113` is labeled `AIGC`; a lower score is labeled `Real`.
 
+## Site navigation and session behavior
+
+The opening Detector view keeps the upload action in the first reading path. After
+a successful result, **Replace Image** opens the file picker for the next image;
+the analysis back arrow returns to the title view. Up to three successful results
+remain visible under **Recent Images**, including their Real/AIGC labels, for the
+life of the current page session. This history is browser-memory state only and is
+cleared by closing or reloading the page.
+
+Technology, Results, Error Analysis, and About are directly addressable hash views.
+Opening them does not reload the model session. Images in those evidence views can
+be enlarged in a bounded lightbox and dismissed by selecting the dimmed area. About
+contains the confirmed team-level contribution areas and TechJam context; individual
+member profiles remain pending confirmation.
+
 ## Privacy, options, and shutdown
 
 The loopback-only server provides static files and the model. The selected image is

@@ -107,9 +107,12 @@ new accuracy evaluation.
 - `THIRD_PARTY_NOTICES.md` is an inventory, not a legal certification. Do not
   state that public model-weight redistribution is cleared until the recorded
   model/dataset and complete runtime-notice gates are resolved.
-- Final visual design, results storytelling, team profiles, and showcase motion
-  are a separate Impeccable design slice. Complete the product-truth interview
-  and create the required `PRODUCT.md` before establishing that visual world.
+- `PRODUCT.md` and `DESIGN.md` are the current product and visual contracts for
+  the implemented Semantic Signal detector experience. The committed site now
+  includes Detector, Technology, Results, Error Analysis, and About views,
+  in-session recent detections, and the reference-locked title/particle motion.
+  Team member names and individual biographies remain pending confirmation; do
+  not replace those bounded placeholders with invented profiles.
 
 ## Change discipline
 
