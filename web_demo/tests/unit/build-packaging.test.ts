@@ -59,6 +59,12 @@ describe('static runtime build configuration', () => {
       'web_demo/dist/** -text',
       'web_demo/dist/assets/ort-wasm-simd-threaded.asyncify.mjs binary -diff -merge',
       'web_demo/dist/assets/ort-wasm-simd-threaded.asyncify.wasm binary -diff -merge',
+      'web_demo/runtimes/windows-x86_64-python.zip binary -diff -merge',
+      'web_demo/runtimes/macos-arm64-python.tar.gz binary -diff -merge',
+      'web_demo/start-demo.bat text eol=crlf',
+      'web_demo/start-demo.sh text eol=lf',
+      'web_demo/start-demo.command text eol=lf',
+      'web_demo/tools/bootstrap_macos.sh text eol=lf',
     ]);
     expect(attributes).not.toMatch(/filter\s*=\s*lfs/i);
   });
