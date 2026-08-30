@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
@@ -47,6 +48,19 @@ function render(state: DetectorState): string {
   );
 }
 
+async function appComponentSource(
+  componentName: 'PhaseStatus' | 'LocalFieldCard',
+  nextComponentName: 'SiteRail' | 'IdleActions',
+): Promise<string> {
+  const source = await readFile(new URL('../../src/App.tsx', import.meta.url), 'utf8');
+  const start = source.indexOf(`function ${componentName}`);
+  const end = source.indexOf(`function ${nextComponentName}`, start);
+
+  expect(start).toBeGreaterThanOrEqual(0);
+  expect(end).toBeGreaterThan(start);
+  return source.slice(start, end);
+}
+
 describe('frontend scaffold', () => {
   it('uses the frozen product name', () => {
     expect(APP_NAME).toBe('LingShu Robust AIGC Detector');
@@ -65,11 +79,24 @@ describe('frontend scaffold', () => {
     expect(html).not.toContain('class="local-field-card"');
     expect(html).not.toContain('class="idle-phase-panel"');
     expect(html).toContain('LOADING LOCAL MODEL');
+    expect(html).toContain('Verifying and preparing the local FP32 session.');
+    expect(html).toContain('aria-label="Local FP32 model loading progress"');
     expect(html).toContain('<progress');
     expect(html).toContain('44061514');
     expect(html).toContain('JPEG, PNG, or WebP');
     expect(html).toContain('25 MiB');
     expect(html).toContain('never uploaded or saved');
+  });
+
+  it('assembles both model-loading views from the shared deployment copy', async () => {
+    const phaseStatus = await appComponentSource('PhaseStatus', 'SiteRail');
+    const localFieldCard = await appComponentSource('LocalFieldCard', 'IdleActions');
+
+    for (const loadingView of [phaseStatus, localFieldCard]) {
+      expect(loadingView).toContain('delivery.title');
+      expect(loadingView).toContain('delivery.detail');
+      expect(loadingView).toContain('delivery.progressLabel');
+    }
   });
 
   it('renders one keyboard file input and the complete successful result metadata', () => {

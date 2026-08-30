@@ -9,6 +9,7 @@ import {
 
 import type { DetectorState, ImageDetails, PreviewImage } from './detector/machine';
 import { useDetector, type UseDetectorResult } from './detector/use-detector';
+import { DEPLOYMENT_MODE, modelDeliveryCopy } from './runtime/deployment';
 import type { LoadedModelSession } from './runtime/model-session';
 import { DetectorEvidence } from './site/DetectorEvidence';
 import { DissolveTitle } from './site/DissolveTitle';
@@ -26,6 +27,7 @@ import {
 export const APP_NAME = 'LingShu Robust AIGC Detector';
 export const REPOSITORY_URL =
   'https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector';
+const delivery = modelDeliveryCopy(DEPLOYMENT_MODE);
 
 export type DetectorScreenProps = UseDetectorResult & {
   readonly currentRoute?: SiteRoute;
@@ -261,9 +263,9 @@ function PhaseStatus({ state }: { readonly state: DetectorState }) {
         : 0;
       return (
         <div className="phase-content loading-state">
-          <p className="phase-name">Loading model</p>
-          <p>Verifying and preparing the local FP32 session.</p>
-          <progress aria-label="Local FP32 model loading progress" value={state.progress.loaded} max={state.progress.total} />
+          <p className="phase-name">{delivery.title}</p>
+          <p>{delivery.detail}</p>
+          <progress aria-label={delivery.progressLabel} value={state.progress.loaded} max={state.progress.total} />
           <p className="progress-copy">{formatBytes(state.progress.loaded)} / {formatBytes(state.progress.total)} bytes · {percent.toFixed(0)}%</p>
         </div>
       );
@@ -344,8 +346,9 @@ function LocalFieldCard({ state }: { readonly state: DetectorState }) {
       : 0;
     return (
       <div className="local-field-loading" aria-live="polite">
-        <strong>LOADING LOCAL MODEL</strong>
-        <progress aria-label="Local FP32 model loading progress" value={state.progress.loaded} max={state.progress.total} />
+        <strong>{delivery.title}</strong>
+        <span className="sr-only">{delivery.detail}</span>
+        <progress aria-label={delivery.progressLabel} value={state.progress.loaded} max={state.progress.total} />
         <span>{percent.toFixed(0)}% · FP32</span>
         <span className="sr-only">Image bytes remain in browser memory. They are never uploaded or saved.</span>
       </div>
