@@ -36,8 +36,23 @@ const FROZEN_THRESHOLD = 0.55657113;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const RGBA_SOURCE = 'web_demo/tests/fixtures/rgba-hidden-rgb.png';
 const EXIF_SOURCE = 'web_demo/tests/fixtures/exif-orientation-6.jpg';
+const RESULT_KEYS = Object.freeze([
+  'dimensionsMatch',
+  'failures',
+  'floatCount',
+  'id',
+  'maxAbsoluteError',
+  'meanAbsoluteError',
+  'orientedDimensions',
+  'originalDimensions',
+  'rgbaHiddenRgbPreserved',
+]);
 const PYTHON_VERSION_PROBE =
   'import sys; raise SystemExit(sys.version_info < (3, 11))';
+const PYTHON_PROBE_TIMEOUT_MILLISECONDS = 10_000;
+const PYTHON_PROBE_OUTPUT_BYTES = 64 * 1024;
+const GENERATOR_TIMEOUT_MILLISECONDS = 120_000;
+const GENERATOR_OUTPUT_BYTES = 1024 * 1024;
 
 function invariant(condition, message) {
   if (!condition) {
@@ -116,6 +131,29 @@ function stableSigmoid(logit) {
   return exponential / (1 + exponential);
 }
 
+function hasExactKeys(value, expectedKeys) {
+  if (!isRecord(value)) {
+    return false;
+  }
+  const actual = Object.keys(value).sort();
+  const expected = [...expectedKeys].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+}
+
+function isEvidenceDimensions(value) {
+  return (
+    hasExactKeys(value, ['height', 'width']) &&
+    Number.isSafeInteger(value.width) &&
+    value.width > 0 &&
+    Number.isSafeInteger(value.height) &&
+    value.height > 0
+  );
+}
+
+function dimensionsEqual(actual, expected) {
+  return actual.width === expected.width && actual.height === expected.height;
+}
+
 function assertContainedPath(root, candidate, label) {
   const relative = path.relative(root, candidate);
   invariant(
@@ -156,35 +194,169 @@ async function sha256File(filePath) {
   return digest.digest('hex');
 }
 
-function runChildProcess(command, args, options) {
-  return new Promise((resolve) => {
-    const child = spawn(command, args, {
-      cwd: options.cwd,
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    const stdout = [];
-    const stderr = [];
-    child.stdout?.on('data', (chunk) => stdout.push(Buffer.from(chunk)));
-    child.stderr?.on('data', (chunk) => stderr.push(Buffer.from(chunk)));
-    child.once('error', (error) => {
-      resolve({
-        exitCode: null,
-        stdout: Buffer.concat(stdout).toString('utf8'),
-        stderr: error.message,
-      });
-    });
-    child.once('close', (exitCode, signal) => {
-      resolve({
-        exitCode,
-        stdout: Buffer.concat(stdout).toString('utf8'),
-        stderr:
-          Buffer.concat(stderr).toString('utf8') ||
-          (signal ? `process terminated by signal ${signal}` : ''),
-      });
-    });
-  });
+function boundedOutput(stream, maximumBytes) {
+  const chunks = [];
+  let capturedBytes = 0;
+  let truncated = false;
+  const onData = (value) => {
+    const chunk = Buffer.isBuffer(value) ? value : Buffer.from(value);
+    const remaining = maximumBytes - capturedBytes;
+    if (remaining > 0) {
+      const captured = chunk.subarray(0, remaining);
+      chunks.push(captured);
+      capturedBytes += captured.length;
+    }
+    if (chunk.length > remaining) {
+      truncated = true;
+    }
+  };
+  stream?.on('data', onData);
+  return {
+    dispose() {
+      stream?.off('data', onData);
+    },
+    text() {
+      return Buffer.concat(chunks, capturedBytes).toString('utf8');
+    },
+    wasTruncated() {
+      return truncated;
+    },
+  };
 }
+
+export async function terminateChildProcessTree(
+  child,
+  { platform = process.platform, spawnImpl = spawn } = {},
+) {
+  if (!Number.isSafeInteger(child?.pid) || child.pid <= 0) {
+    return;
+  }
+  if (platform === 'win32') {
+    await new Promise((resolve) => {
+      let taskkill;
+      try {
+        taskkill = spawnImpl(
+          'taskkill.exe',
+          ['/pid', String(child.pid), '/t', '/f'],
+          { windowsHide: true, stdio: 'ignore' },
+        );
+      } catch {
+        resolve();
+        return;
+      }
+      let settled = false;
+      const finish = () => {
+        if (!settled) {
+          settled = true;
+          resolve();
+        }
+      };
+      taskkill.once('error', finish);
+      taskkill.once('close', finish);
+    });
+    return;
+  }
+
+  try {
+    process.kill(-child.pid, 'SIGKILL');
+  } catch {
+    try {
+      child.kill('SIGKILL');
+    } catch {
+      // The process may already have exited between the timeout and termination.
+    }
+  }
+}
+
+export function createProcessRunner({
+  spawnImpl = spawn,
+  platform = process.platform,
+  setTimeoutImpl = setTimeout,
+  clearTimeoutImpl = clearTimeout,
+  terminateTree,
+} = {}) {
+  const terminate =
+    terminateTree ??
+    ((child) => terminateChildProcessTree(child, { platform, spawnImpl }));
+
+  return function runProcess(command, args, options) {
+    const timeoutMilliseconds = options.timeoutMilliseconds;
+    const maxOutputBytes = options.maxOutputBytes;
+    invariant(
+      Number.isSafeInteger(timeoutMilliseconds) && timeoutMilliseconds > 0,
+      'child process timeout must be a positive integer',
+    );
+    invariant(
+      Number.isSafeInteger(maxOutputBytes) && maxOutputBytes > 0,
+      'child process output bound must be a positive integer',
+    );
+
+    return new Promise((resolve) => {
+      let child;
+      try {
+        child = spawnImpl(command, args, {
+          cwd: options.cwd,
+          detached: platform !== 'win32',
+          windowsHide: true,
+          stdio: ['ignore', 'pipe', 'pipe'],
+        });
+      } catch (error) {
+        resolve({
+          exitCode: null,
+          stdout: '',
+          stderr: error instanceof Error ? error.message : String(error),
+          timedOut: false,
+          outputTruncated: false,
+        });
+        return;
+      }
+
+      const stdout = boundedOutput(child.stdout, maxOutputBytes);
+      const stderr = boundedOutput(child.stderr, maxOutputBytes);
+      let settled = false;
+      let timedOut = false;
+      let timer;
+
+      const finish = (exitCode, signal, processError = '') => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeoutImpl(timer);
+        stdout.dispose();
+        stderr.dispose();
+        const capturedStderr = stderr.text();
+        resolve({
+          exitCode,
+          stdout: stdout.text(),
+          stderr:
+            processError ||
+            capturedStderr ||
+            (signal ? `process terminated by signal ${signal}` : ''),
+          timedOut,
+          outputTruncated: stdout.wasTruncated() || stderr.wasTruncated(),
+        });
+      };
+
+      child.once('error', (error) => {
+        finish(null, null, error.message);
+      });
+      child.once('close', (exitCode, signal) => {
+        finish(exitCode, signal);
+      });
+      timer = setTimeoutImpl(async () => {
+        timedOut = true;
+        try {
+          await terminate(child);
+        } finally {
+          finish(null, null);
+        }
+      }, timeoutMilliseconds);
+    });
+  };
+}
+
+const runChildProcess = createProcessRunner();
 
 export async function selectPythonInterpreter({
   repositoryRoot,
@@ -206,13 +378,18 @@ export async function selectPythonInterpreter({
     const result = await runProcess(
       candidate.command,
       [...candidate.argumentPrefix, '-c', PYTHON_VERSION_PROBE],
-      { cwd: repositoryRoot, windowsHide: true },
+      {
+        cwd: repositoryRoot,
+        windowsHide: true,
+        timeoutMilliseconds: PYTHON_PROBE_TIMEOUT_MILLISECONDS,
+        maxOutputBytes: PYTHON_PROBE_OUTPUT_BYTES,
+      },
     );
     if (result.exitCode === 0) {
       return candidate;
     }
     diagnostics.push(
-      `${candidate.command}${candidate.argumentPrefix.length > 0 ? ` ${candidate.argumentPrefix.join(' ')}` : ''}: ${result.stderr || `exit ${String(result.exitCode)}`}`,
+      `${candidate.command}${candidate.argumentPrefix.length > 0 ? ` ${candidate.argumentPrefix.join(' ')}` : ''}: ${result.timedOut ? `timed out after ${PYTHON_PROBE_TIMEOUT_MILLISECONDS} ms` : result.stderr || `exit ${String(result.exitCode)}`}${result.outputTruncated ? ' [output truncated]' : ''}`,
     );
   }
 
@@ -242,8 +419,21 @@ export async function generateParityReferences({
       '--output',
       'web_demo/.generated-tests/parity',
     ],
-    { cwd: repositoryRoot, windowsHide: true },
+    {
+      cwd: repositoryRoot,
+      windowsHide: true,
+      timeoutMilliseconds: GENERATOR_TIMEOUT_MILLISECONDS,
+      maxOutputBytes: GENERATOR_OUTPUT_BYTES,
+    },
   );
+  if (result.timedOut) {
+    throw new Error(
+      `Parity reference generator timed out after ${GENERATOR_TIMEOUT_MILLISECONDS} ms`,
+    );
+  }
+  if (result.outputTruncated) {
+    throw new Error(`Parity reference generator exceeded its ${GENERATOR_OUTPUT_BYTES} byte output limit`);
+  }
   if (result.exitCode !== 0) {
     const diagnostic = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
     throw new Error(
@@ -460,51 +650,133 @@ export async function loadAndValidateParityManifest({ repositoryRoot, manifestPa
 export function assessParityRun({ manifest, results, blockedRequests = [], browserErrors = [] }) {
   const failures = [];
   const expectedImages = manifest.images ?? [];
-  if (results.length !== EXPECTED_SOURCE_ORDER.length) {
-    failures.push(`processed ${results.length}/${EXPECTED_SOURCE_ORDER.length}; required 15/15`);
+  const safeResults = Array.isArray(results) ? results : [];
+  if (!Array.isArray(results)) {
+    failures.push('results must be an array');
   }
-  if (blockedRequests.length > 0) {
+  if (safeResults.length !== EXPECTED_SOURCE_ORDER.length) {
+    failures.push(`processed ${safeResults.length}/${EXPECTED_SOURCE_ORDER.length}; required 15/15`);
+  }
+  if (!Array.isArray(blockedRequests) || blockedRequests.some((value) => typeof value !== 'string')) {
+    failures.push('blockedRequests must be an array of strings');
+  } else if (blockedRequests.length > 0) {
     failures.push(`blocked non-local request(s): ${blockedRequests.join(', ')}`);
   }
-  if (browserErrors.length > 0) {
+  if (!Array.isArray(browserErrors) || browserErrors.some((value) => typeof value !== 'string')) {
+    failures.push('browserErrors must be an array of strings');
+  } else if (browserErrors.length > 0) {
     failures.push(`browser error(s): ${browserErrors.join(' | ')}`);
+  }
+
+  const observedIds = new Set();
+  let idsAreUniqueAndOrdered = safeResults.length === EXPECTED_SOURCE_ORDER.length;
+  for (const [index, expected] of expectedImages.entries()) {
+    const result = safeResults[index];
+    if (!isRecord(result) || typeof result.id !== 'string') {
+      idsAreUniqueAndOrdered = false;
+      continue;
+    }
+    if (result.id !== expected.id || observedIds.has(result.id)) {
+      idsAreUniqueAndOrdered = false;
+    }
+    observedIds.add(result.id);
+  }
+  if (!idsAreUniqueAndOrdered) {
+    failures.push('results must contain unique ids in frozen order');
   }
 
   let passedCount = 0;
   for (let index = 0; index < EXPECTED_SOURCE_ORDER.length; index += 1) {
     const expected = expectedImages[index];
-    const result = results[index];
+    const result = safeResults[index];
     if (!expected || !result) {
       continue;
     }
     const imageFailures = [];
+    if (!isRecord(result)) {
+      failures.push(`${expected.id}: result must be an object`);
+      continue;
+    }
+    if (!hasExactKeys(result, RESULT_KEYS)) {
+      imageFailures.push(`result keys must be exactly ${RESULT_KEYS.join(', ')}`);
+    }
     if (result.id !== expected.id) {
       imageFailures.push(`result id ${String(result.id)} does not match ${expected.id}`);
     }
     if (result.floatCount !== TENSOR_FLOAT_COUNT) {
       imageFailures.push(`compared ${String(result.floatCount)} floats instead of ${TENSOR_FLOAT_COUNT}`);
     }
-    if (!Number.isFinite(result.meanAbsoluteError) || result.meanAbsoluteError > MEAN_ERROR_LIMIT) {
-      imageFailures.push(
-        `mean absolute error ${String(result.meanAbsoluteError)} exceeds ${MEAN_ERROR_LIMIT}`,
-      );
+    const meanIsFinite =
+      typeof result.meanAbsoluteError === 'number' && Number.isFinite(result.meanAbsoluteError);
+    const maximumIsFinite =
+      typeof result.maxAbsoluteError === 'number' && Number.isFinite(result.maxAbsoluteError);
+    if (!meanIsFinite) {
+      imageFailures.push('mean absolute error must be finite');
+    } else {
+      if (result.meanAbsoluteError < 0) {
+        imageFailures.push('mean absolute error must be non-negative');
+      }
+      if (result.meanAbsoluteError > MEAN_ERROR_LIMIT) {
+        imageFailures.push(
+          `mean absolute error ${String(result.meanAbsoluteError)} exceeds ${MEAN_ERROR_LIMIT}`,
+        );
+      }
     }
-    if (!Number.isFinite(result.maxAbsoluteError) || result.maxAbsoluteError > MAX_ERROR_LIMIT) {
-      imageFailures.push(
-        `maximum absolute error ${String(result.maxAbsoluteError)} exceeds ${MAX_ERROR_LIMIT}`,
-      );
+    if (!maximumIsFinite) {
+      imageFailures.push('maximum absolute error must be finite');
+    } else {
+      if (result.maxAbsoluteError < 0) {
+        imageFailures.push('maximum absolute error must be non-negative');
+      }
+      if (result.maxAbsoluteError > MAX_ERROR_LIMIT) {
+        imageFailures.push(
+          `maximum absolute error ${String(result.maxAbsoluteError)} exceeds ${MAX_ERROR_LIMIT}`,
+        );
+      }
     }
-    if (result.dimensionsMatch !== true) {
+    if (
+      meanIsFinite &&
+      maximumIsFinite &&
+      result.meanAbsoluteError > result.maxAbsoluteError
+    ) {
+      imageFailures.push('mean absolute error must not exceed maximum absolute error');
+    }
+
+    const originalDimensionsValid = isEvidenceDimensions(result.originalDimensions);
+    const orientedDimensionsValid = isEvidenceDimensions(result.orientedDimensions);
+    if (!originalDimensionsValid) {
+      imageFailures.push('originalDimensions must contain exact positive integer dimensions');
+    }
+    if (!orientedDimensionsValid) {
+      imageFailures.push('orientedDimensions must contain exact positive integer dimensions');
+    }
+    const computedDimensionsMatch =
+      originalDimensionsValid &&
+      orientedDimensionsValid &&
+      dimensionsEqual(result.originalDimensions, expected.original_dimensions) &&
+      dimensionsEqual(result.orientedDimensions, expected.oriented_dimensions);
+    if (typeof result.dimensionsMatch !== 'boolean') {
+      imageFailures.push('dimensionsMatch must be a boolean');
+    } else if (result.dimensionsMatch !== computedDimensionsMatch) {
+      imageFailures.push('dimensionsMatch is inconsistent with the reported dimensions');
+    }
+    if (!computedDimensionsMatch) {
       imageFailures.push('browser dimensions do not match the manifest');
     }
-    if (expected.source === EXIF_SOURCE && result.dimensionsMatch !== true) {
+    if (expected.source === EXIF_SOURCE && !computedDimensionsMatch) {
       imageFailures.push('EXIF oriented dimensions do not match Python');
     }
-    if (expected.source === RGBA_SOURCE && result.rgbaHiddenRgbPreserved !== true) {
-      imageFailures.push('RGBA hidden RGB was composited or otherwise not preserved');
+    if (expected.source === RGBA_SOURCE) {
+      if (result.rgbaHiddenRgbPreserved !== true) {
+        imageFailures.push('RGBA hidden RGB was composited or otherwise not preserved');
+      }
+    } else if (result.rgbaHiddenRgbPreserved !== null) {
+      imageFailures.push('rgbaHiddenRgbPreserved must be null for non-RGBA evidence');
     }
-    if (Array.isArray(result.failures) && result.failures.length > 0) {
-      imageFailures.push(...result.failures.map((failure) => String(failure)));
+    if (!Array.isArray(result.failures)) {
+      imageFailures.push('failures must be an array');
+    } else if (result.failures.length > 0) {
+      imageFailures.push('failures must be an empty array');
     }
     if (imageFailures.length === 0) {
       passedCount += 1;
@@ -531,6 +803,82 @@ function requestIsLocal(requestUrl, origin) {
     return true;
   }
   return parsed.protocol === 'http:' && parsed.origin === origin;
+}
+
+function expectedWebSocketOrigin(origin) {
+  const parsed = new URL(origin);
+  invariant(
+    (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+      parsed.hostname === '127.0.0.1' &&
+      parsed.port.length > 0 &&
+      parsed.username === '' &&
+      parsed.password === '' &&
+      parsed.pathname === '/' &&
+      parsed.search === '' &&
+      parsed.hash === '',
+    'WebSocket policy origin must be an exact loopback HTTP origin',
+  );
+  const protocol = parsed.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${parsed.host}`;
+}
+
+export async function installWebSocketPolicy(
+  context,
+  { origin, blockedRequests, observedWebSockets },
+) {
+  invariant(Array.isArray(blockedRequests), 'blockedRequests must be an array');
+  invariant(Array.isArray(observedWebSockets), 'observedWebSockets must be an array');
+  const allowedOrigin = expectedWebSocketOrigin(origin);
+  await context.routeWebSocket(/.*/u, async (route) => {
+    const socketUrl = route.url();
+    let allowed = false;
+    try {
+      const parsed = new URL(socketUrl);
+      allowed =
+        parsed.origin === allowedOrigin &&
+        parsed.username === '' &&
+        parsed.password === '';
+    } catch {
+      allowed = false;
+    }
+    if (allowed) {
+      observedWebSockets.push(socketUrl);
+      route.connectToServer();
+      return;
+    }
+    blockedRequests.push(socketUrl);
+    await route.close({ code: 1008, reason: 'Only the selected loopback origin is allowed' });
+  });
+}
+
+async function closeResource(resource) {
+  if (resource) {
+    await resource.close();
+  }
+}
+
+export async function closeParityResources({ context, browser, vite }) {
+  const failures = [];
+  const [contextResult] = await Promise.allSettled([closeResource(context)]);
+  if (contextResult.status === 'rejected') {
+    failures.push(contextResult.reason);
+  }
+  const [browserResult, viteResult] = await Promise.allSettled([
+    closeResource(browser),
+    closeResource(vite),
+  ]);
+  if (browserResult.status === 'rejected') {
+    failures.push(browserResult.reason);
+  }
+  if (viteResult.status === 'rejected') {
+    failures.push(viteResult.reason);
+  }
+  if (failures.length > 0) {
+    const diagnostics = failures
+      .map((failure) => (failure instanceof Error ? failure.message : String(failure)))
+      .join(' | ');
+    throw new AggregateError(failures, `failed to close parity resources: ${diagnostics}`);
+  }
 }
 
 async function startVite(webDemoRoot) {
@@ -571,9 +919,11 @@ export async function runPreprocessParity({ repositoryRoot, webDemoRoot, manifes
   const manifestSha256 = await sha256File(manifestPath);
   const blockedRequests = [];
   const observedRequests = [];
+  const observedWebSockets = [];
   const browserErrors = [];
   const results = [];
   let browser;
+  let context;
   let vite;
   let browserVersion = 'unknown';
 
@@ -583,7 +933,12 @@ export async function runPreprocessParity({ repositoryRoot, webDemoRoot, manifes
     const { origin } = started;
     browser = await chromium.launch({ channel: 'msedge', headless: true });
     browserVersion = browser.version();
-    const context = await browser.newContext();
+    context = await browser.newContext();
+    await installWebSocketPolicy(context, {
+      origin,
+      blockedRequests,
+      observedWebSockets,
+    });
     await context.route('**/*', async (route) => {
       const requestUrl = route.request().url();
       if (!requestIsLocal(requestUrl, origin)) {
@@ -605,14 +960,6 @@ export async function runPreprocessParity({ repositoryRoot, webDemoRoot, manifes
         browserErrors.push(message.text());
       }
     });
-    page.on('websocket', (socket) => {
-      const socketUrl = new URL(socket.url());
-      const allowedHost = new URL(origin).host;
-      if (socketUrl.host !== allowedHost) {
-        blockedRequests.push(socket.url());
-      }
-    });
-
     await page.goto(`${origin}/tests/browser/preprocess-harness.html`, {
       waitUntil: 'domcontentloaded',
     });
@@ -642,7 +989,6 @@ export async function runPreprocessParity({ repositoryRoot, webDemoRoot, manifes
       }
     }
 
-    await context.close();
     const assessment = assessParityRun({ manifest, results, blockedRequests, browserErrors });
     return {
       manifest,
@@ -650,14 +996,14 @@ export async function runPreprocessParity({ repositoryRoot, webDemoRoot, manifes
       manifestSha256,
       browserVersion,
       observedRequests: [...new Set(observedRequests)].sort(),
+      observedWebSockets: [...new Set(observedWebSockets)].sort(),
       blockedRequests: [...new Set(blockedRequests)].sort(),
       browserErrors,
       results,
       assessment,
     };
   } finally {
-    await browser?.close();
-    await vite?.close();
+    await closeParityResources({ context, browser, vite });
   }
 }
 
@@ -696,6 +1042,7 @@ async function main() {
     },
     summary: run.assessment,
     request_urls: run.observedRequests,
+    websocket_urls: run.observedWebSockets,
     blocked_requests: run.blockedRequests,
     browser_errors: run.browserErrors,
     images: run.results,
