@@ -1,5 +1,15 @@
 # Offline FP32 WebDemo Implementation Plan
 
+## Status
+
+Completed on 2026-08-30. The implemented runtime and fresh-copy browser results
+are recorded in
+[`results/web_demo_acceptance/`](../../../results/web_demo_acceptance/README.md).
+This file is retained as the historical task-by-task execution plan; its checkbox
+markers describe the original TDD sequence and are not an active backlog. The
+separate high-polish visual/narrative slice remains gated by the Impeccable product
+and design workflow described below.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a self-contained local WebDemo that a judge can run from a fresh clone by double-clicking `web_demo/start-demo.bat`, with the frozen FP32 ONNX detector executing entirely in the browser.
