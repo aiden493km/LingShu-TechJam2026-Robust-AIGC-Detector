@@ -24,19 +24,25 @@ For clarity, the TikTok TechJam project-specific training, robustness ablation, 
 
 ## Model provenance
 
-The initial detector used in this project is:
+The initial detector used in this project is pinned to:
 
 ```text
-OwensLab/commfor-model-384
+OwensLab/commfor-model-384@6076002bf0d9dd37537f965ee2f06f826c333b61
 ```
 
-The final submitted model is a robustness-aware fine-tuned checkpoint derived from that detector.
+The upstream Hugging Face model card identifies that revision as MIT-licensed. The
+final submitted `.pt` checkpoint and its FP32 ONNX export are robustness-aware
+fine-tuned derivatives of that detector.
 
-Before public release, ensure that any model-weight redistribution also complies with the applicable upstream model and dataset terms.
+The fine-tuning used SID and WildFake training images. Dataset files are not
+redistributed by this repository, but the exact source terms governing their use in
+redistributed trained weights have not been captured in this repository.
 
-This model-weight and dataset-term review remains unresolved. Nothing in the
-browser-runtime inventory below should be read as clearing the model weights for
-public redistribution.
+**Release gate:** public redistribution of either the `.pt` checkpoint or the ONNX
+export remains unapproved until the team records and reviews those dataset terms.
+The upstream model's MIT metadata alone does not resolve that separate question.
+Nothing in the browser-runtime inventory below clears the model weights for public
+redistribution.
 
 ## Committed browser runtime
 
@@ -48,6 +54,7 @@ dependencies:
 | ONNX Runtime Web | 1.29.0 | Browser WebGPU/WASM inference, including `ort-wasm-simd-threaded.asyncify.mjs` and `.wasm` | MIT; Copyright Microsoft Corporation. The local npm metadata declares MIT and a JavaScript bundle in that installed package carries the Microsoft MIT header. |
 | React | 19.2.8 | Browser UI bundle | MIT; Copyright Meta Platforms, Inc. and affiliates. |
 | React DOM | 19.2.8 | Browser DOM renderer | MIT; Copyright Meta Platforms, Inc. and affiliates. |
+| Scheduler | 0.27.0 | Transitive React DOM scheduler code included in the browser bundle | MIT; Copyright Meta Platforms, Inc. and affiliates. |
 | `@jsquash/jpeg` | 1.6.0 | JPEG decode | Apache License 2.0 for the package; codec notice detailed below. |
 | `@jsquash/png` | 3.1.1 | PNG decode | Apache License 2.0 for the package; codec notice detailed below. |
 | `@jsquash/resize` | 2.1.1 | Browser resize | Apache License 2.0 for the package; bundled resize-module notices detailed below. |
@@ -58,8 +65,12 @@ GoogleChromeLabs Squoosh project. The package JavaScript notices include Copyrig
 2020 Google Inc. under Apache License 2.0. The Apache License 2.0 text is available
 at <https://www.apache.org/licenses/LICENSE-2.0>.
 
-Build-only and test-only packages are not listed in this runtime table because they
-are not shipped as the judge-facing browser application.
+The production lock also resolves these runtime/transitive packages: `flatbuffers`
+25.9.23, `guid-typescript` 1.0.9, `long` 5.3.2, `onnxruntime-common` 1.29.0,
+`platform` 1.3.6, `protobufjs` 7.6.6 and its `@protobufjs/*` helpers,
+`wasm-feature-detect` 1.9.0, plus type-only packages selected by npm's production
+tree. Build-only and test-only packages are not listed because they are not shipped
+as the judge-facing browser application.
 
 ## Browser codec and resize notices
 
@@ -123,7 +134,10 @@ are included in all copies or substantial portions. They provide the software
 
 ## Redistribution follow-up
 
-Before a public release, preserve the applicable complete license texts and notices
-with redistributed browser assets and review the full production dependency graph.
-This repository-level summary does not replace that release review, and it does not
-resolve the separate upstream model-weight and dataset terms described above.
+**Release gate:** before public distribution, vendor the complete applicable
+license/notice texts alongside the browser assets, including ONNX Runtime 1.29.0's
+MIT license and pinned `ThirdPartyNotices.txt`, React/React DOM/Scheduler MIT
+licenses, jSquash Apache-2.0 licenses, and the original codec/resize notices. Audit
+the locked production graph above against the actual bundle after every dependency
+or build change. This repository-level summary does not replace that release review
+and does not resolve the separate model-weight/dataset gate above.

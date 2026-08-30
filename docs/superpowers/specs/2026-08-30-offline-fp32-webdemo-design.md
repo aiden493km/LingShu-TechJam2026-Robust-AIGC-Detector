@@ -75,7 +75,6 @@ part of this design.
 ```text
 web_demo/
 ├── src/                         # React/TypeScript source
-├── public/                      # source-time static assets, excluding the model
 ├── dist/                        # committed production build used by judges
 ├── models/
 │   ├── baseline2_njr_fp32.onnx # the only deployed model
@@ -133,13 +132,16 @@ load `node_modules` or a CDN at runtime.
 
 Application modules have single responsibilities:
 
-- `runtime/model-session`: load the manifest, choose WebGPU or WASM, create and
+- `src/runtime/model-session.ts`: load the manifest, choose WebGPU or WASM, create and
   retain one FP32 inference session;
-- `runtime/preprocess`: decode, orient, resize, tensorize, and normalize an image;
-- `runtime/infer`: run one tensor, apply sigmoid, and compare with the threshold;
-- `runtime/capabilities`: report browser, WebGPU, WASM, and isolation status;
-- `features/detector`: own upload, progress, success, and error states;
-- `features/result`: present continuous AIGC confidence and the thresholded label.
+- `src/runtime/preprocess.ts`: decode, orient, resize, tensorize, and normalize an
+  image;
+- `src/runtime/infer.ts`: run one tensor, apply sigmoid, and compare with the
+  threshold;
+- `src/runtime/capabilities.ts`: report browser, WebGPU, WASM, and isolation status;
+- `src/detector/*`: own upload, progress, success, and error states;
+- `src/App.tsx`: present the detector workflow, continuous AIGC confidence, and the
+  thresholded result.
 
 ### Execution-provider selection
 
@@ -298,10 +300,11 @@ copy exercises the same no-install artifact set a fresh clone receives:
 
 1. Intercept browser requests and fail the run if any origin is not the selected
    loopback server.
-2. Run `web_demo/start-demo.bat --check` and then the normal launcher without
-   running `npm install`.
-3. Verify that the browser opens, the model hash passes, and no external request is
-   attempted.
+2. Run `web_demo/start-demo.bat --check` and then start the launcher with
+   `--no-browser`, without running `npm install`.
+3. Have Playwright load the launcher URL; verify that the page loads, the model hash
+   passes, and no external request is attempted. Automatic default-browser opening
+   is a manual launcher behavior, not a claim made by this formal harness.
 4. Run all 15 inputs (ten demo images plus five fixtures) through WebGPU and compare
    with the Python/FP32 ONNX references.
 5. Launch with the forced-WASM diagnostic query, verify WASM selection, and compare
@@ -314,10 +317,13 @@ copy exercises the same no-install artifact set a fresh clone receives:
 
 ### Browser targets
 
-Microsoft Edge on Windows is fully accepted for WebGPU and WASM in the formal
-evidence. Current Google Chrome on Windows remains a target browser, but no Chrome
-smoke or full acceptance result is recorded yet. Firefox and Safari are best-effort
-through WASM and are not release-blocking for the Windows BAT workflow.
+The formal Windows evidence exercises WebGPU and WASM with headless Microsoft Edge;
+the harness passes `--enable-unsafe-webgpu` so headless Edge exposes that provider.
+This validates both application paths under the recorded harness, not every headed
+Edge or graphics-driver configuration. Current Google Chrome on Windows remains a
+target browser, but no Chrome smoke or full acceptance result is recorded yet.
+Firefox and Safari are best-effort through WASM and are not release-blocking for the
+Windows BAT workflow.
 
 ## Documentation changes
 

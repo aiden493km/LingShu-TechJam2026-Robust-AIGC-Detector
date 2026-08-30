@@ -15,11 +15,11 @@
 4. Choose or drop one JPEG, PNG, or WebP still image and read the AIGC confidence,
    Real/AIGC decision, and execution provider.
 
-Python 3.11 or newer is the only launcher/toolchain prerequisite. The production
-site, FP32 ONNX model, and browser runtime are already included. After the
-repository has been obtained, normal launch and inference require no npm install,
-pip install, Git LFS, model download, API key, Internet connection, or inference
-server.
+The formally validated Windows judge path requires Python 3.11 or newer and a
+current Microsoft Edge installation. The production site, FP32 ONNX model, and
+browser runtime are already included. After the repository has been obtained,
+normal launch and inference require no Node.js, npm install, pip install, Git LFS,
+model download, API key, Internet connection, or inference server.
 
 ## What happens at launch
 
@@ -55,11 +55,13 @@ session remains loaded for the next inference.
 
 ## Privacy and shutdown
 
-The selected image is decoded and analyzed in browser memory. Its bytes are not
-uploaded to the local Python process, sent to an external origin, persisted,
-logged, or hashed. The Python process only serves the committed static site,
-manifest, runtime files, and model over loopback. The verified runtime makes no
-request to a CDN, analytics service, model host, API, or other remote origin.
+The selected image is decoded and analyzed by the browser application. The
+application code does not upload its bytes to the local Python process, send them
+to an external origin, log or hash them, or deliberately persist them. The Python
+process only serves the committed static site, manifest, runtime files, and model
+over loopback. The formally exercised runtime made no request to a CDN, analytics
+service, model host, API, or other remote origin. Browser and operating-system
+memory management remain outside the application's control.
 
 Keep the launcher window open while using the page. Press `Ctrl+C` in that window,
 or close the launcher window, to stop the local server; the local page will then
@@ -83,17 +85,23 @@ python .\web_demo\tools\serve_demo.py --no-browser
 python .\web_demo\tools\serve_demo.py --port 8766
 ```
 
+The examples use `python`. If the launcher instead finds `py -3` or the repository
+`.venv\Scripts\python.exe`, use that successful interpreter prefix for the three
+manual `serve_demo.py` commands.
+
 Without `--port`, the server tries `127.0.0.1:8765` through
 `127.0.0.1:8784`, then asks the operating system for another available loopback
 port. On macOS or Linux, run `./web_demo/start-demo.sh` from a terminal.
 
 ## Browser status
 
-- **Microsoft Edge:** the formal Windows 11 acceptance run used Edge
-  `151.0.4129.107` and exercised WebGPU and WASM.
-- **Google Chrome:** an intended Windows project target, but a separate complete formal
-  Chrome acceptance run has not yet been recorded. The committed formal evidence
-  is Edge-only.
+- **Microsoft Edge:** the formal Windows 11 automation used headless Edge
+  `151.0.4129.107`; its harness passed `--enable-unsafe-webgpu` to exercise WebGPU
+  and also exercised WASM. This validates both application paths under the recorded
+  harness, not every headed Edge installation or graphics-driver configuration.
+- **Google Chrome:** an intended Windows project target, but a separate complete
+  formal Chrome acceptance run has not yet been recorded. The committed formal
+  evidence is Edge-only.
 - **Firefox and Safari:** best-effort compatibility through WASM; they are not
   release-blocking targets for the Windows one-click workflow.
 
@@ -155,12 +163,15 @@ Changing only a filename extension does not change the encoded format.
 
 ## Developer setup and audit gates
 
-Judges do not need this section. Developers rebuilding or auditing the committed
-site need Node.js/npm and the pinned Python experiment environment:
+Judges do not need this section. The complete recorded audit requires Git, Windows,
+an installed Microsoft Edge, Node.js `^20.19.0` or `>=22.12.0` (the Vite 8.2.2
+requirement), npm, and the pinned Python experiment environment. Use any working
+Python 3.12 command; the example below uses `python`, while another installation
+may expose `py -3.12` instead:
 
 ```powershell
 # From the repository root
-py -3.12 -m venv .venv
+python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-web-experiment.txt
 
 Set-Location web_demo
@@ -172,8 +183,8 @@ Set-Location web_demo
 npm.cmd test
 npm.cmd run typecheck
 npm.cmd run build
-npm.cmd run test:preprocess-parity
 npm.cmd run test:browser-acceptance
+npm.cmd run test:preprocess-parity
 npm.cmd run verify:dist
 ```
 
@@ -220,6 +231,7 @@ Package-level license declarations for the direct runtime dependencies are:
 | Dependency | Version | License |
 |---|---:|---|
 | React / React DOM | 19.2.8 | MIT |
+| Scheduler | 0.27.0 | MIT |
 | ONNX Runtime Web | 1.29.0 | MIT |
 | `@jsquash/jpeg` | 1.6.0 | Apache-2.0 (bundled codec notices also apply) |
 | `@jsquash/png` | 3.1.1 | Apache-2.0 (bundled codec notices also apply) |
@@ -229,4 +241,6 @@ Package-level license declarations for the direct runtime dependencies are:
 Model and upstream-code attribution is recorded in
 [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md). Developers redistributing a
 rebuilt bundle should also preserve the license files and codec notices provided
-by the pinned packages.
+by the pinned packages. That notice currently marks model/dataset review and the
+complete runtime-license bundle as public-release gates; local technical acceptance
+does not imply that those gates have been cleared.

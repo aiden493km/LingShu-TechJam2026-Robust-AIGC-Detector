@@ -57,15 +57,16 @@ The output field `pred` is the estimated probability/confidence that an image is
 3. Wait for the local browser tab and the verified FP32 model to become ready.
 4. Choose one JPEG, PNG, or WebP still image.
 
-Python 3.11+ is the only launcher/toolchain prerequisite. The judge path does not
-need Node.js, npm, a model download, Git LFS, an Internet connection after checkout,
-or a continuously running inference server. The 84.04 MiB model is read from the
-local repository into the browser, so first-load time varies by computer. WebGPU is
-attempted first and automatically falls back to WASM using the same FP32 model.
+The formally validated Windows judge path requires Python 3.11+ and a current
+Microsoft Edge installation. It does not need Node.js, npm, a model download, Git
+LFS, an Internet connection after checkout, or a continuously running inference
+server. The 84.04 MiB model is read from the local repository into the browser, so
+first-load time varies by computer. WebGPU is attempted first and automatically
+falls back to WASM using the same FP32 model.
 
-The server binds only to `127.0.0.1`. Selected image bytes remain in browser memory
-and no runtime request goes to an external origin. Stop the demo with `Ctrl+C` or by
-closing the launcher window.
+The server binds only to `127.0.0.1`. The application processes selected images
+locally and does not send their bytes to an external origin. Stop the demo with
+`Ctrl+C` or by closing the launcher window.
 
 The two frozen deployment artifacts serve different runtimes:
 
