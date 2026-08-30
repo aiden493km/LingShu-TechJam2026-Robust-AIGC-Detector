@@ -34,6 +34,16 @@ describe('static runtime build configuration', () => {
     );
   });
 
+  it('exposes the committed built-app browser acceptance runner', async () => {
+    const packageJson = JSON.parse(
+      await readFile(new URL('../../package.json', import.meta.url), 'utf8'),
+    ) as { scripts?: Record<string, string> };
+
+    expect(packageJson.scripts?.['test:browser-acceptance']).toBe(
+      'node tools/run_browser_acceptance.mjs',
+    );
+  });
+
   it('tracks the model and preserves every committed dist byte without Git LFS', async () => {
     const gitignore = await readFile(new URL('../../../.gitignore', import.meta.url), 'utf8');
     const attributes = await readFile(

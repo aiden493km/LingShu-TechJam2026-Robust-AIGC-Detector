@@ -8,6 +8,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:preprocess-parity": "node --test tests/browser/run-preprocess-parity.unit.mjs && node tools/run_preprocess_parity.mjs",
+    "test:browser-acceptance": "node tools/run_browser_acceptance.mjs",
     "typecheck": "tsc --noEmit",
     "build": "vite build && node tools/copy_ort_runtime.mjs && node tools/write_dist_integrity.mjs",
     "verify:dist": "npm run build && git diff --exit-code -- dist"
