@@ -1,7 +1,8 @@
 # Vercel Online WebDemo Deployment Design
 
 **Date:** 2026-08-31
-**Status:** Conversation-approved; written-spec review pending
+**Status:** Approved; Tasks 1–3 implemented and reviewed; Vercel account work pending
+**Last reconciled:** 2026-08-31
 **Branch:** `feat/vercel-online-deployment`
 **Baseline:** `948a7ce`
 

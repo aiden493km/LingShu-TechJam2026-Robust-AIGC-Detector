@@ -8,6 +8,20 @@
 
 **Tech Stack:** React 19, TypeScript 7, Vite 8, Vitest 4, ONNX Runtime Web 1.29, Web Crypto, Playwright Core, Vercel static deployments, Vercel Public Blob, PowerShell on Windows.
 
+## Execution status (2026-08-31)
+
+- Tasks 1–3 are implemented, committed, and independently reviewed for both
+  specification compliance and code quality.
+- The current online build excludes ONNX bytes, verifies the frozen model
+  SHA-256 before provider/session creation, preserves cancellation and retry
+  semantics, and shows mode-specific loading copy without changing local
+  privacy or inference behavior.
+- Vercel CLI `59.10.0` was verified locally. Account authorization was not
+  completed, so no Vercel project, Blob store/object, routing configuration,
+  Preview, Production deployment, or online acceptance evidence exists yet.
+- Resume at Task 4, Step 1. Do not skip the remote object byte/hash check or
+  promote to Production before the later approval gate.
+
 ---
 
 ## File structure and responsibilities
@@ -40,7 +54,7 @@
 - Modify: `.gitignore`
 - Create: `web_demo/.vercelignore`
 
-- [ ] **Step 1: Write failing build-mode and package-script tests**
+- [x] **Step 1: Write failing build-mode and package-script tests**
 
 Add to `build-packaging.test.ts`:
 
@@ -76,7 +90,7 @@ await expect(prepareOnlineDist({
 })).rejects.toThrow(/onnx.*online distribution/i);
 ```
 
-- [ ] **Step 2: Run the focused tests and verify RED**
+- [x] **Step 2: Run the focused tests and verify RED**
 
 Run:
 
@@ -88,7 +102,7 @@ npm.cmd test -- tests/unit/build-packaging.test.ts tests/unit/online-build-prefl
 Expected: FAIL because `buildOutputDirectory`, the online preflight,
 `prepareOnlineDist`, and the online script do not exist.
 
-- [ ] **Step 3: Implement isolated Vite output and online packaging**
+- [x] **Step 3: Implement isolated Vite output and online packaging**
 
 In `vite.config.ts`, keep `runtimeAssetFileName` unchanged and add:
 
@@ -175,7 +189,7 @@ start-demo.command
 start-demo.sh
 ```
 
-- [ ] **Step 4: Run focused tests and both builds**
+- [x] **Step 4: Run focused tests and both builds**
 
 ```powershell
 Set-Location web_demo
@@ -188,7 +202,7 @@ npm.cmd run verify:dist
 Expected: all tests and typecheck PASS; `build:online` reports a verified
 `dist-online/` with no ONNX; `verify:dist` reports no tracked local `dist/` diff.
 
-- [ ] **Step 5: Commit the build boundary**
+- [x] **Step 5: Commit the build boundary**
 
 ```powershell
 git add .gitignore web_demo/.vercelignore web_demo/package.json web_demo/vite.config.ts web_demo/tools/copy_ort_runtime.mjs web_demo/tools/prepare_online_dist.mjs web_demo/tools/verify_online_dist.mjs web_demo/tests/unit/build-packaging.test.ts web_demo/tests/unit/online-distribution.test.ts
@@ -205,7 +219,7 @@ git commit -m "build(web-demo): isolate Vercel online output"
 - Modify: `web_demo/src/detector/use-detector.ts`
 - Modify: `web_demo/tests/unit/machine.test.ts`
 
-- [ ] **Step 1: Write failing SHA-256, integration, and retry-cache tests**
+- [x] **Step 1: Write failing SHA-256, integration, and retry-cache tests**
 
 Use the known SHA-256 of `Uint8Array.of(1, 2, 3)`:
 
@@ -239,7 +253,7 @@ await controller.retryModel();
 expect(loadModel.mock.calls[1]?.[0]?.modelCache).toBe('reload');
 ```
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [x] **Step 2: Run focused tests and verify RED**
 
 ```powershell
 Set-Location web_demo
@@ -248,7 +262,7 @@ npm.cmd test -- tests/unit/model-integrity.test.ts tests/unit/model-session.test
 
 Expected: FAIL because SHA verification and `modelCache` are absent.
 
-- [ ] **Step 3: Implement the focused integrity module**
+- [x] **Step 3: Implement the focused integrity module**
 
 Create `model-integrity.ts`:
 
@@ -287,7 +301,7 @@ export async function verifyModelSha256(
 }
 ```
 
-- [ ] **Step 4: Integrate verification and cache-reloading Retry**
+- [x] **Step 4: Integrate verification and cache-reloading Retry**
 
 In `model-session.ts`:
 
@@ -305,7 +319,7 @@ In `DetectorController`, pass no `modelCache` from `start()` and pass
 `modelCache: 'reload'` from `retryModel()`. Preserve the existing active-load,
 abort, stale-generation, and disposal behavior.
 
-- [ ] **Step 5: Run tests, typecheck, and local browser-model tests**
+- [x] **Step 5: Run tests, typecheck, and local browser-model tests**
 
 ```powershell
 Set-Location web_demo
@@ -317,7 +331,7 @@ npm.cmd test
 Expected: all PASS. Existing manifest, provider, abort, and concurrency tests
 remain green.
 
-- [ ] **Step 6: Commit verified loading**
+- [x] **Step 6: Commit verified loading**
 
 ```powershell
 git add web_demo/src/runtime/model-integrity.ts web_demo/src/runtime/model-session.ts web_demo/src/detector/use-detector.ts web_demo/tests/unit/model-integrity.test.ts web_demo/tests/unit/model-session.test.ts web_demo/tests/unit/machine.test.ts
@@ -332,7 +346,7 @@ git commit -m "feat(web-demo): verify downloaded model identity"
 - Modify: `web_demo/src/App.tsx`
 - Modify: `web_demo/tests/unit/scaffold.test.ts`
 
-- [ ] **Step 1: Write failing delivery-copy tests**
+- [x] **Step 1: Write failing delivery-copy tests**
 
 ```ts
 expect(modelDeliveryCopy('local')).toEqual({
@@ -347,7 +361,7 @@ expect(modelDeliveryCopy('online')).toEqual({
 });
 ```
 
-- [ ] **Step 2: Run the focused tests and verify RED**
+- [x] **Step 2: Run the focused tests and verify RED**
 
 ```powershell
 Set-Location web_demo
@@ -356,7 +370,7 @@ npm.cmd test -- tests/unit/deployment.test.ts tests/unit/scaffold.test.ts
 
 Expected: FAIL because the pure copy module does not exist.
 
-- [ ] **Step 3: Implement mode-derived copy and wire both loading views**
+- [x] **Step 3: Implement mode-derived copy and wire both loading views**
 
 Create `deployment.ts` with a pure `modelDeliveryCopy(mode)` function and:
 
@@ -371,7 +385,7 @@ use its `title`, `detail`, and `progressLabel` in both `PhaseContent` and
 `LocalFieldCard`. Do not change `LOCAL RUNTIME`, `LOCAL PRIVACY`, or local
 inference wording because image processing still occurs locally online.
 
-- [ ] **Step 4: Run tests and inspect both built strings**
+- [x] **Step 4: Run tests and inspect both built strings**
 
 ```powershell
 Set-Location web_demo
@@ -385,7 +399,7 @@ rg -n "LOADING LOCAL MODEL|DOWNLOADING MODEL" dist dist-online
 Expected: local output contains local loading copy; online output contains
 download copy; all tests PASS.
 
-- [ ] **Step 5: Commit delivery copy**
+- [x] **Step 5: Commit delivery copy**
 
 ```powershell
 git add web_demo/src/runtime/deployment.ts web_demo/src/App.tsx web_demo/tests/unit/deployment.test.ts web_demo/tests/unit/scaffold.test.ts
