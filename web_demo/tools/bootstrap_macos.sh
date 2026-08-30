@@ -111,6 +111,12 @@ run_cache_phase() {
   if [ "$cache_phase_status" -eq 75 ]; then
     fail "Timed out after 8 seconds waiting for the runtime cache lock: $lock_path. Close any stuck WebDemo launcher and retry."
   fi
+  case "$cache_phase_status" in
+    64|69|70|71|73)
+      printf '%s\n' "ERROR: WebDemo bootstrap failed: Could not acquire/use the macOS runtime cache lock: $lock_path (lockf status $cache_phase_status). Check that the WebDemo runtime cache is writable and retry." >&2
+      exit "$cache_phase_status"
+      ;;
+  esac
   [ "$cache_phase_status" -eq 0 ] || exit "$cache_phase_status"
 }
 

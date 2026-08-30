@@ -185,6 +185,8 @@ exit "$status"
             '/usr/bin/lockf -s -t 8 -k "$lock_path"',
             '"$bootstrap_script" --internal-cache-phase "$cache_phase_token"',
             'if [ "${1-}" = \'--internal-cache-phase\' ] && [ -n "${LINGSHU_MACOS_CACHE_TOKEN-}" ]; then',
+            '64|69|70|71|73)',
+            'Could not acquire/use the macOS runtime cache lock: $lock_path (lockf status $cache_phase_status).',
         ):
             self.assertIn(fragment, content)
         for forbidden in (

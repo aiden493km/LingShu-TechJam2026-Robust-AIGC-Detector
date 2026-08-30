@@ -550,6 +550,31 @@ with open(sys.argv[1], "a+b", buffering=0) as lock_file:
                     holder.terminate()
                     holder.wait(timeout=5)
 
+    @unittest.skipIf(
+        getattr(os, "geteuid", lambda: 1)() == 0,
+        "requires an unprivileged macOS user",
+    )
+    def test_real_command_reports_kernel_lock_infrastructure_failure(self):
+        lock_path = self._create_runtime_lock_file()
+        lock_path.chmod(stat.S_IRUSR)
+        try:
+            result = self._run("--check")
+        finally:
+            lock_path.chmod(stat.S_IRUSR | stat.S_IWUSR)
+
+        self.assertEqual(result.returncode, 73, result.stdout + result.stderr)
+        self.assertEqual(result.stdout, "")
+        error_lines = result.stderr.splitlines()
+        self.assertEqual(len(error_lines), 1, result.stderr)
+        self.assertEqual(
+            error_lines[0],
+            "ERROR: WebDemo bootstrap failed: "
+            "Could not acquire/use the macOS runtime cache lock: "
+            f"{lock_path} (lockf status 73). "
+            "Check that the WebDemo runtime cache is writable and retry.",
+        )
+        self.assertNotIn("trace", result.stderr.lower())
+
     def test_four_cold_launches_share_one_atomic_cache(self):
         processes = []
         try:
