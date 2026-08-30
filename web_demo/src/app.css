@@ -71,7 +71,7 @@ button:disabled { cursor: not-allowed; }
 
 .application-frame {
   display: grid;
-  grid-template-rows: minmax(38rem, 77svh) minmax(14.25rem, 23svh);
+  grid-template-rows: minmax(clamp(38rem, 50vw, 52rem), 77svh) minmax(14.25rem, 23svh);
   min-height: 100svh;
   background: var(--paper);
 }

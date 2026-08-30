@@ -6,7 +6,9 @@ describe('Semantic Signal visual system', () => {
     const css = await readFile(new URL('../../src/app.css', import.meta.url), 'utf8');
 
     expect(css).toContain('.hero-grid');
-    expect(css).toMatch(/\.application-frame\s*\{[^}]*grid-template-rows:/s);
+    expect(css).toMatch(
+      /\.application-frame\s*\{[^}]*grid-template-rows:\s*minmax\(clamp\(38rem,\s*50vw,\s*52rem\),\s*77svh\)/s,
+    );
     expect(css).toMatch(/\.hero-grid\s*\{[^}]*grid-template-columns:/s);
     expect(css).toMatch(/\.evidence-strip\s*\{[^}]*width:\s*100%/s);
     expect(css).toContain('.site-rail');
