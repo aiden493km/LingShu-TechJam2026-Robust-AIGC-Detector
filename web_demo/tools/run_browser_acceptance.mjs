@@ -30,6 +30,8 @@ const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPOSITORY_ROOT = path.resolve(SCRIPT_DIRECTORY, '..', '..');
 const PARITY_DIRECTORY = path.join('web_demo', '.generated-tests', 'parity');
 const PARITY_MANIFEST = path.join(PARITY_DIRECTORY, 'manifest.json');
+const PARITY_MANIFEST_REPORT_PATH = 'web_demo/.generated-tests/parity/manifest.json';
+const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const MODEL_SHA256 =
   'e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69';
 const MODEL_BYTES = 88_123_029;
@@ -83,6 +85,18 @@ function invariant(condition, message) {
 
 function isRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function expectExactKeys(value, keys, label) {
+  invariant(isRecord(value), `${label} must be an object`);
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  invariant(
+    actual.length === expected.length &&
+      actual.every((key, index) => key === expected[index]),
+    `${label} keys must be exactly ${expected.join(', ')}`,
+  );
+  return value;
 }
 
 function finiteProbability(value, label) {
@@ -316,12 +330,23 @@ function parseLocalRootUrl(value, label) {
 }
 
 function validateGpuEvidence(value, label) {
-  invariant(isRecord(value), `${label} must be an object`);
+  expectExactKeys(
+    value,
+    value?.error === undefined
+      ? ['adapterAvailable', 'adapterInfo', 'apiAvailable']
+      : ['adapterAvailable', 'adapterInfo', 'apiAvailable', 'error'],
+    label,
+  );
   invariant(typeof value.apiAvailable === 'boolean', `${label}.apiAvailable must be boolean`);
   invariant(typeof value.adapterAvailable === 'boolean', `${label}.adapterAvailable must be boolean`);
   invariant(value.apiAvailable || !value.adapterAvailable, `${label} cannot have an adapter without the WebGPU API`);
   invariant(value.adapterInfo === null || isRecord(value.adapterInfo), `${label}.adapterInfo must be null or an object`);
   if (isRecord(value.adapterInfo)) {
+    expectExactKeys(
+      value.adapterInfo,
+      ['architecture', 'description', 'device', 'vendor'],
+      `${label}.adapterInfo`,
+    );
     for (const key of ['vendor', 'architecture', 'device', 'description']) {
       invariant(typeof value.adapterInfo[key] === 'string', `${label}.adapterInfo.${key} must be a string`);
     }
@@ -330,7 +355,27 @@ function validateGpuEvidence(value, label) {
 }
 
 export function validateProviderEvidence(value, allowedOrigin) {
-  invariant(isRecord(value), 'provider evidence must be an object');
+  expectExactKeys(
+    value,
+    [
+      'consoleMessages',
+      'crossOriginIsolated',
+      'expectedProvider',
+      'fallbackNote',
+      'fallbackNoteVisible',
+      'gpu',
+      'images',
+      'maxAbsoluteError',
+      'mode',
+      'requestOrigins',
+      'requestPaths',
+      'thresholdFlips',
+      'webGpuDisabledByHarness',
+      'webSocketOrigins',
+      'workflowChecks',
+    ],
+    'provider evidence',
+  );
   invariant(
     value.mode === 'normal' || value.mode === 'fallback' || value.mode === 'wasm',
     'provider evidence mode is invalid',
@@ -354,7 +399,21 @@ export function validateProviderEvidence(value, allowedOrigin) {
 
   for (const [index, row] of value.images.entries()) {
     const label = `${value.mode} images[${index}]`;
-    invariant(isRecord(row), `${label} must be an object`);
+    expectExactKeys(
+      row,
+      [
+        'absoluteError',
+        'elapsedMs',
+        'label',
+        'probability',
+        'provider',
+        'reference',
+        'referenceProbability',
+        'source',
+        'thresholdFlip',
+      ],
+      label,
+    );
     invariant(row.source === EXPECTED_PARITY_SOURCES[index], `${label}.source is out of order`);
     const expectedReference = index < DEMO_SOURCES.length ? 'demo_predictions_cpu' : 'pillow_fp32_onnx';
     invariant(row.reference === expectedReference, `${label}.reference is invalid`);
@@ -461,32 +520,73 @@ function validateProviderSet(value, allowedOrigin, label) {
 }
 
 function validateFailureEvidence(value, label) {
-  invariant(isRecord(value), `${label} evidence must be an object`);
+  expectExactKeys(value, ['diagnostic', 'exitCode'], `${label} evidence`);
   invariant(Number.isInteger(value.exitCode) && value.exitCode !== 0, `${label} must record a nonzero exit code`);
   nonEmptyString(value.diagnostic, `${label}.diagnostic`);
 }
 
 export function validateAcceptanceReport(value) {
-  invariant(isRecord(value), 'acceptance report must be an object');
+  expectExactKeys(
+    value,
+    [
+      'artifactFailures',
+      'commit',
+      'freshCopy',
+      'gates',
+      'generatedAt',
+      'model',
+      'parityManifest',
+      'passed',
+      'platform',
+      'portFallback',
+      'runtime',
+      'schemaVersion',
+      'source',
+      'threshold',
+    ],
+    'acceptance report including parity manifest',
+  );
   invariant(value.schemaVersion === 1, 'acceptance report schemaVersion must equal 1');
   invariant(value.passed === true, 'acceptance report must record a pass');
   nonEmptyString(value.generatedAt, 'acceptance report generatedAt');
   const generatedAt = new Date(value.generatedAt);
   invariant(!Number.isNaN(generatedAt.valueOf()) && generatedAt.toISOString() === value.generatedAt, 'acceptance report generatedAt must be canonical ISO-8601');
   invariant(typeof value.commit === 'string' && /^[0-9a-f]{40}$/.test(value.commit), 'acceptance report commit must be a full Git SHA-1');
-  invariant(isRecord(value.platform), 'acceptance report platform must be an object');
+  expectExactKeys(value.parityManifest, ['path', 'sha256'], 'acceptance report parity manifest');
+  invariant(
+    value.parityManifest.path === PARITY_MANIFEST_REPORT_PATH,
+    'acceptance report parity manifest path is invalid',
+  );
+  invariant(
+    typeof value.parityManifest.sha256 === 'string' &&
+      SHA256_PATTERN.test(value.parityManifest.sha256),
+    'acceptance report parity manifest SHA-256 must be lowercase hexadecimal',
+  );
+  expectExactKeys(value.platform, ['arch', 'platform', 'release'], 'acceptance report platform');
   for (const key of ['platform', 'release', 'arch']) nonEmptyString(value.platform[key], `acceptance report platform.${key}`);
-  invariant(isRecord(value.runtime), 'acceptance report runtime must be an object');
+  expectExactKeys(
+    value.runtime,
+    ['edge', 'edgeExecutable', 'node', 'python'],
+    'acceptance report runtime',
+  );
   for (const key of ['node', 'python', 'edge', 'edgeExecutable']) nonEmptyString(value.runtime[key], `acceptance report runtime.${key}`);
-  invariant(isRecord(value.model), 'acceptance report model must be an object');
+  expectExactKeys(value.model, ['bytes', 'sha256'], 'acceptance report model');
   invariant(value.model.bytes === MODEL_BYTES, `acceptance report model bytes must equal ${MODEL_BYTES}`);
   invariant(value.model.sha256 === MODEL_SHA256, 'acceptance report model SHA-256 is invalid');
   invariant(value.threshold === FROZEN_THRESHOLD, 'acceptance report threshold is invalid');
-  invariant(isRecord(value.gates), 'acceptance report gates must be an object');
+  expectExactKeys(
+    value.gates,
+    ['imagesPerProvider', 'maxProbabilityError'],
+    'acceptance report gates',
+  );
   invariant(value.gates.maxProbabilityError === MAX_PROBABILITY_ERROR, 'acceptance report probability gate is invalid');
   invariant(value.gates.imagesPerProvider === 15, 'acceptance report image-count gate is invalid');
 
-  invariant(isRecord(value.portFallback), 'acceptance report portFallback must be an object');
+  expectExactKeys(
+    value.portFallback,
+    ['occupation', 'occupiedPort', 'passed', 'selectedPort'],
+    'acceptance report portFallback',
+  );
   invariant(value.portFallback.occupiedPort === 8765, 'acceptance report must occupy port 8765');
   invariant(
     value.portFallback.occupation === 'acceptance-holder' || value.portFallback.occupation === 'preexisting',
@@ -501,17 +601,39 @@ export function validateAcceptanceReport(value) {
   );
   invariant(value.portFallback.passed === true, 'acceptance report port fallback must pass');
 
-  invariant(isRecord(value.source), 'acceptance report source evidence must be an object');
+  expectExactKeys(
+    value.source,
+    ['providers', 'serverUrl', 'terminationUnreachable'],
+    'acceptance report source evidence',
+  );
   const sourceUrl = parseLocalRootUrl(value.source.serverUrl, 'acceptance report source.serverUrl');
   invariant(sourceUrl.port === value.portFallback.selectedPort, 'source server URL disagrees with fallback port');
   validateProviderSet(value.source.providers, sourceUrl.origin, 'source');
   invariant(value.source.terminationUnreachable === true, 'source server termination must make its URL unreachable');
 
-  invariant(isRecord(value.artifactFailures), 'acceptance report artifactFailures must be an object');
+  expectExactKeys(
+    value.artifactFailures,
+    ['corruptModel', 'missingWasm'],
+    'acceptance report artifactFailures',
+  );
   validateFailureEvidence(value.artifactFailures.corruptModel, 'corrupt model');
   validateFailureEvidence(value.artifactFailures.missingWasm, 'missing WASM');
 
-  invariant(isRecord(value.freshCopy), 'acceptance report freshCopy must be an object');
+  expectExactKeys(
+    value.freshCopy,
+    [
+      'batchCheck',
+      'directoryName',
+      'excluded',
+      'npmInstallRun',
+      'providers',
+      'serverUrl',
+      'sourceCommit',
+      'terminationUnreachable',
+      'trackedFileCount',
+    ],
+    'acceptance report freshCopy',
+  );
   invariant(value.freshCopy.directoryName === FRESH_COPY_NAME, 'fresh-copy directory name is invalid');
   invariant(
     value.freshCopy.sourceCommit === value.commit,
@@ -523,7 +645,11 @@ export function validateAcceptanceReport(value) {
     'fresh-copy exclusions are invalid',
   );
   invariant(value.freshCopy.npmInstallRun === false, 'fresh-copy acceptance must not run npm install');
-  invariant(isRecord(value.freshCopy.batchCheck), 'fresh-copy batchCheck must be an object');
+  expectExactKeys(
+    value.freshCopy.batchCheck,
+    ['exitCode', 'output'],
+    'fresh-copy batchCheck',
+  );
   invariant(value.freshCopy.batchCheck.exitCode === 0, 'fresh-copy BAT --check must exit zero');
   invariant(
     typeof value.freshCopy.batchCheck.output === 'string' &&
@@ -691,6 +817,24 @@ async function sha256File(filePath) {
     stream.once('end', resolveHash);
   });
   return digest.digest('hex');
+}
+
+export function parseParityManifestBytes(bytes) {
+  invariant(Buffer.isBuffer(bytes), 'parity manifest bytes must be a Buffer');
+  let value;
+  try {
+    value = JSON.parse(bytes.toString('utf8'));
+  } catch (error) {
+    throw new Error(
+      `Parity manifest is not valid JSON: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+  return {
+    manifest: validateParityManifest(value),
+    sha256: createHash('sha256').update(bytes).digest('hex'),
+  };
 }
 
 function spawnCaptured(command, arguments_, options = {}) {
@@ -1184,7 +1328,8 @@ function containedPath(container, relativePath, label) {
 
 async function loadParityReferences(repositoryRoot) {
   const manifestPath = path.join(repositoryRoot, PARITY_MANIFEST);
-  const manifest = validateParityManifest(JSON.parse(await readFile(manifestPath, 'utf8')));
+  const parsed = parseParityManifestBytes(await readFile(manifestPath));
+  const { manifest } = parsed;
   const parityRoot = path.dirname(manifestPath);
   for (const row of manifest.images) {
     const referencePath = containedPath(parityRoot, row.reference, `parity reference ${row.reference}`);
@@ -1195,7 +1340,7 @@ async function loadParityReferences(repositoryRoot) {
     const sourcePath = containedPath(repositoryRoot, row.source, `parity source ${row.source}`);
     invariant((await stat(sourcePath)).isFile(), `parity source is missing: ${row.source}`);
   }
-  return manifest;
+  return parsed;
 }
 
 async function loadDemoPredictions(repositoryRoot) {
@@ -1871,7 +2016,8 @@ async function main() {
   const edgeExecutable = await discoverEdge();
   progress(`Python ${python.version}; Edge ${edgeExecutable}`);
   await ensureParityReferences(repositoryRoot, python);
-  const parity = await loadParityReferences(repositoryRoot);
+  const parityInput = await loadParityReferences(repositoryRoot);
+  const parity = parityInput.manifest;
   const demoPredictions = await loadDemoPredictions(repositoryRoot);
   progress('15 parity references and 10 frozen demo predictions verified');
   const { chromium } = await import('playwright-core');
@@ -1947,6 +2093,10 @@ async function main() {
       passed: true,
       generatedAt: new Date().toISOString(),
       commit: testedCommit,
+      parityManifest: {
+        path: PARITY_MANIFEST_REPORT_PATH,
+        sha256: parityInput.sha256,
+      },
       platform: { platform: process.platform, release: os.release(), arch: os.arch() },
       runtime: {
         node: process.version,

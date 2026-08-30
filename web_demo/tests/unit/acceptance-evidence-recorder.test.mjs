@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { EXPECTED_PARITY_SOURCES } from '../../tools/run_browser_acceptance.mjs';
 import {
@@ -124,7 +124,7 @@ function providers(origin) {
   };
 }
 
-function acceptanceReport(commit = 'a'.repeat(40)) {
+function acceptanceReport(commit = 'a'.repeat(40), manifestSha256 = 'b'.repeat(64)) {
   const sourceOrigin = 'http://127.0.0.1:8766';
   const freshOrigin = 'http://127.0.0.1:8767';
   return {
@@ -132,6 +132,10 @@ function acceptanceReport(commit = 'a'.repeat(40)) {
     passed: true,
     generatedAt: '2026-08-30T00:00:00.000Z',
     commit,
+    parityManifest: {
+      path: 'web_demo/.generated-tests/parity/manifest.json',
+      sha256: manifestSha256,
+    },
     platform: { platform: 'win32', release: '10.0.0', arch: 'x64' },
     runtime: {
       node: 'v24.19.0',
@@ -258,7 +262,7 @@ async function createEvidenceRepository() {
     path.join(repositoryRoot, 'web_demo', '.generated-tests', 'parity', 'manifest.json'),
     manifest,
   );
-  const acceptance = acceptanceReport(commit);
+  const acceptance = acceptanceReport(commit, manifestFile.sha256);
   const acceptanceFile = await writeJson(
     path.join(
       repositoryRoot,
@@ -317,6 +321,20 @@ function integrityManifest() {
   };
 }
 
+function actualOrtArtifacts() {
+  return {
+    ortWorker: { ...ORT_MJS },
+    ortWasm: { ...ORT_WASM },
+  };
+}
+
+async function fixtureArtifactIdentityReader(filePath) {
+  const normalized = filePath.replaceAll('\\', '/');
+  if (normalized.endsWith(`/web_demo/dist/${ORT_MJS.path}`)) return { ...ORT_MJS };
+  if (normalized.endsWith(`/web_demo/dist/${ORT_WASM.path}`)) return { ...ORT_WASM };
+  throw new Error(`Unexpected artifact path: ${filePath}`);
+}
+
 describe('formal acceptance evidence recorder', () => {
   it('exposes the fixed-path recorder as a package command', async () => {
     const packageJson = JSON.parse(
@@ -358,6 +376,56 @@ describe('formal acceptance evidence recorder', () => {
     ).toBe(report);
   });
 
+  it('requires browser acceptance, preprocess evidence, and raw manifest bytes to agree', () => {
+    const acceptance = acceptanceReport();
+    acceptance.parityManifest.sha256 = 'c'.repeat(64);
+
+    expect(() =>
+      validatePreprocessEvidence({
+        report: preprocessReport(),
+        manifest: parityManifest(),
+        manifestSha256: 'b'.repeat(64),
+        acceptanceReport: acceptance,
+      }),
+    ).toThrow(/acceptance.*manifest.*SHA-256|manifest.*three-way|manifest.*match/i);
+  });
+
+  it('binds every fixture reference probability to the parsed parity manifest', () => {
+    const acceptance = acceptanceReport();
+    const fixtureIndex = 10;
+    const row = acceptance.source.providers.normal.images[fixtureIndex];
+    row.referenceProbability = 0.51;
+    row.probability = 0.51;
+
+    expect(() =>
+      validatePreprocessEvidence({
+        report: preprocessReport(),
+        manifest: parityManifest(),
+        manifestSha256: 'b'.repeat(64),
+        acceptanceReport: acceptance,
+      }),
+    ).toThrow(/fixture reference probability.*manifest/i);
+  });
+
+  it('hashes actual artifact bytes instead of accepting declared metadata', async () => {
+    const recorder = await import('../../tools/record_acceptance_evidence.mjs');
+    expect(recorder.hashRegularArtifactFile).toBeTypeOf('function');
+    const temporary = await mkdtemp(path.join(os.tmpdir(), 'lingshu-artifact-hash-'));
+    const artifactPath = path.join(temporary, 'runtime.wasm');
+    try {
+      await writeFile(artifactPath, Buffer.from([0, 1, 2, 3]));
+      await expect(
+        recorder.hashRegularArtifactFile(artifactPath, 'assets/runtime.wasm'),
+      ).resolves.toEqual({
+        path: 'assets/runtime.wasm',
+        bytes: 4,
+        sha256: sha256(Buffer.from([0, 1, 2, 3])),
+      });
+    } finally {
+      await rm(temporary, { recursive: true, force: true });
+    }
+  });
+
   it('rejects extra nested manifest fields instead of silently recording them', () => {
     const manifest = parityManifest();
     manifest.tensor.unreviewed = true;
@@ -390,6 +458,7 @@ describe('formal acceptance evidence recorder', () => {
       rawHashes,
       packageLock: packageLock(),
       integrityManifest: integrityManifest(),
+      actualOrtArtifacts: actualOrtArtifacts(),
       generatedAt,
       testedCommit: acceptance.commit,
     });
@@ -410,6 +479,8 @@ describe('formal acceptance evidence recorder', () => {
         runtime: {
           node: acceptance.runtime.node,
           python: acceptance.runtime.python,
+        },
+        lockedVersions: {
           onnxruntimeWeb: '1.29.0',
           playwrightCore: '1.62.1',
           vite: '8.2.2',
@@ -524,6 +595,7 @@ describe('formal acceptance evidence recorder', () => {
       },
       packageLock: packageLock(),
       integrityManifest: integrityManifest(),
+      actualOrtArtifacts: actualOrtArtifacts(),
       generatedAt: '2026-08-30T00:02:00.000Z',
       testedCommit: 'a'.repeat(40),
     };
@@ -534,14 +606,20 @@ describe('formal acceptance evidence recorder', () => {
     base.integrityManifest.files.find(({ path: artifactPath }) => artifactPath === ORT_WASM.path)
       .sha256 = '0'.repeat(64);
     expect(() => buildFormalEvidence(base)).toThrow(/integrity identity.*wasm/i);
+
+    base.integrityManifest = integrityManifest();
+    base.actualOrtArtifacts.ortWasm.sha256 = '0'.repeat(64);
+    expect(() => buildFormalEvidence(base)).toThrow(/actual.*wasm|committed.*wasm|artifact.*wasm/i);
   });
 
   it('writes only the fixed formal path after a clean unchanged Git recheck', async () => {
     const fixture = await createEvidenceRepository();
     try {
+      const artifactIdentityReader = vi.fn(fixtureArtifactIdentityReader);
       const formal = await recordAcceptanceEvidence({
         repositoryRoot: fixture.repositoryRoot,
         now: () => new Date('2026-08-30T00:02:00.000Z'),
+        artifactIdentityReader,
       });
       const outputDirectory = path.join(
         fixture.repositoryRoot,
@@ -560,6 +638,15 @@ describe('formal acceptance evidence recorder', () => {
         parityManifest: { sha256: fixture.hashes.parityManifest },
       });
       expect(await readdir(outputDirectory)).toEqual(['latest.json']);
+      expect(artifactIdentityReader).toHaveBeenCalledTimes(2);
+      expect(
+        artifactIdentityReader.mock.calls.map(([filePath]) =>
+          filePath.replaceAll('\\', '/').replace(`${fixture.repositoryRoot.replaceAll('\\', '/')}/`, ''),
+        ),
+      ).toEqual([
+        `web_demo/dist/${ORT_MJS.path}`,
+        `web_demo/dist/${ORT_WASM.path}`,
+      ]);
     } finally {
       await rm(fixture.repositoryRoot, { recursive: true, force: true });
     }
@@ -586,6 +673,7 @@ describe('formal acceptance evidence recorder', () => {
           repositoryRoot: fixture.repositoryRoot,
           now: () => new Date('2026-08-30T00:02:00.000Z'),
           gitStateReader,
+          artifactIdentityReader: fixtureArtifactIdentityReader,
         }),
       ).rejects.toThrow(/remain clean.*formal write/i);
       await expect(readFile(outputPath, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });

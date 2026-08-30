@@ -217,6 +217,10 @@ export function validatePreprocessEvidence({
     typeof manifestSha256 === 'string' && SHA256_PATTERN.test(manifestSha256),
     'parity manifest SHA-256 must be lowercase hexadecimal',
   );
+  invariant(
+    acceptanceReport.parityManifest.sha256 === manifestSha256,
+    'browser acceptance parity manifest SHA-256 must match the exact manifest bytes',
+  );
   expectExactKeys(report, PREPROCESS_REPORT_KEYS, 'preprocess report');
   invariant(report.schema_version === 1, 'preprocess report schema_version must equal 1');
   const generatedAt = expectCanonicalIso(report.generated_at, 'preprocess report generated_at');
@@ -318,6 +322,19 @@ export function validatePreprocessEvidence({
     manifest.threshold === acceptanceReport.threshold,
     'preprocess manifest threshold must match browser acceptance',
   );
+  for (const [copyLabel, copyEvidence] of [
+    ['source', acceptanceReport.source],
+    ['fresh copy', acceptanceReport.freshCopy],
+  ]) {
+    for (const [providerLabel, provider] of Object.entries(copyEvidence.providers)) {
+      for (let index = 10; index < manifest.images.length; index += 1) {
+        invariant(
+          provider.images[index].referenceProbability === manifest.images[index].probability,
+          `${copyLabel} ${providerLabel} fixture reference probability must match the parity manifest at index ${index}`,
+        );
+      }
+    }
+  }
   return report;
 }
 
@@ -343,17 +360,56 @@ function lockedPackageVersion(packageLock, packageName, dependencyGroup) {
   return locked.version;
 }
 
-function exactIntegrityArtifact(integrityManifest, expected) {
-  invariant(integrityManifest?.schema_version === 1, 'dist integrity schema_version must equal 1');
+function validateIntegrityManifest(integrityManifest) {
+  expectExactKeys(integrityManifest, ['files', 'schema_version'], 'dist integrity manifest');
+  invariant(integrityManifest.schema_version === 1, 'dist integrity schema_version must equal 1');
   invariant(Array.isArray(integrityManifest.files), 'dist integrity files must be an array');
+  const seenPaths = new Set();
+  for (const [index, row] of integrityManifest.files.entries()) {
+    const label = `dist integrity files[${index}]`;
+    expectExactKeys(row, ['bytes', 'path', 'sha256'], label);
+    invariant(typeof row.path === 'string' && row.path.length > 0, `${label}.path is invalid`);
+    invariant(!seenPaths.has(row.path), `${label}.path is duplicated`);
+    seenPaths.add(row.path);
+    invariant(Number.isInteger(row.bytes) && row.bytes >= 0, `${label}.bytes is invalid`);
+    invariant(
+      typeof row.sha256 === 'string' && SHA256_PATTERN.test(row.sha256),
+      `${label}.sha256 must be lowercase hexadecimal`,
+    );
+  }
+  return integrityManifest;
+}
+
+function exactIntegrityArtifact(integrityManifest, expected, actual, label) {
+  validateIntegrityManifest(integrityManifest);
   const matching = integrityManifest.files.filter((row) => row?.path === expected.path);
   invariant(matching.length === 1, `dist integrity must contain exactly one ${expected.path}`);
-  const [actual] = matching;
+  const [declared] = matching;
   invariant(
-    actual.bytes === expected.bytes && actual.sha256 === expected.sha256,
+    declared.bytes === expected.bytes && declared.sha256 === expected.sha256,
     `dist integrity identity mismatch for ${expected.path}`,
   );
+  expectExactKeys(actual, ['bytes', 'path', 'sha256'], `actual committed ${label}`);
+  invariant(
+    actual.path === expected.path &&
+      actual.bytes === expected.bytes &&
+      actual.sha256 === expected.sha256,
+    `actual committed ${label} identity mismatch for ${expected.path}`,
+  );
+  invariant(
+    actual.bytes === declared.bytes && actual.sha256 === declared.sha256,
+    `actual committed ${label} does not match dist integrity for ${expected.path}`,
+  );
   return { ...expected };
+}
+
+function validateActualOrtArtifacts(value) {
+  const artifacts = expectExactKeys(
+    value,
+    ['ortWasm', 'ortWorker'],
+    'actual committed ORT artifacts',
+  );
+  return artifacts;
 }
 
 function validateRawHashes(rawHashes) {
@@ -378,6 +434,7 @@ export function buildFormalEvidence({
   rawHashes,
   packageLock,
   integrityManifest,
+  actualOrtArtifacts,
   generatedAt,
   testedCommit,
 }) {
@@ -413,8 +470,19 @@ export function buildFormalEvidence({
     'devDependencies',
   );
   const vite = lockedPackageVersion(packageLock, 'vite', 'devDependencies');
-  const ortWorker = exactIntegrityArtifact(integrityManifest, ORT_WORKER);
-  const ortWasm = exactIntegrityArtifact(integrityManifest, ORT_WASM);
+  const actualArtifacts = validateActualOrtArtifacts(actualOrtArtifacts);
+  const ortWorker = exactIntegrityArtifact(
+    integrityManifest,
+    ORT_WORKER,
+    actualArtifacts.ortWorker,
+    'ORT worker MJS',
+  );
+  const ortWasm = exactIntegrityArtifact(
+    integrityManifest,
+    ORT_WASM,
+    actualArtifacts.ortWasm,
+    'ORT WASM',
+  );
 
   return {
     schemaVersion: 1,
@@ -441,6 +509,8 @@ export function buildFormalEvidence({
       runtime: {
         node: acceptanceReport.runtime.node,
         python: acceptanceReport.runtime.python,
+      },
+      lockedVersions: {
         onnxruntimeWeb,
         playwrightCore,
         vite,
@@ -534,6 +604,21 @@ async function readRegularJson(filePath, label) {
   };
 }
 
+export async function hashRegularArtifactFile(filePath, reportPath) {
+  const information = await lstat(filePath).catch(() => null);
+  invariant(
+    information?.isFile() === true && !information.isSymbolicLink(),
+    `artifact must be a regular file: ${filePath}`,
+  );
+  invariant(typeof reportPath === 'string' && reportPath.length > 0, 'artifact report path is invalid');
+  const bytes = await readFile(filePath);
+  return {
+    path: reportPath,
+    bytes: bytes.byteLength,
+    sha256: createHash('sha256').update(bytes).digest('hex'),
+  };
+}
+
 async function writeAtomicJson(destination, value) {
   const directory = path.dirname(destination);
   await mkdir(directory, { recursive: true });
@@ -553,6 +638,7 @@ export async function recordAcceptanceEvidence({
   repositoryRoot = DEFAULT_REPOSITORY_ROOT,
   now = () => new Date(),
   gitStateReader = captureTrackedGitState,
+  artifactIdentityReader = hashRegularArtifactFile,
 } = {}) {
   const root = path.resolve(repositoryRoot);
   const initialGitState = gitStateReader(root);
@@ -569,6 +655,16 @@ export async function recordAcceptanceEvidence({
   const manifest = inputs.parityManifest;
   const packageLockFile = inputs.packageLock;
   const integrity = inputs.integrityManifest;
+  const [ortWorkerIdentity, ortWasmIdentity] = await Promise.all([
+    artifactIdentityReader(
+      path.join(root, 'web_demo', 'dist', ORT_WORKER.path),
+      ORT_WORKER.path,
+    ),
+    artifactIdentityReader(
+      path.join(root, 'web_demo', 'dist', ORT_WASM.path),
+      ORT_WASM.path,
+    ),
+  ]);
   const generatedDate = now();
   invariant(
     generatedDate instanceof Date && !Number.isNaN(generatedDate.valueOf()),
@@ -585,6 +681,10 @@ export async function recordAcceptanceEvidence({
     },
     packageLock: packageLockFile.value,
     integrityManifest: integrity.value,
+    actualOrtArtifacts: {
+      ortWorker: ortWorkerIdentity,
+      ortWasm: ortWasmIdentity,
+    },
     generatedAt: generatedDate.toISOString(),
     testedCommit,
   });

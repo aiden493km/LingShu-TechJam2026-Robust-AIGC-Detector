@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -233,6 +234,17 @@ describe('browser request boundary', () => {
 });
 
 describe('frozen score references', () => {
+  it('hashes the exact manifest bytes that are parsed for browser acceptance', async () => {
+    const acceptance = await import('../../tools/run_browser_acceptance.mjs');
+    expect(acceptance.parseParityManifestBytes).toBeTypeOf('function');
+    const bytes = Buffer.from(`${JSON.stringify(parityManifest(), null, 2)}\n`, 'utf8');
+
+    const parsed = acceptance.parseParityManifestBytes(bytes);
+
+    expect(parsed.manifest).toEqual(parityManifest());
+    expect(parsed.sha256).toBe(createHash('sha256').update(bytes).digest('hex'));
+  });
+
   it('compares dimensions by values, independent of JSON property order', () => {
     expect(sameDimensions({ width: 300, height: 200 }, { height: 200, width: 300 })).toBe(true);
     expect(sameDimensions({ width: 300, height: 200 }, { height: 300, width: 200 })).toBe(false);
@@ -530,6 +542,10 @@ describe('acceptance evidence schema', () => {
       passed: true,
       generatedAt: '2026-08-30T00:00:00.000Z',
       commit: 'a'.repeat(40),
+      parityManifest: {
+        path: 'web_demo/.generated-tests/parity/manifest.json',
+        sha256: 'b'.repeat(64),
+      },
       platform: { platform: 'win32', release: '10.0.0', arch: 'x64' },
       runtime: {
         node: 'v22.0.0',
@@ -579,6 +595,43 @@ describe('acceptance evidence schema', () => {
 
   it('accepts a complete source and Unicode fresh-copy report', () => {
     expect(validateAcceptanceReport(report())).toBeTruthy();
+  });
+
+  it('requires the exact lowercase SHA-256 of the parity manifest used', () => {
+    const missing = report();
+    delete missing.parityManifest;
+    expect(() => validateAcceptanceReport(missing)).toThrow(/parity manifest/i);
+
+    const uppercase = report();
+    uppercase.parityManifest.sha256 = 'B'.repeat(64);
+    expect(() => validateAcceptanceReport(uppercase)).toThrow(/parity manifest.*SHA-256/i);
+  });
+
+  it.each([
+    ['top level', (value) => { value.unreviewed = true; }],
+    ['parity manifest', (value) => { value.parityManifest.unreviewed = true; }],
+    ['platform', (value) => { value.platform.unreviewed = true; }],
+    ['runtime', (value) => { value.runtime.unreviewed = true; }],
+    ['model', (value) => { value.model.unreviewed = true; }],
+    ['gates', (value) => { value.gates.unreviewed = true; }],
+    ['port fallback', (value) => { value.portFallback.unreviewed = true; }],
+    ['source', (value) => { value.source.unreviewed = true; }],
+    ['artifact failures', (value) => { value.artifactFailures.unreviewed = true; }],
+    ['failure evidence', (value) => { value.artifactFailures.corruptModel.unreviewed = true; }],
+    ['fresh copy', (value) => { value.freshCopy.unreviewed = true; }],
+    ['batch check', (value) => { value.freshCopy.batchCheck.unreviewed = true; }],
+    ['provider evidence', (value) => { value.source.providers.normal.unreviewed = true; }],
+    ['GPU evidence', (value) => { value.source.providers.normal.gpu.unreviewed = true; }],
+    ['adapter info', (value) => {
+      value.source.providers.normal.gpu.adapterInfo = {
+        vendor: '', architecture: '', device: '', description: '', unreviewed: true,
+      };
+    }],
+    ['image evidence', (value) => { value.source.providers.normal.images[0].unreviewed = true; }],
+  ])('rejects an extra unreviewed field in %s', (_label, mutate) => {
+    const value = report();
+    mutate(value);
+    expect(() => validateAcceptanceReport(value)).toThrow(/keys.*exactly/i);
   });
 
   it('requires automatic no-WebGPU fallback evidence for both repository copies', () => {
