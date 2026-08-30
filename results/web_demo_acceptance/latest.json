@@ -1,0 +1,2127 @@
+{
+  "schemaVersion": 1,
+  "passed": true,
+  "generatedAt": "2026-08-30T01:40:12.293Z",
+  "testedCommit": "9833631b63341a2ea285655e6f03451965f7bd0c",
+  "evidencePolicy": {
+    "testedCommitMeaning": "Exact committed code and artifacts executed by browser acceptance and tensor parity.",
+    "evidenceCommitRelationship": "The evidence-only commit is expected to have testedCommit as its direct parent."
+  },
+  "commands": [
+    "npm.cmd run test:browser-acceptance",
+    "npm.cmd run test:preprocess-parity",
+    "npm.cmd run record:acceptance-evidence"
+  ],
+  "environment": {
+    "platform": {
+      "platform": "win32",
+      "release": "10.0.22631",
+      "arch": "x64"
+    },
+    "browser": {
+      "name": "Microsoft Edge",
+      "version": "151.0.4129.107"
+    },
+    "runtime": {
+      "node": "v24.19.0",
+      "python": "3.12.10"
+    },
+    "lockedVersions": {
+      "onnxruntimeWeb": "1.29.0",
+      "playwrightCore": "1.62.1",
+      "vite": "8.2.2"
+    }
+  },
+  "artifacts": {
+    "model": {
+      "path": "web_demo/models/baseline2_njr_fp32.onnx",
+      "bytes": 88123029,
+      "sha256": "e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69"
+    },
+    "ortWorker": {
+      "path": "assets/ort-wasm-simd-threaded.asyncify.mjs",
+      "bytes": 51407,
+      "sha256": "5d25483158d53d8f34d0e9c06a654d56c8dca4ebdf370ea0982ef11315a00e0e"
+    },
+    "ortWasm": {
+      "path": "assets/ort-wasm-simd-threaded.asyncify.wasm",
+      "bytes": 25749873,
+      "sha256": "503d17cb7411b79781b9fad1cf0978f03cf06b050c7d399c730e914f473bf549"
+    },
+    "threshold": 0.55657113
+  },
+  "sourceReports": {
+    "browserAcceptance": {
+      "path": "web_demo/.generated-tests/browser-acceptance/latest.json",
+      "sha256": "a1c739c0aaa30147c2420f63107dc758b531d8c1a4976892249007501bf67bf6"
+    },
+    "preprocessParity": {
+      "path": "web_demo/.generated-tests/parity/browser-results.json",
+      "sha256": "858c7d330b0cf549ff5c3402a5a00efe58d875388eeeb9ca0878df0741e28431"
+    },
+    "parityManifest": {
+      "path": "web_demo/.generated-tests/parity/manifest.json",
+      "sha256": "cb6f9005beb6179c965d81046446e250e9568764294ac6d77627824d2c7e57d5"
+    }
+  },
+  "tensorParity": {
+    "report": {
+      "schema_version": 1,
+      "generated_at": "2026-08-30T01:40:04.572Z",
+      "manifest": {
+        "path": "web_demo/.generated-tests/parity/manifest.json",
+        "sha256": "cb6f9005beb6179c965d81046446e250e9568764294ac6d77627824d2c7e57d5"
+      },
+      "browser": {
+        "name": "Microsoft Edge",
+        "version": "151.0.4129.107"
+      },
+      "gates": {
+        "image_count": 15,
+        "tensor_float_count": 442368,
+        "mean_absolute_error_maximum": 0.02,
+        "maximum_absolute_error_maximum": 0.5,
+        "exif_dimensions_match": true,
+        "rgba_hidden_rgb_preserved": true,
+        "local_requests_only": true
+      },
+      "summary": {
+        "passed": true,
+        "passedCount": 15,
+        "totalCount": 15,
+        "failures": []
+      },
+      "request_urls": [
+        "http://127.0.0.1:6197/.generated-tests/parity/manifest.json",
+        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__f1.f32",
+        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__f2.f32",
+        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__f3.f32",
+        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__f4.f32",
+        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__f5.f32",
+        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__r1.f32",
+        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__r2.f32",
+        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__r3.f32",
+        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__r4.f32",
+        "http://127.0.0.1:6197/.generated-tests/parity/tensors/demo_images__r5.f32",
+        "http://127.0.0.1:6197/.generated-tests/parity/tensors/web_demo__tests__fixtures__exif-orientation-6.f32",
+        "http://127.0.0.1:6197/.generated-tests/parity/tensors/web_demo__tests__fixtures__grayscale.f32",
+        "http://127.0.0.1:6197/.generated-tests/parity/tensors/web_demo__tests__fixtures__near-threshold-synthetic.f32",
+        "http://127.0.0.1:6197/.generated-tests/parity/tensors/web_demo__tests__fixtures__non-square.f32",
+        "http://127.0.0.1:6197/.generated-tests/parity/tensors/web_demo__tests__fixtures__rgba-hidden-rgb.f32",
+        "http://127.0.0.1:6197/@vite/client",
+        "http://127.0.0.1:6197/node_modules/.vite/deps/@jsquash_jpeg_decode__js.js?v=54dcc0d8",
+        "http://127.0.0.1:6197/node_modules/.vite/deps/@jsquash_png_decode__js.js?v=54dcc0d8",
+        "http://127.0.0.1:6197/node_modules/.vite/deps/@jsquash_resize.js?v=54dcc0d8",
+        "http://127.0.0.1:6197/node_modules/.vite/deps/@jsquash_webp_decode__js.js?v=54dcc0d8",
+        "http://127.0.0.1:6197/node_modules/@jsquash/jpeg/codec/dec/mozjpeg_dec.wasm",
+        "http://127.0.0.1:6197/node_modules/@jsquash/png/codec/pkg/squoosh_png_bg.wasm",
+        "http://127.0.0.1:6197/node_modules/@jsquash/resize/lib/resize/pkg/squoosh_resize_bg.wasm",
+        "http://127.0.0.1:6197/node_modules/vite/dist/client/env.mjs",
+        "http://127.0.0.1:6197/src/runtime/exif.ts",
+        "http://127.0.0.1:6197/src/runtime/preprocess.ts",
+        "http://127.0.0.1:6197/src/runtime/upload.ts",
+        "http://127.0.0.1:6197/tests/browser/preprocess-harness.html",
+        "http://127.0.0.1:6197/tests/browser/preprocess-harness.ts"
+      ],
+      "websocket_urls": [
+        "ws://127.0.0.1:6197/?token=gvn5zQP7pueW"
+      ],
+      "blocked_requests": [],
+      "browser_errors": [],
+      "images": [
+        {
+          "id": "demo_images__f1",
+          "floatCount": 442368,
+          "meanAbsoluteError": 0.002751475710401455,
+          "maxAbsoluteError": 0.017507314682006836,
+          "originalDimensions": {
+            "width": 300,
+            "height": 300
+          },
+          "orientedDimensions": {
+            "width": 300,
+            "height": 300
+          },
+          "dimensionsMatch": true,
+          "rgbaHiddenRgbPreserved": null,
+          "failures": []
+        },
+        {
+          "id": "demo_images__f2",
+          "floatCount": 442368,
+          "meanAbsoluteError": 0.0013661875569065767,
+          "maxAbsoluteError": 0.017507314682006836,
+          "originalDimensions": {
+            "width": 1024,
+            "height": 1024
+          },
+          "orientedDimensions": {
+            "width": 1024,
+            "height": 1024
+          },
+          "dimensionsMatch": true,
+          "rgbaHiddenRgbPreserved": null,
+          "failures": []
+        },
+        {
+          "id": "demo_images__f3",
+          "floatCount": 442368,
+          "meanAbsoluteError": 5.5259208566995866e-8,
+          "maxAbsoluteError": 4.76837158203125e-7,
+          "originalDimensions": {
+            "width": 384,
+            "height": 384
+          },
+          "orientedDimensions": {
+            "width": 384,
+            "height": 384
+          },
+          "dimensionsMatch": true,
+          "rgbaHiddenRgbPreserved": null,
+          "failures": []
+        },
+        {
+          "id": "demo_images__f4",
+          "floatCount": 442368,
+          "meanAbsoluteError": 0.0009292105584487823,
+          "maxAbsoluteError": 0.017507195472717285,
+          "originalDimensions": {
+            "width": 500,
+            "height": 500
+          },
+          "orientedDimensions": {
+            "width": 500,
+            "height": 500
+          },
+          "dimensionsMatch": true,
+          "rgbaHiddenRgbPreserved": null,
+          "failures": []
+        },
+        {
+          "id": "demo_images__f5",
+          "floatCount": 442368,
+          "meanAbsoluteError": 0.002510740967147108,
+          "maxAbsoluteError": 0.017507195472717285,
+          "originalDimensions": {
+            "width": 300,
+            "height": 300
+          },
+          "orientedDimensions": {
+            "width": 300,
+            "height": 300
+          },
+          "dimensionsMatch": true,
+          "rgbaHiddenRgbPreserved": null,
+          "failures": []
+        },
+        {
+          "id": "demo_images__r1",
+          "floatCount": 442368,
+          "meanAbsoluteError": 0.0022506291771328003,
+          "maxAbsoluteError": 0.051374197006225586,
+          "originalDimensions": {
+            "width": 256,
+            "height": 256
+          },
+          "orientedDimensions": {
+            "width": 256,
+            "height": 256
+          },
+          "dimensionsMatch": true,
+          "rgbaHiddenRgbPreserved": null,
+          "failures": []
+        },
+        {
+          "id": "demo_images__r2",
+          "floatCount": 442368,
+          "meanAbsoluteError": 5.534454948651223e-8,
+          "maxAbsoluteError": 4.76837158203125e-7,
+          "originalDimensions": {
+            "width": 384,
+            "height": 384
+          },
+          "orientedDimensions": {
+            "width": 384,
+            "height": 384
+          },
+          "dimensionsMatch": true,
+          "rgbaHiddenRgbPreserved": null,
+          "failures": []
+        },
+        {
+          "id": "demo_images__r3",
+          "floatCount": 442368,
+          "meanAbsoluteError": 5.824791763323581e-8,
+          "maxAbsoluteError": 4.76837158203125e-7,
+          "originalDimensions": {
+            "width": 384,
+            "height": 384
+          },
+          "orientedDimensions": {
+            "width": 384,
+            "height": 384
+          },
+          "dimensionsMatch": true,
+          "rgbaHiddenRgbPreserved": null,
+          "failures": []
+        },
+        {
+          "id": "demo_images__r4",
+          "floatCount": 442368,
+          "meanAbsoluteError": 6.556884470767357e-8,
+          "maxAbsoluteError": 4.76837158203125e-7,
+          "originalDimensions": {
+            "width": 384,
+            "height": 384
+          },
+          "orientedDimensions": {
+            "width": 384,
+            "height": 384
+          },
+          "dimensionsMatch": true,
+          "rgbaHiddenRgbPreserved": null,
+          "failures": []
+        },
+        {
+          "id": "demo_images__r5",
+          "floatCount": 442368,
+          "meanAbsoluteError": 5.6682381455175346e-8,
+          "maxAbsoluteError": 4.76837158203125e-7,
+          "originalDimensions": {
+            "width": 384,
+            "height": 384
+          },
+          "orientedDimensions": {
+            "width": 384,
+            "height": 384
+          },
+          "dimensionsMatch": true,
+          "rgbaHiddenRgbPreserved": null,
+          "failures": []
+        },
+        {
+          "id": "web_demo__tests__fixtures__exif-orientation-6",
+          "floatCount": 442368,
+          "meanAbsoluteError": 0.00008547553253766569,
+          "maxAbsoluteError": 0.22759103775024414,
+          "originalDimensions": {
+            "width": 120,
+            "height": 80
+          },
+          "orientedDimensions": {
+            "width": 80,
+            "height": 120
+          },
+          "dimensionsMatch": true,
+          "rgbaHiddenRgbPreserved": null,
+          "failures": []
+        },
+        {
+          "id": "web_demo__tests__fixtures__grayscale",
+          "floatCount": 442368,
+          "meanAbsoluteError": 6.942031581679152e-8,
+          "maxAbsoluteError": 4.76837158203125e-7,
+          "originalDimensions": {
+            "width": 384,
+            "height": 384
+          },
+          "orientedDimensions": {
+            "width": 384,
+            "height": 384
+          },
+          "dimensionsMatch": true,
+          "rgbaHiddenRgbPreserved": null,
+          "failures": []
+        },
+        {
+          "id": "web_demo__tests__fixtures__near-threshold-synthetic",
+          "floatCount": 442368,
+          "meanAbsoluteError": 5.5668119069162425e-8,
+          "maxAbsoluteError": 2.384185791015625e-7,
+          "originalDimensions": {
+            "width": 384,
+            "height": 384
+          },
+          "orientedDimensions": {
+            "width": 384,
+            "height": 384
+          },
+          "dimensionsMatch": true,
+          "rgbaHiddenRgbPreserved": null,
+          "failures": []
+        },
+        {
+          "id": "web_demo__tests__fixtures__non-square",
+          "floatCount": 442368,
+          "meanAbsoluteError": 0.0055357935704402434,
+          "maxAbsoluteError": 0.4183006286621094,
+          "originalDimensions": {
+            "width": 321,
+            "height": 179
+          },
+          "orientedDimensions": {
+            "width": 321,
+            "height": 179
+          },
+          "dimensionsMatch": true,
+          "rgbaHiddenRgbPreserved": null,
+          "failures": []
+        },
+        {
+          "id": "web_demo__tests__fixtures__rgba-hidden-rgb",
+          "floatCount": 442368,
+          "meanAbsoluteError": 0.0060579903686996455,
+          "maxAbsoluteError": 0.2976192235946655,
+          "originalDimensions": {
+            "width": 257,
+            "height": 301
+          },
+          "orientedDimensions": {
+            "width": 257,
+            "height": 301
+          },
+          "dimensionsMatch": true,
+          "rgbaHiddenRgbPreserved": true,
+          "failures": []
+        }
+      ]
+    },
+    "referenceManifest": {
+      "images": [
+        {
+          "id": "demo_images__f1",
+          "label": "AIGC",
+          "logit": 13.449159622192383,
+          "oriented_dimensions": {
+            "height": 300,
+            "width": 300
+          },
+          "original_dimensions": {
+            "height": 300,
+            "width": 300
+          },
+          "probability": 0.9999985575407154,
+          "reference": "tensors/demo_images__f1.f32",
+          "source": "demo_images/f1.png",
+          "tensor": {
+            "bytes": 1769472,
+            "float_count": 442368,
+            "sha256": "a69b869da26df83414cae33d219cb90c58b0368f972ef69b32a054ad1ac4f550",
+            "shape": [
+              1,
+              3,
+              384,
+              384
+            ]
+          }
+        },
+        {
+          "id": "demo_images__f2",
+          "label": "AIGC",
+          "logit": 14.898344039916992,
+          "oriented_dimensions": {
+            "height": 1024,
+            "width": 1024
+          },
+          "original_dimensions": {
+            "height": 1024,
+            "width": 1024
+          },
+          "probability": 0.9999996613654648,
+          "reference": "tensors/demo_images__f2.f32",
+          "source": "demo_images/f2.png",
+          "tensor": {
+            "bytes": 1769472,
+            "float_count": 442368,
+            "sha256": "7bf02c12debe1264f88b9f513525ba6681feb2f2f834e4c325f80333224bc15d",
+            "shape": [
+              1,
+              3,
+              384,
+              384
+            ]
+          }
+        },
+        {
+          "id": "demo_images__f3",
+          "label": "AIGC",
+          "logit": 16.603649139404297,
+          "oriented_dimensions": {
+            "height": 384,
+            "width": 384
+          },
+          "original_dimensions": {
+            "height": 384,
+            "width": 384
+          },
+          "probability": 0.9999999384643528,
+          "reference": "tensors/demo_images__f3.f32",
+          "source": "demo_images/f3.png",
+          "tensor": {
+            "bytes": 1769472,
+            "float_count": 442368,
+            "sha256": "7028a45cc07ad2d39b1f2157120970da77eb88c1e2188cf431f4109fee5070e7",
+            "shape": [
+              1,
+              3,
+              384,
+              384
+            ]
+          }
+        },
+        {
+          "id": "demo_images__f4",
+          "label": "AIGC",
+          "logit": 13.714877128601074,
+          "oriented_dimensions": {
+            "height": 500,
+            "width": 500
+          },
+          "original_dimensions": {
+            "height": 500,
+            "width": 500
+          },
+          "probability": 0.9999988941300354,
+          "reference": "tensors/demo_images__f4.f32",
+          "source": "demo_images/f4.png",
+          "tensor": {
+            "bytes": 1769472,
+            "float_count": 442368,
+            "sha256": "db6ca5e1b1fbf1edd690fa1de219a7f9597e34bc30a49eaae4fa585144cbcb24",
+            "shape": [
+              1,
+              3,
+              384,
+              384
+            ]
+          }
+        },
+        {
+          "id": "demo_images__f5",
+          "label": "AIGC",
+          "logit": 12.87959098815918,
+          "oriented_dimensions": {
+            "height": 300,
+            "width": 300
+          },
+          "original_dimensions": {
+            "height": 300,
+            "width": 300
+          },
+          "probability": 0.9999974504496246,
+          "reference": "tensors/demo_images__f5.f32",
+          "source": "demo_images/f5.png",
+          "tensor": {
+            "bytes": 1769472,
+            "float_count": 442368,
+            "sha256": "67c4e30ffb8720b0349c06f4715e8cd689842877e3c51a1cb6703edc882bb6c0",
+            "shape": [
+              1,
+              3,
+              384,
+              384
+            ]
+          }
+        },
+        {
+          "id": "demo_images__r1",
+          "label": "AIGC",
+          "logit": 6.320923328399658,
+          "oriented_dimensions": {
+            "height": 256,
+            "width": 256
+          },
+          "original_dimensions": {
+            "height": 256,
+            "width": 256
+          },
+          "probability": 0.9982049456801771,
+          "reference": "tensors/demo_images__r1.f32",
+          "source": "demo_images/r1.png",
+          "tensor": {
+            "bytes": 1769472,
+            "float_count": 442368,
+            "sha256": "ac557e2079de4e0db2f252438b7654dd4775f13e2b9cda338c5681206cc7532e",
+            "shape": [
+              1,
+              3,
+              384,
+              384
+            ]
+          }
+        },
+        {
+          "id": "demo_images__r2",
+          "label": "Real",
+          "logit": -15.203729629516602,
+          "oriented_dimensions": {
+            "height": 384,
+            "width": 384
+          },
+          "original_dimensions": {
+            "height": 384,
+            "width": 384
+          },
+          "probability": 2.495192228988688e-7,
+          "reference": "tensors/demo_images__r2.f32",
+          "source": "demo_images/r2.png",
+          "tensor": {
+            "bytes": 1769472,
+            "float_count": 442368,
+            "sha256": "d4a8c5b8697fb5197d3ae9496cf7eae185bb29b1a469e7a0e8f03f876ee573de",
+            "shape": [
+              1,
+              3,
+              384,
+              384
+            ]
+          }
+        },
+        {
+          "id": "demo_images__r3",
+          "label": "Real",
+          "logit": -14.842789649963379,
+          "oriented_dimensions": {
+            "height": 384,
+            "width": 384
+          },
+          "original_dimensions": {
+            "height": 384,
+            "width": 384
+          },
+          "probability": 3.579795382365534e-7,
+          "reference": "tensors/demo_images__r3.f32",
+          "source": "demo_images/r3.png",
+          "tensor": {
+            "bytes": 1769472,
+            "float_count": 442368,
+            "sha256": "965c9c7828969004b52f605f7610e9d81bbb0f4272339259f55505074fef8ff9",
+            "shape": [
+              1,
+              3,
+              384,
+              384
+            ]
+          }
+        },
+        {
+          "id": "demo_images__r4",
+          "label": "Real",
+          "logit": -14.232112884521484,
+          "oriented_dimensions": {
+            "height": 384,
+            "width": 384
+          },
+          "original_dimensions": {
+            "height": 384,
+            "width": 384
+          },
+          "probability": 6.59282612525441e-7,
+          "reference": "tensors/demo_images__r4.f32",
+          "source": "demo_images/r4.png",
+          "tensor": {
+            "bytes": 1769472,
+            "float_count": 442368,
+            "sha256": "63e58f854d446dbb4f8507c57596e7bf293a4bc4c9db9e98d7b1b5e76340a368",
+            "shape": [
+              1,
+              3,
+              384,
+              384
+            ]
+          }
+        },
+        {
+          "id": "demo_images__r5",
+          "label": "Real",
+          "logit": -13.230443954467773,
+          "oriented_dimensions": {
+            "height": 384,
+            "width": 384
+          },
+          "original_dimensions": {
+            "height": 384,
+            "width": 384
+          },
+          "probability": 0.000001795107319881058,
+          "reference": "tensors/demo_images__r5.f32",
+          "source": "demo_images/r5.png",
+          "tensor": {
+            "bytes": 1769472,
+            "float_count": 442368,
+            "sha256": "560db16fcb10de5ee54583907552a0235051f383c0809ef8d41f83d0984ffeb2",
+            "shape": [
+              1,
+              3,
+              384,
+              384
+            ]
+          }
+        },
+        {
+          "id": "web_demo__tests__fixtures__exif-orientation-6",
+          "label": "Real",
+          "logit": -3.9514241218566895,
+          "oriented_dimensions": {
+            "height": 120,
+            "width": 80
+          },
+          "original_dimensions": {
+            "height": 80,
+            "width": 120
+          },
+          "probability": 0.018864585206083574,
+          "reference": "tensors/web_demo__tests__fixtures__exif-orientation-6.f32",
+          "source": "web_demo/tests/fixtures/exif-orientation-6.jpg",
+          "tensor": {
+            "bytes": 1769472,
+            "float_count": 442368,
+            "sha256": "637c2413f029614cd7856c1d054e170f60193c5b4744b2dd3bd154d66403e914",
+            "shape": [
+              1,
+              3,
+              384,
+              384
+            ]
+          }
+        },
+        {
+          "id": "web_demo__tests__fixtures__grayscale",
+          "label": "Real",
+          "logit": -8.542181015014648,
+          "oriented_dimensions": {
+            "height": 384,
+            "width": 384
+          },
+          "original_dimensions": {
+            "height": 384,
+            "width": 384
+          },
+          "probability": 0.00019502631489033554,
+          "reference": "tensors/web_demo__tests__fixtures__grayscale.f32",
+          "source": "web_demo/tests/fixtures/grayscale.png",
+          "tensor": {
+            "bytes": 1769472,
+            "float_count": 442368,
+            "sha256": "fa432f81a031ae531fea43b0165bb789a06df577618023dbb8fedcc5fff5f1f0",
+            "shape": [
+              1,
+              3,
+              384,
+              384
+            ]
+          }
+        },
+        {
+          "id": "web_demo__tests__fixtures__near-threshold-synthetic",
+          "label": "AIGC",
+          "logit": 0.23447680473327637,
+          "oriented_dimensions": {
+            "height": 384,
+            "width": 384
+          },
+          "original_dimensions": {
+            "height": 384,
+            "width": 384
+          },
+          "probability": 0.5583520990260026,
+          "reference": "tensors/web_demo__tests__fixtures__near-threshold-synthetic.f32",
+          "source": "web_demo/tests/fixtures/near-threshold-synthetic.png",
+          "tensor": {
+            "bytes": 1769472,
+            "float_count": 442368,
+            "sha256": "d8a92998b0a9ae0ccb259f907c0ecddbe52facce7468318e28e6eef852926157",
+            "shape": [
+              1,
+              3,
+              384,
+              384
+            ]
+          }
+        },
+        {
+          "id": "web_demo__tests__fixtures__non-square",
+          "label": "AIGC",
+          "logit": 9.069877624511719,
+          "oriented_dimensions": {
+            "height": 179,
+            "width": 321
+          },
+          "original_dimensions": {
+            "height": 179,
+            "width": 321
+          },
+          "probability": 0.9998849326211937,
+          "reference": "tensors/web_demo__tests__fixtures__non-square.f32",
+          "source": "web_demo/tests/fixtures/non-square.png",
+          "tensor": {
+            "bytes": 1769472,
+            "float_count": 442368,
+            "sha256": "f6146561b5c9ef104d42d170b99a657a22aa454edd8761dafdbde9a0e333c57b",
+            "shape": [
+              1,
+              3,
+              384,
+              384
+            ]
+          }
+        },
+        {
+          "id": "web_demo__tests__fixtures__rgba-hidden-rgb",
+          "label": "AIGC",
+          "logit": 4.802093505859375,
+          "oriented_dimensions": {
+            "height": 301,
+            "width": 257
+          },
+          "original_dimensions": {
+            "height": 301,
+            "width": 257
+          },
+          "probability": 0.9918543603122597,
+          "reference": "tensors/web_demo__tests__fixtures__rgba-hidden-rgb.f32",
+          "source": "web_demo/tests/fixtures/rgba-hidden-rgb.png",
+          "tensor": {
+            "bytes": 1769472,
+            "float_count": 442368,
+            "sha256": "aa93aa318de8b3094c9f8e473bc5c34e96dd2f73c3497dec21fef009b5606a44",
+            "shape": [
+              1,
+              3,
+              384,
+              384
+            ]
+          }
+        }
+      ],
+      "model": {
+        "bytes": 88123029,
+        "file": "baseline2_njr_fp32.onnx",
+        "input_name": "input",
+        "output_name": "logits",
+        "sha256": "e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69",
+        "source": "web_demo/models/baseline2_njr_fp32.onnx"
+      },
+      "preprocessing": "inference.preprocess_image",
+      "schema_version": 1,
+      "tensor": {
+        "byte_order": "little-endian",
+        "bytes": 1769472,
+        "dtype": "float32",
+        "float_count": 442368,
+        "layout": "NCHW",
+        "shape": [
+          1,
+          3,
+          384,
+          384
+        ]
+      },
+      "threshold": 0.55657113
+    }
+  },
+  "browserAcceptance": {
+    "schemaVersion": 1,
+    "passed": true,
+    "generatedAt": "2026-08-30T01:39:34.974Z",
+    "commit": "9833631b63341a2ea285655e6f03451965f7bd0c",
+    "parityManifest": {
+      "path": "web_demo/.generated-tests/parity/manifest.json",
+      "sha256": "cb6f9005beb6179c965d81046446e250e9568764294ac6d77627824d2c7e57d5"
+    },
+    "platform": {
+      "platform": "win32",
+      "release": "10.0.22631",
+      "arch": "x64"
+    },
+    "runtime": {
+      "node": "v24.19.0",
+      "python": "3.12.10",
+      "edge": "151.0.4129.107",
+      "edgeExecutable": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
+    },
+    "model": {
+      "bytes": 88123029,
+      "sha256": "e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69"
+    },
+    "threshold": 0.55657113,
+    "gates": {
+      "maxProbabilityError": 0.01,
+      "imagesPerProvider": 15
+    },
+    "portFallback": {
+      "occupiedPort": 8765,
+      "occupation": "acceptance-holder",
+      "selectedPort": 8766,
+      "passed": true
+    },
+    "source": {
+      "serverUrl": "http://127.0.0.1:8766/",
+      "providers": {
+        "normal": {
+          "mode": "normal",
+          "expectedProvider": "WebGPU",
+          "gpu": {
+            "apiAvailable": true,
+            "adapterAvailable": true,
+            "adapterInfo": {
+              "vendor": "nvidia",
+              "architecture": "ampere",
+              "device": "",
+              "description": ""
+            }
+          },
+          "webGpuDisabledByHarness": false,
+          "fallbackNote": null,
+          "fallbackNoteVisible": false,
+          "crossOriginIsolated": true,
+          "images": [
+            {
+              "source": "demo_images/f1.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999985694885254,
+              "probability": 0.9999983780094724,
+              "absoluteError": 1.9147905294669698e-7,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 233.4,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f2.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999996423721313,
+              "probability": 0.9999996341625613,
+              "absoluteError": 8.209570023787194e-9,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 24.5,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f3.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999998807907104,
+              "probability": 0.9999999384645875,
+              "absoluteError": 5.767387700750248e-8,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 27.4,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f4.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.999998927116394,
+              "probability": 0.9999985121339541,
+              "absoluteError": 4.149824399668489e-7,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 22.4,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f5.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999974966049194,
+              "probability": 0.9999974114952228,
+              "absoluteError": 8.510969662367529e-8,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 21.7,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r1.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9982048273086548,
+              "probability": 0.9993134632466377,
+              "absoluteError": 0.001108635937982938,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 21.1,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r2.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 2.4952137778200267e-7,
+              "probability": 2.4952255436131797e-7,
+              "absoluteError": 1.17657931529779e-12,
+              "label": "Real",
+              "provider": "WebGPU",
+              "elapsedMs": 24.3,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r3.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 3.5798055364466563e-7,
+              "probability": 3.579832936097122e-7,
+              "absoluteError": 2.739965046589792e-12,
+              "label": "Real",
+              "provider": "WebGPU",
+              "elapsedMs": 23.1,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r4.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 6.592869681298907e-7,
+              "probability": 6.592888999602248e-7,
+              "absoluteError": 1.931830334027005e-12,
+              "label": "Real",
+              "provider": "WebGPU",
+              "elapsedMs": 22.5,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r5.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.0000017951260815607384,
+              "probability": 0.0000017951124557224238,
+              "absoluteError": 1.362583831462794e-11,
+              "label": "Real",
+              "provider": "WebGPU",
+              "elapsedMs": 23.2,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/exif-orientation-6.jpg",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.018864585206083574,
+              "probability": 0.016399540133651625,
+              "absoluteError": 0.0024650450724319484,
+              "label": "Real",
+              "provider": "WebGPU",
+              "elapsedMs": 23,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/grayscale.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.00019502631489033554,
+              "probability": 0.0001950276165818787,
+              "absoluteError": 1.3016915431554154e-9,
+              "label": "Real",
+              "provider": "WebGPU",
+              "elapsedMs": 21.4,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/near-threshold-synthetic.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.5583520990260026,
+              "probability": 0.5583375955181867,
+              "absoluteError": 0.000014503507815843975,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 22.7,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/non-square.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.9998849326211937,
+              "probability": 0.9998799107112541,
+              "absoluteError": 0.000005021909939562086,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 24.9,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/rgba-hidden-rgb.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.9918543603122597,
+              "probability": 0.9920504431586497,
+              "absoluteError": 0.00019608284638994444,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 21.2,
+              "thresholdFlip": false
+            }
+          ],
+          "maxAbsoluteError": 0.0024650450724319484,
+          "thresholdFlips": 0,
+          "workflowChecks": false,
+          "requestOrigins": [
+            "http://127.0.0.1:8766"
+          ],
+          "webSocketOrigins": [],
+          "requestPaths": {
+            "/": 1,
+            "/assets/index-Dik4I6Xg.js": 1,
+            "/assets/index-DQGgHzSy.css": 1,
+            "/assets/mozjpeg_dec-muSO2n8T.wasm": 1,
+            "/assets/ort-wasm-simd-threaded.asyncify.mjs": 4,
+            "/assets/ort-wasm-simd-threaded.asyncify.wasm": 1,
+            "/assets/squoosh_png_bg-DAY7U9NW.wasm": 1,
+            "/assets/squoosh_resize_bg-YY9xfwUg.wasm": 1,
+            "/models/baseline2_njr_fp32.onnx": 1,
+            "/models/manifest.json": 1
+          },
+          "consoleMessages": [
+            "warning: The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127",
+            "warning: The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127",
+            "warning: The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+          ]
+        },
+        "fallback": {
+          "mode": "fallback",
+          "expectedProvider": "WASM",
+          "gpu": {
+            "apiAvailable": false,
+            "adapterAvailable": false,
+            "adapterInfo": null
+          },
+          "webGpuDisabledByHarness": true,
+          "fallbackNote": "Compatibility note: WebGPU adapter unavailable. The same FP32 model is running with WASM.",
+          "fallbackNoteVisible": true,
+          "crossOriginIsolated": true,
+          "images": [
+            {
+              "source": "demo_images/f1.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999985694885254,
+              "probability": 0.9999983780125662,
+              "absoluteError": 1.9147595919921656e-7,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 430.9,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f2.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999996423721313,
+              "probability": 0.9999996341594215,
+              "absoluteError": 8.212709845523136e-9,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 350,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f3.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999998807907104,
+              "probability": 0.9999999384643528,
+              "absoluteError": 5.767364230635508e-8,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 338.4,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f4.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.999998927116394,
+              "probability": 0.9999985121353729,
+              "absoluteError": 4.1498102110182344e-7,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 384.1,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f5.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999974966049194,
+              "probability": 0.9999974115248456,
+              "absoluteError": 8.508007387497685e-8,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 367.4,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r1.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9982048273086548,
+              "probability": 0.9993134979227599,
+              "absoluteError": 0.001108670614105134,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 382.5,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r2.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 2.4952137778200267e-7,
+              "probability": 2.4952255436131797e-7,
+              "absoluteError": 1.17657931529779e-12,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 420.5,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r3.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 3.5798055364466563e-7,
+              "probability": 3.579795382365534e-7,
+              "absoluteError": 1.0154081122556458e-12,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 385.6,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r4.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 6.592869681298907e-7,
+              "probability": 6.592800975683169e-7,
+              "absoluteError": 6.870561573883594e-12,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 361.1,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r5.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.0000017951260815607384,
+              "probability": 0.000001795107319881058,
+              "absoluteError": 1.8761679680387837e-11,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 345.1,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/exif-orientation-6.jpg",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.018864585206083574,
+              "probability": 0.016399363226244683,
+              "absoluteError": 0.0024652219798388907,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 336.1,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/grayscale.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.00019502631489033554,
+              "probability": 0.0001950296621147108,
+              "absoluteError": 3.347224375248965e-9,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 364.6,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/near-threshold-synthetic.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.5583520990260026,
+              "probability": 0.558333931961196,
+              "absoluteError": 0.000018167064806617894,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 378.8,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/non-square.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.9998849326211937,
+              "probability": 0.999879911398326,
+              "absoluteError": 0.0000050212228677182225,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 361,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/rgba-hidden-rgb.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.9918543603122597,
+              "probability": 0.9920504393981384,
+              "absoluteError": 0.0001960790858787087,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 387,
+              "thresholdFlip": false
+            }
+          ],
+          "maxAbsoluteError": 0.0024652219798388907,
+          "thresholdFlips": 0,
+          "workflowChecks": false,
+          "requestOrigins": [
+            "http://127.0.0.1:8766"
+          ],
+          "webSocketOrigins": [],
+          "requestPaths": {
+            "/": 1,
+            "/assets/index-Dik4I6Xg.js": 1,
+            "/assets/index-DQGgHzSy.css": 1,
+            "/assets/mozjpeg_dec-muSO2n8T.wasm": 1,
+            "/assets/ort-wasm-simd-threaded.asyncify.mjs": 4,
+            "/assets/ort-wasm-simd-threaded.asyncify.wasm": 1,
+            "/assets/squoosh_png_bg-DAY7U9NW.wasm": 1,
+            "/assets/squoosh_resize_bg-YY9xfwUg.wasm": 1,
+            "/models/baseline2_njr_fp32.onnx": 1,
+            "/models/manifest.json": 1
+          },
+          "consoleMessages": []
+        },
+        "wasm": {
+          "mode": "wasm",
+          "expectedProvider": "WASM",
+          "gpu": {
+            "apiAvailable": true,
+            "adapterAvailable": true,
+            "adapterInfo": {
+              "vendor": "nvidia",
+              "architecture": "ampere",
+              "device": "",
+              "description": ""
+            }
+          },
+          "webGpuDisabledByHarness": false,
+          "fallbackNote": null,
+          "fallbackNoteVisible": false,
+          "crossOriginIsolated": true,
+          "images": [
+            {
+              "source": "demo_images/f1.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999985694885254,
+              "probability": 0.9999983780125662,
+              "absoluteError": 1.9147595919921656e-7,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 428.6,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f2.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999996423721313,
+              "probability": 0.9999996341594215,
+              "absoluteError": 8.212709845523136e-9,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 320.2,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f3.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999998807907104,
+              "probability": 0.9999999384643528,
+              "absoluteError": 5.767364230635508e-8,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 314.8,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f4.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.999998927116394,
+              "probability": 0.9999985121353729,
+              "absoluteError": 4.1498102110182344e-7,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 319.8,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f5.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999974966049194,
+              "probability": 0.9999974115248456,
+              "absoluteError": 8.508007387497685e-8,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 348.8,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r1.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9982048273086548,
+              "probability": 0.9993134979227599,
+              "absoluteError": 0.001108670614105134,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 331.9,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r2.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 2.4952137778200267e-7,
+              "probability": 2.4952255436131797e-7,
+              "absoluteError": 1.17657931529779e-12,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 358.3,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r3.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 3.5798055364466563e-7,
+              "probability": 3.579795382365534e-7,
+              "absoluteError": 1.0154081122556458e-12,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 351.1,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r4.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 6.592869681298907e-7,
+              "probability": 6.592800975683169e-7,
+              "absoluteError": 6.870561573883594e-12,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 335.8,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r5.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.0000017951260815607384,
+              "probability": 0.000001795107319881058,
+              "absoluteError": 1.8761679680387837e-11,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 336.7,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/exif-orientation-6.jpg",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.018864585206083574,
+              "probability": 0.016399363226244683,
+              "absoluteError": 0.0024652219798388907,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 339.7,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/grayscale.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.00019502631489033554,
+              "probability": 0.0001950296621147108,
+              "absoluteError": 3.347224375248965e-9,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 337.3,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/near-threshold-synthetic.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.5583520990260026,
+              "probability": 0.558333931961196,
+              "absoluteError": 0.000018167064806617894,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 353.5,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/non-square.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.9998849326211937,
+              "probability": 0.999879911398326,
+              "absoluteError": 0.0000050212228677182225,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 356.5,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/rgba-hidden-rgb.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.9918543603122597,
+              "probability": 0.9920504393981384,
+              "absoluteError": 0.0001960790858787087,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 376.6,
+              "thresholdFlip": false
+            }
+          ],
+          "maxAbsoluteError": 0.0024652219798388907,
+          "thresholdFlips": 0,
+          "workflowChecks": true,
+          "requestOrigins": [
+            "http://127.0.0.1:8766"
+          ],
+          "webSocketOrigins": [],
+          "requestPaths": {
+            "/?provider=wasm": 1,
+            "/assets/index-Dik4I6Xg.js": 1,
+            "/assets/index-DQGgHzSy.css": 1,
+            "/assets/mozjpeg_dec-muSO2n8T.wasm": 1,
+            "/assets/ort-wasm-simd-threaded.asyncify.mjs": 4,
+            "/assets/ort-wasm-simd-threaded.asyncify.wasm": 1,
+            "/assets/squoosh_png_bg-DAY7U9NW.wasm": 1,
+            "/assets/squoosh_resize_bg-YY9xfwUg.wasm": 1,
+            "/models/baseline2_njr_fp32.onnx": 1,
+            "/models/manifest.json": 1
+          },
+          "consoleMessages": [
+            "warning: The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+          ]
+        }
+      },
+      "terminationUnreachable": true
+    },
+    "artifactFailures": {
+      "corruptModel": {
+        "exitCode": 1,
+        "diagnostic": "Distribution verification failed: - model SHA-256 mismatch: expected e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69, found e6982c7e97eec32a1c5534697f1b0bf2274c33fc88d34e808e8ea4c8a328a937 for baseline2_njr_fp32.onnx"
+      },
+      "missingWasm": {
+        "exitCode": 1,
+        "diagnostic": "Distribution verification failed: - dist must contain exactly the approved ORT runtime files (assets/ort-wasm-simd-threaded.asyncify.mjs, assets/ort-wasm-simd-threaded.asyncify.wasm); found 1: assets/ort-wasm-simd-threaded.asyncify.mjs - ORT runtime assets/ort-wasm-simd-threaded.asyncify.wasm is missing or is not a regular file - dist/integrity.json lists files absent from dist: assets/ort-wasm-simd-threaded.asyncify.wasm"
+      }
+    },
+    "freshCopy": {
+      "directoryName": "LingShu 评委 本地复现",
+      "sourceCommit": "9833631b63341a2ea285655e6f03451965f7bd0c",
+      "trackedFileCount": 127,
+      "excluded": [
+        ".git",
+        "node_modules",
+        ".venv",
+        "web_models"
+      ],
+      "npmInstallRun": false,
+      "batchCheck": {
+        "exitCode": 0,
+        "output": "Distribution verification passed."
+      },
+      "serverUrl": "http://127.0.0.1:8765/",
+      "providers": {
+        "normal": {
+          "mode": "normal",
+          "expectedProvider": "WebGPU",
+          "gpu": {
+            "apiAvailable": true,
+            "adapterAvailable": true,
+            "adapterInfo": {
+              "vendor": "nvidia",
+              "architecture": "ampere",
+              "device": "",
+              "description": ""
+            }
+          },
+          "webGpuDisabledByHarness": false,
+          "fallbackNote": null,
+          "fallbackNoteVisible": false,
+          "crossOriginIsolated": true,
+          "images": [
+            {
+              "source": "demo_images/f1.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999985694885254,
+              "probability": 0.9999983780094724,
+              "absoluteError": 1.9147905294669698e-7,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 232.7,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f2.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999996423721313,
+              "probability": 0.9999996341625613,
+              "absoluteError": 8.209570023787194e-9,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 29.7,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f3.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999998807907104,
+              "probability": 0.9999999384645875,
+              "absoluteError": 5.767387700750248e-8,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 23.4,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f4.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.999998927116394,
+              "probability": 0.9999985121339541,
+              "absoluteError": 4.149824399668489e-7,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 22.5,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f5.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999974966049194,
+              "probability": 0.9999974114952228,
+              "absoluteError": 8.510969662367529e-8,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 23.7,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r1.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9982048273086548,
+              "probability": 0.9993134632466377,
+              "absoluteError": 0.001108635937982938,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 22.5,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r2.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 2.4952137778200267e-7,
+              "probability": 2.4952255436131797e-7,
+              "absoluteError": 1.17657931529779e-12,
+              "label": "Real",
+              "provider": "WebGPU",
+              "elapsedMs": 23,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r3.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 3.5798055364466563e-7,
+              "probability": 3.579832936097122e-7,
+              "absoluteError": 2.739965046589792e-12,
+              "label": "Real",
+              "provider": "WebGPU",
+              "elapsedMs": 23,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r4.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 6.592869681298907e-7,
+              "probability": 6.592888999602248e-7,
+              "absoluteError": 1.931830334027005e-12,
+              "label": "Real",
+              "provider": "WebGPU",
+              "elapsedMs": 22.4,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r5.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.0000017951260815607384,
+              "probability": 0.0000017951124557224238,
+              "absoluteError": 1.362583831462794e-11,
+              "label": "Real",
+              "provider": "WebGPU",
+              "elapsedMs": 23.2,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/exif-orientation-6.jpg",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.018864585206083574,
+              "probability": 0.016399540133651625,
+              "absoluteError": 0.0024650450724319484,
+              "label": "Real",
+              "provider": "WebGPU",
+              "elapsedMs": 21.7,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/grayscale.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.00019502631489033554,
+              "probability": 0.0001950276165818787,
+              "absoluteError": 1.3016915431554154e-9,
+              "label": "Real",
+              "provider": "WebGPU",
+              "elapsedMs": 24.7,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/near-threshold-synthetic.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.5583520990260026,
+              "probability": 0.5583375955181867,
+              "absoluteError": 0.000014503507815843975,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 24,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/non-square.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.9998849326211937,
+              "probability": 0.9998799107112541,
+              "absoluteError": 0.000005021909939562086,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 22.2,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/rgba-hidden-rgb.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.9918543603122597,
+              "probability": 0.9920504431586497,
+              "absoluteError": 0.00019608284638994444,
+              "label": "AIGC",
+              "provider": "WebGPU",
+              "elapsedMs": 20.7,
+              "thresholdFlip": false
+            }
+          ],
+          "maxAbsoluteError": 0.0024650450724319484,
+          "thresholdFlips": 0,
+          "workflowChecks": false,
+          "requestOrigins": [
+            "http://127.0.0.1:8765"
+          ],
+          "webSocketOrigins": [],
+          "requestPaths": {
+            "/": 1,
+            "/assets/index-Dik4I6Xg.js": 1,
+            "/assets/index-DQGgHzSy.css": 1,
+            "/assets/mozjpeg_dec-muSO2n8T.wasm": 1,
+            "/assets/ort-wasm-simd-threaded.asyncify.mjs": 4,
+            "/assets/ort-wasm-simd-threaded.asyncify.wasm": 1,
+            "/assets/squoosh_png_bg-DAY7U9NW.wasm": 1,
+            "/assets/squoosh_resize_bg-YY9xfwUg.wasm": 1,
+            "/models/baseline2_njr_fp32.onnx": 1,
+            "/models/manifest.json": 1
+          },
+          "consoleMessages": [
+            "warning: The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127",
+            "warning: The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127",
+            "warning: The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+          ]
+        },
+        "fallback": {
+          "mode": "fallback",
+          "expectedProvider": "WASM",
+          "gpu": {
+            "apiAvailable": false,
+            "adapterAvailable": false,
+            "adapterInfo": null
+          },
+          "webGpuDisabledByHarness": true,
+          "fallbackNote": "Compatibility note: WebGPU adapter unavailable. The same FP32 model is running with WASM.",
+          "fallbackNoteVisible": true,
+          "crossOriginIsolated": true,
+          "images": [
+            {
+              "source": "demo_images/f1.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999985694885254,
+              "probability": 0.9999983780125662,
+              "absoluteError": 1.9147595919921656e-7,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 456.6,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f2.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999996423721313,
+              "probability": 0.9999996341594215,
+              "absoluteError": 8.212709845523136e-9,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 340.9,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f3.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999998807907104,
+              "probability": 0.9999999384643528,
+              "absoluteError": 5.767364230635508e-8,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 344.1,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f4.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.999998927116394,
+              "probability": 0.9999985121353729,
+              "absoluteError": 4.1498102110182344e-7,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 349.2,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f5.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999974966049194,
+              "probability": 0.9999974115248456,
+              "absoluteError": 8.508007387497685e-8,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 351.6,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r1.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9982048273086548,
+              "probability": 0.9993134979227599,
+              "absoluteError": 0.001108670614105134,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 371.1,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r2.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 2.4952137778200267e-7,
+              "probability": 2.4952255436131797e-7,
+              "absoluteError": 1.17657931529779e-12,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 374.4,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r3.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 3.5798055364466563e-7,
+              "probability": 3.579795382365534e-7,
+              "absoluteError": 1.0154081122556458e-12,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 379.9,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r4.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 6.592869681298907e-7,
+              "probability": 6.592800975683169e-7,
+              "absoluteError": 6.870561573883594e-12,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 336.2,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r5.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.0000017951260815607384,
+              "probability": 0.000001795107319881058,
+              "absoluteError": 1.8761679680387837e-11,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 355.9,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/exif-orientation-6.jpg",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.018864585206083574,
+              "probability": 0.016399363226244683,
+              "absoluteError": 0.0024652219798388907,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 337.7,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/grayscale.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.00019502631489033554,
+              "probability": 0.0001950296621147108,
+              "absoluteError": 3.347224375248965e-9,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 342.7,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/near-threshold-synthetic.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.5583520990260026,
+              "probability": 0.558333931961196,
+              "absoluteError": 0.000018167064806617894,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 454.3,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/non-square.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.9998849326211937,
+              "probability": 0.999879911398326,
+              "absoluteError": 0.0000050212228677182225,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 363,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/rgba-hidden-rgb.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.9918543603122597,
+              "probability": 0.9920504393981384,
+              "absoluteError": 0.0001960790858787087,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 345.1,
+              "thresholdFlip": false
+            }
+          ],
+          "maxAbsoluteError": 0.0024652219798388907,
+          "thresholdFlips": 0,
+          "workflowChecks": false,
+          "requestOrigins": [
+            "http://127.0.0.1:8765"
+          ],
+          "webSocketOrigins": [],
+          "requestPaths": {
+            "/": 1,
+            "/assets/index-Dik4I6Xg.js": 1,
+            "/assets/index-DQGgHzSy.css": 1,
+            "/assets/mozjpeg_dec-muSO2n8T.wasm": 1,
+            "/assets/ort-wasm-simd-threaded.asyncify.mjs": 4,
+            "/assets/ort-wasm-simd-threaded.asyncify.wasm": 1,
+            "/assets/squoosh_png_bg-DAY7U9NW.wasm": 1,
+            "/assets/squoosh_resize_bg-YY9xfwUg.wasm": 1,
+            "/models/baseline2_njr_fp32.onnx": 1,
+            "/models/manifest.json": 1
+          },
+          "consoleMessages": []
+        },
+        "wasm": {
+          "mode": "wasm",
+          "expectedProvider": "WASM",
+          "gpu": {
+            "apiAvailable": true,
+            "adapterAvailable": true,
+            "adapterInfo": {
+              "vendor": "nvidia",
+              "architecture": "ampere",
+              "device": "",
+              "description": ""
+            }
+          },
+          "webGpuDisabledByHarness": false,
+          "fallbackNote": null,
+          "fallbackNoteVisible": false,
+          "crossOriginIsolated": true,
+          "images": [
+            {
+              "source": "demo_images/f1.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999985694885254,
+              "probability": 0.9999983780125662,
+              "absoluteError": 1.9147595919921656e-7,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 449,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f2.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999996423721313,
+              "probability": 0.9999996341594215,
+              "absoluteError": 8.212709845523136e-9,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 354,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f3.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999998807907104,
+              "probability": 0.9999999384643528,
+              "absoluteError": 5.767364230635508e-8,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 364.7,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f4.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.999998927116394,
+              "probability": 0.9999985121353729,
+              "absoluteError": 4.1498102110182344e-7,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 342.5,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/f5.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9999974966049194,
+              "probability": 0.9999974115248456,
+              "absoluteError": 8.508007387497685e-8,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 361.9,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r1.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.9982048273086548,
+              "probability": 0.9993134979227599,
+              "absoluteError": 0.001108670614105134,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 356.2,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r2.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 2.4952137778200267e-7,
+              "probability": 2.4952255436131797e-7,
+              "absoluteError": 1.17657931529779e-12,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 353.6,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r3.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 3.5798055364466563e-7,
+              "probability": 3.579795382365534e-7,
+              "absoluteError": 1.0154081122556458e-12,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 391.7,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r4.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 6.592869681298907e-7,
+              "probability": 6.592800975683169e-7,
+              "absoluteError": 6.870561573883594e-12,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 384.8,
+              "thresholdFlip": false
+            },
+            {
+              "source": "demo_images/r5.png",
+              "reference": "demo_predictions_cpu",
+              "referenceProbability": 0.0000017951260815607384,
+              "probability": 0.000001795107319881058,
+              "absoluteError": 1.8761679680387837e-11,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 350.7,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/exif-orientation-6.jpg",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.018864585206083574,
+              "probability": 0.016399363226244683,
+              "absoluteError": 0.0024652219798388907,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 370.3,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/grayscale.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.00019502631489033554,
+              "probability": 0.0001950296621147108,
+              "absoluteError": 3.347224375248965e-9,
+              "label": "Real",
+              "provider": "WASM",
+              "elapsedMs": 377.5,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/near-threshold-synthetic.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.5583520990260026,
+              "probability": 0.558333931961196,
+              "absoluteError": 0.000018167064806617894,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 417.9,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/non-square.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.9998849326211937,
+              "probability": 0.999879911398326,
+              "absoluteError": 0.0000050212228677182225,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 382.1,
+              "thresholdFlip": false
+            },
+            {
+              "source": "web_demo/tests/fixtures/rgba-hidden-rgb.png",
+              "reference": "pillow_fp32_onnx",
+              "referenceProbability": 0.9918543603122597,
+              "probability": 0.9920504393981384,
+              "absoluteError": 0.0001960790858787087,
+              "label": "AIGC",
+              "provider": "WASM",
+              "elapsedMs": 378.5,
+              "thresholdFlip": false
+            }
+          ],
+          "maxAbsoluteError": 0.0024652219798388907,
+          "thresholdFlips": 0,
+          "workflowChecks": true,
+          "requestOrigins": [
+            "http://127.0.0.1:8765"
+          ],
+          "webSocketOrigins": [],
+          "requestPaths": {
+            "/?provider=wasm": 1,
+            "/assets/index-Dik4I6Xg.js": 1,
+            "/assets/index-DQGgHzSy.css": 1,
+            "/assets/mozjpeg_dec-muSO2n8T.wasm": 1,
+            "/assets/ort-wasm-simd-threaded.asyncify.mjs": 4,
+            "/assets/ort-wasm-simd-threaded.asyncify.wasm": 1,
+            "/assets/squoosh_png_bg-DAY7U9NW.wasm": 1,
+            "/assets/squoosh_resize_bg-YY9xfwUg.wasm": 1,
+            "/models/baseline2_njr_fp32.onnx": 1,
+            "/models/manifest.json": 1
+          },
+          "consoleMessages": [
+            "warning: The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+          ]
+        }
+      },
+      "terminationUnreachable": true
+    }
+  }
+}
