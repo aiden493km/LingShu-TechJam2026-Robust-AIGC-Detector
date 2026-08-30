@@ -164,10 +164,11 @@ Changing only a filename extension does not change the encoded format.
 ## Developer setup and audit gates
 
 Judges do not need this section. The complete recorded audit requires Git, Windows,
-an installed Microsoft Edge, Node.js `^20.19.0` or `>=22.12.0` (the Vite 8.2.2
-requirement), npm, and the pinned Python experiment environment. Use any working
-Python 3.12 command; the example below uses `python`, while another installation
-may expose `py -3.12` instead:
+an installed Microsoft Edge, npm, and Node.js `^20.19.0`, `^22.12.0`, or `>=24.0.0`
+(the intersection supported by the pinned Vite and Vitest versions), plus the
+pinned Python experiment environment. Use any working Python 3.12 command; the
+example below uses `python`, while another installation may expose `py -3.12`
+instead:
 
 ```powershell
 # From the repository root
