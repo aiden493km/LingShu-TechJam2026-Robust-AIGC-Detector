@@ -13,9 +13,10 @@ presented as interchangeable accuracy results.
 
 ## Local WebDemo contract
 
-- The judge entry is `web_demo/start-demo.bat` on Windows. It verifies the
-  committed distribution, starts a Python-standard-library server on
-  `127.0.0.1`, and opens the local page.
+- The judge entries are `web_demo/start-demo.bat` on Windows x86-64 and
+  `web_demo/start-demo.command` on Apple Silicon macOS. Each verifies and reuses
+  its pinned repository-bundled Python runtime, starts a
+  Python-standard-library server on `127.0.0.1`, and opens the local page.
 - The only deployed browser model is
   `web_demo/models/baseline2_njr_fp32.onnx`.
 - Model identity: 88,123,029 bytes, SHA-256
@@ -90,6 +91,11 @@ new accuracy evaluation.
   implemented runtime architecture.
 - `docs/superpowers/plans/2026-08-30-offline-fp32-webdemo.md` is a completed
   historical implementation plan, not the current task list.
+- `docs/superpowers/plans/2026-08-30-portable-cross-platform-webdemo-launcher.md`
+  records the implemented bundled-runtime launcher work and its remaining
+  physical-machine acceptance boundary.
+- `results/web_demo_acceptance/portable-launchers.md` records portable-launcher
+  smoke evidence separately from the formal browser-inference `latest.json`.
 - `results/web_model_experiment/README.md` preserves historical FP16/INT8
   experiments. Its old recommendation is superseded by the formal FP32-only
   decision.

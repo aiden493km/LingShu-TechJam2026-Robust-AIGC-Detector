@@ -4,7 +4,11 @@
 
 Implemented. The offline runtime foundation and fresh-copy browser acceptance are
 recorded in the [formal acceptance evidence](../../../results/web_demo_acceptance/README.md).
-The visual-polish and narrative slice remains separate from this specification.
+The launcher and host-runtime details in this original specification are
+superseded by the
+[portable launcher plan](../plans/2026-08-30-portable-cross-platform-webdemo-launcher.md)
+and the current repository runbooks. The visual-polish and narrative slice remains
+separate from this specification.
 
 ## Objective
 
@@ -154,11 +158,13 @@ that successfully falls back to WASM is shown as a non-blocking compatibility no
 
 ### Local server and launcher
 
-`start-demo.bat` resolves paths relative to its own location, tries the repository
-`.venv\Scripts\python.exe` first, then `py -3`, then `python`, and runs
-`tools/serve_demo.py` with the first Python 3.11+ interpreter whose probe succeeds.
-Python is already the repository's documented runtime requirement; no new system
-dependency is introduced.
+The current Windows x86-64 and Apple Silicon macOS launchers resolve paths relative
+to their own location and always use a pinned Python runtime committed under
+`web_demo/runtimes/`. The Windows launcher uses CPython 3.12.10; the macOS launcher
+uses CPython 3.12.14. Each bootstrap verifies its archive, extracts it into the
+repository-local `.runtime-cache`, reuses a valid cache on later launches, and
+runs `tools/serve_demo.py`. Normal judge launch does not inspect or depend on a
+system Python or Node.js installation.
 
 The server:
 
@@ -173,8 +179,9 @@ The server:
 - remains attached to the launcher window and stops on Ctrl+C or window closure;
 - never listens on the LAN and never executes uploaded image content.
 
-If Python is missing, the BAT file displays a short explanation and the exact
-Python requirement instead of closing immediately.
+If the bundled archive is missing, corrupt, unsupported on the host architecture,
+or cannot be extracted, the launcher displays a specific diagnostic instead of
+silently switching to a system interpreter.
 
 ## End-to-end data flow
 
@@ -260,10 +267,12 @@ documents both paths:
 - developer: `npm ci`, tests, production build, then local verification.
 
 The local verification command rebuilds the site and fails if committed `dist`
-differs from source. The repository does not currently claim an automated CI gate
-for this check. Formal local browser evidence separately records the tested commit
-and immutable artifact identities. Together these checks avoid asking judges to
-trust an opaque generated bundle while preserving the no-install launcher.
+differs from source. Portable CI smoke checks exercise the Windows and macOS
+launcher/package paths, but they do not replace Finder double-click and real-browser
+inference acceptance on physical target machines. Formal local browser evidence
+separately records the tested commit and immutable artifact identities. Together
+these checks avoid asking judges to trust an opaque generated bundle while
+preserving the no-install launcher.
 
 ## Verification strategy
 

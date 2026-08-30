@@ -2,6 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+## Status
+
+Tasks 1–5 were completed on 2026-08-30. Task 6 has passed the Windows command-path
+acceptance; Windows Explorer double-click and physical Apple Silicon
+Finder/browser acceptance remain pending. See the
+[portable launcher acceptance record](../../../results/web_demo_acceptance/portable-launchers.md).
+The checkboxes below preserve the original implementation sequence and are not the
+current status tracker.
+
 **Goal:** Let a judge clone the repository and launch the existing FP32 WebDemo by double-clicking on Windows x86-64 or Apple Silicon macOS, without installing Python, Node.js, packages, or a server.
 
 **Architecture:** Keep the existing browser application, model, inference path, and loopback server. Commit one pinned Python archive per target platform; a small native bootstrap verifies the archive, extracts it into a repository-local cache, and runs `serve_demo.py` with the bundled interpreter. This is the minimum competition-ready slice: two launchers, one cache convention, existing tests, simple CI, and real-machine smoke evidence.

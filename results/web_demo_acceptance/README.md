@@ -24,6 +24,15 @@ The exact tested commit, environment versions, artifact hashes, per-image result
 and request origins are authoritative in [`latest.json`](latest.json). Timing is
 machine-specific and intentionally omitted from this summary.
 
+## Portable launcher status
+
+Portable-launcher smoke evidence is tracked separately in
+[`portable-launchers.md`](portable-launchers.md). As of 2026-08-30, the Windows
+command path passed with the bundled runtime, cache reuse, occupied-port fallback,
+and clean shutdown. Windows Explorer double-click and physical Apple Silicon
+Finder/browser acceptance remain pending. This partial launcher record does not
+replace or relabel the formal browser-inference evidence in `latest.json`.
+
 ## Reproduce the evidence
 
 Start from a committed tree with a clean tracked index and worktree. From
