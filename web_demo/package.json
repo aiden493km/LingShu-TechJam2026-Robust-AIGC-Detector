@@ -1,0 +1,36 @@
+{
+  "name": "lingshu-offline-web-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:preprocess-parity": "node --test tests/browser/run-preprocess-parity.unit.mjs && node tools/run_preprocess_parity.mjs",
+    "test:browser-acceptance": "node tools/run_browser_acceptance.mjs",
+    "record:acceptance-evidence": "node tools/record_acceptance_evidence.mjs",
+    "typecheck": "tsc --noEmit",
+    "build": "vite build && node tools/copy_ort_runtime.mjs && node tools/write_dist_integrity.mjs",
+    "verify:dist": "npm run build && git diff --exit-code -- dist"
+  },
+  "dependencies": {
+    "@jsquash/jpeg": "1.6.0",
+    "@jsquash/png": "3.1.1",
+    "@jsquash/resize": "2.1.1",
+    "@jsquash/webp": "1.5.0",
+    "onnxruntime-web": "1.29.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "@vitejs/plugin-react": "6.1.1",
+    "@webgpu/types": "0.1.72",
+    "playwright-core": "1.62.1",
+    "typescript": "7.0.2",
+    "vite": "8.2.2",
+    "vitest": "4.1.11"
+  }
+}

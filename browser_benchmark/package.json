@@ -1,0 +1,12 @@
+{
+  "name": "lingshu-browser-runtime-benchmark",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "benchmark": "node run-benchmark.mjs"
+  },
+  "dependencies": {
+    "onnxruntime-web": "1.29.0",
+    "playwright-core": "1.62.1"
+  }
+}

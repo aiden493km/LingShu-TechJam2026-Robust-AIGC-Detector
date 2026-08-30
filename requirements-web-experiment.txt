@@ -1,0 +1,15 @@
+# Reproducible CPU environment for ONNX export and browser-model validation.
+# Python 3.12.10 was used for the recorded experiment.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+torch==2.10.0+cpu
+torchvision==0.25.0+cpu
+timm==0.9.16
+huggingface-hub==1.29.0
+Pillow==12.3.0
+numpy==2.5.2
+onnx==1.22.0
+onnxruntime==1.29.0
+onnxconverter-common==1.16.0
+onnxscript==0.7.1
+pytest==9.1.1

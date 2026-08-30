@@ -1,13 +1,13 @@
 # Robust AIGC Image Detector under Real-World Transformations
 
-**TikTok TechJam 2026 — Track 5**  
+**TikTok TechJam 2026 — Track 5**<br>
 **Team: LingShu Intelligence**
 
 A robustness-aware image-level detector for distinguishing authentic images from AI-generated images under common real-world image transformations.
 
 **Final model: B2-NJR = Gaussian Noise + JPEG Compression + Resize**
 
-[Final Checkpoint Release](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.0.0) · [Direct Model Download](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/download/v1.0.0/baseline2_njr_best.pt) · Web Demo *(in progress)* · Demo Video *(in progress)*
+[Final Checkpoint Release](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.0.0) · [Direct Model Download](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/download/v1.0.0/baseline2_njr_best.pt) · [Local WebDemo](web_demo/README.md) · [Data & Robustness Pipeline (Chinese DOCX)](docs/Track5_数据处理与鲁棒性评测管线说明.docx) · Demo Video *(in progress)*
 
 ---
 
@@ -20,6 +20,7 @@ A robustness-aware image-level detector for distinguishing authentic images from
 - **Worst-case Robust Accuracy: 0.927090**.
 - **External ROC-AUC: 0.993124** on COCO val2017 + DALL·E Advanced.
 - **CPU / CUDA / local-checkpoint inference** supported.
+- **Clone-and-run offline WebDemo** with browser-side FP32 inference and no inference server.
 
 ![Method overview](assets/figures/pipeline_overview.png)
 
@@ -39,7 +40,16 @@ Our development path was:
 
 ## Data Sources and Evaluation Protocol
 
-Development data uses **SID + WildFake** with non-overlapping train / validation / test splits.
+Development data uses **SID + WildFake** with designated train, validation, and
+held-out test splits.
+
+The [Chinese data-processing and robustness-evaluation pipeline report](docs/Track5_数据处理与鲁棒性评测管线说明.docx)
+documents the source-layer sampling, labels and metadata, split and duplicate
+audits, deterministic 384 × 384 preprocessing, Baseline 1 / Baseline 2 data
+construction, robustness protocol, and external-demo isolation used for project
+handoff. It is explanatory documentation, not a bundled dataset or a replacement
+for the committed scripts and machine-readable results. Dataset files and the
+original training manifests are not redistributed in this repository.
 
 The external post-freeze demonstration benchmark contains:
 
@@ -84,16 +94,11 @@ Noise gave the strongest global robustness gain. JPEG and Resize provided comple
 
 ### Final training mixture
 
-The candidate augmentation pool contained Clean, Noise, JPEG, and Resize samples, while each epoch remained fixed at **20,930 samples / 655 batches** to keep optimizer-update counts comparable across experiments.
-
-Approximate B2-NJR sampling composition per epoch:
-
-| Component | Approx. proportion | Approx. samples / epoch |
-|---|---:|---:|
-| Clean | 54.1% | 11,300 |
-| Gaussian Noise | 21.6% | 4,500 |
-| JPEG | 16.2% | 3,400 |
-| Resize | 8.1% | 1,700 |
+The candidate augmentation pool contained Clean, Noise, JPEG, and Resize samples,
+while each epoch was capped at **20,930 samples / 655 batches** to keep optimizer-
+update counts comparable with Baseline 1. The exact final per-transform sampling
+composition depends on the original training manifest, which is not distributed in
+this repository, so no finer composition claim is made here.
 
 </details>
 
@@ -180,19 +185,59 @@ The following visual shows the **intended presentation format** for representati
 
 ## Deployment and Web Demo
 
-The final inference software recursively reads an image directory, performs EXIF correction / RGB conversion / 384 × 384 bicubic resize / ImageNet normalization, loads the frozen local checkpoint, and writes continuous AIGC confidence scores to JSON.
+### Judge quick start: bundled and offline
 
-The interactive website is currently under development. The image below is a **concept UI preview**, not evidence of a completed deployed web application.
+| Windows x86-64 | macOS on Apple Silicon |
+|---|---|
+| Clone or fully extract the repository, double-click `web_demo/start-demo.bat`, wait for the printed `READY` URL, then select an image. | Clone or fully extract the repository, double-click `web_demo/start-demo.command`, wait for the printed `READY` URL, then select an image. |
+
+Both launchers use a bundled CPython runtime and the included browser application.
+Judges do not need to install Python, Node.js, npm packages, or an inference server,
+and normal use is offline after the repository is obtained. This portable slice is
+packaged for Windows x86-64 and Apple Silicon macOS; Intel macOS is not packaged in
+this slice.
+
+The demo uses exactly `baseline2_njr_fp32.onnx` at the frozen threshold
+`0.55657113`. The first launch verifies and extracts the platform runtime to
+`web_demo/.runtime-cache/`; later launches reuse that cache. The local server is
+loopback-only at `127.0.0.1`: it tries ports 8765–8784 and then an operating-system
+ephemeral port. The selected image stays in the browser and is not uploaded to the
+local server or an external service.
+
+Keep the launcher window open. Press `Ctrl+C` there or close the launcher window
+to stop the server. Pass `--check` to verify the portable package without opening
+a port, or `--no-browser` to print the local URL without opening a browser.
+
+If macOS Gatekeeper blocks the bundled interpreter, open **System Settings →
+Privacy & Security → Open Anyway**, then retry `start-demo.command`. The portable
+CI smoke checks the launchers and package on both operating systems; it is not a
+substitute for a Finder double-click or real browser inference.
+
+The WebDemo runs browser-side inference: WebGPU is attempted first and
+automatically falls back to WASM with the same FP32 ONNX file.
+
+The committed acceptance record covers source and Unicode-path fresh-copy runs,
+WebGPU, automatic fallback, and forced WASM: 90 browser inferences with zero frozen-
+threshold flips and a maximum absolute probability error of `0.002465222` against
+the recorded FP32 references. This is deployment-parity evidence, not a new
+accuracy benchmark.
+
+[Judge and developer guide](web_demo/README.md) ·
+[Formal acceptance evidence](results/web_demo_acceptance/README.md)
+
+The image below remains a **concept visual direction** for the later high-polish
+design slice; it is not a screenshot of the current functional inference screen.
 
 ![Web demo preview](assets/figures/web_demo_preview.png)
 
-### Final checkpoint
+### Frozen deployment artifacts
 
-- Release: [v1.0.0 — Final B2-NJR Checkpoint](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.0.0)
-- Direct download: [`baseline2_njr_best.pt`](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/download/v1.0.0/baseline2_njr_best.pt)
-- SHA-256: `9348C210F1612B4C78D74DDE5E717B69E90274CBBF6FA60C4B893946409658BA`
+| Workflow | Artifact | Distribution | SHA-256 |
+|---|---|---|---|
+| Python CLI / evaluation | `baseline2_njr_best.pt` | [Release `v1.0.0`](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.0.0) | `9348c210f1612b4c78d74dde5e717b69e90274cbbf6fa60c4b893946409658ba` |
+| Local browser WebDemo | `baseline2_njr_fp32.onnx` | Ordinary Git under `web_demo/models/` | `e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69` |
 
-Place the downloaded model at:
+For the Python CLI, place the downloaded checkpoint at:
 
 ```text
 checkpoints/baseline2_njr_best.pt
@@ -307,8 +352,10 @@ Dataset files are not redistributed in this repository. Obtain the datasets from
 
 ```text
 .
+├── AGENTS.md
 ├── README.md
 ├── requirements.txt
+├── requirements-web-experiment.txt
 ├── .gitignore
 ├── THIRD_PARTY_NOTICES.md
 ├── inference.py
@@ -325,13 +372,26 @@ Dataset files are not redistributed in this repository. Obtain the datasets from
 ├── demo_images/
 ├── assets/
 │   └── figures/
+├── browser_benchmark/
+├── docs/
+│   ├── Track5_数据处理与鲁棒性评测管线说明.docx
+│   └── superpowers/
 ├── results/
 │   ├── ablation/
 │   ├── final_test/
 │   ├── official_demo/
-│   └── data_integrity/
-└── third_party/
-    └── Community-Forensics-LICENSE
+│   ├── data_integrity/
+│   ├── web_demo_acceptance/
+│   └── web_model_experiment/
+├── tests/
+├── third_party/
+│   └── Community-Forensics-LICENSE
+└── web_demo/
+    ├── start-demo.bat
+    ├── models/
+    ├── dist/
+    ├── src/
+    └── README.md
 ```
 
 ---
@@ -342,9 +402,13 @@ This work builds on **Community Forensics** and the `OwensLab/commfor-model-384`
 
 See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and [`third_party/Community-Forensics-LICENSE`](third_party/Community-Forensics-LICENSE) for attribution and licensing information.
 
+`THIRD_PARTY_NOTICES.md` is an evidence inventory, not a legal certification. Its
+model/dataset provenance and complete runtime-notice items remain public-release
+review gates and must not be described as cleared without additional evidence.
+
 ---
 
 ## TikTok TechJam 2026
 
-**Track 5 — Robust Detection of AI-Generated Images Under Real-World Transformations**  
+**Track 5 — Robust Detection of AI-Generated Images Under Real-World Transformations**<br>
 **Team — LingShu Intelligence**

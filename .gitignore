@@ -11,6 +11,9 @@ __pycache__/
 venv/
 env/
 
+# JavaScript dependencies
+node_modules/
+
 # Local datasets
 data/
 datasets/
@@ -20,6 +23,12 @@ datasets/
 *.pth
 *.ckpt
 
+# Generated browser model artifacts
+*.onnx
+*.onnx.data
+web_models/
+!web_demo/models/baseline2_njr_fp32.onnx
+
 # Raw per-image experiment predictions
 *predictions.csv
 
@@ -28,6 +37,12 @@ near_duplicate_review/assets/
 .cache/
 wandb/
 runs/
+
+# Frontend-generated tests and design review artifacts
+web_demo/.generated-tests/
+web_demo/.runtime-cache/
+.impeccable/review/
+.impeccable/live/
 
 # Secrets
 .env

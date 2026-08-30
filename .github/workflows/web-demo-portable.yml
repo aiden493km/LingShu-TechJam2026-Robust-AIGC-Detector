@@ -1,0 +1,42 @@
+name: WebDemo portable launchers
+
+on:
+  push:
+    paths:
+      - "web_demo/**"
+      - "tests/test_web_demo_*.py"
+      - "README.md"
+      - ".gitattributes"
+      - ".github/workflows/web-demo-portable.yml"
+  pull_request:
+    paths:
+      - "web_demo/**"
+      - "tests/test_web_demo_*.py"
+      - "README.md"
+      - ".gitattributes"
+      - ".github/workflows/web-demo-portable.yml"
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run portable unit tests
+        run: python -B -m unittest tests.test_web_demo_server tests.test_web_demo_launcher tests.test_web_demo_portable -v
+      - name: Check bundled Windows launcher
+        run: cmd.exe /d /c web_demo\start-demo.bat --check
+
+  apple-silicon:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run portable unit tests
+        run: python -B -m unittest tests.test_web_demo_server tests.test_web_demo_launcher tests.test_web_demo_portable -v
+      - name: Check bundled macOS launcher
+        run: /bin/sh web_demo/start-demo.command --check
