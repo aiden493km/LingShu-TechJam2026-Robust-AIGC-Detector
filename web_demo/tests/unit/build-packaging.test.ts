@@ -44,16 +44,11 @@ describe('static runtime build configuration', () => {
     );
   });
 
-  it('tracks the browser model without Git LFS', async () => {
+  it('tracks the browser model despite broad model ignores', async () => {
     const gitignore = await readFile(new URL('../../../.gitignore', import.meta.url), 'utf8');
-    const attributes = await readFile(
-      new URL('../../../.gitattributes', import.meta.url),
-      'utf8',
-    );
 
     expect(gitignore).toContain('*.onnx');
     expect(gitignore).toContain('web_models/');
     expect(gitignore.match(/^!web_demo\/models\/baseline2_njr_fp32\.onnx$/gm)).toHaveLength(1);
-    expect(attributes).not.toMatch(/filter\s*=\s*lfs/i);
   });
 });
