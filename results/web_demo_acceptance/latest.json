@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "passed": true,
-  "generatedAt": "2026-08-30T02:21:01.248Z",
-  "testedCommit": "45e64db10b2411d6bf2034ca0119c0771677c7e7",
+  "generatedAt": "2026-08-30T05:41:05.905Z",
+  "testedCommit": "e9b4cc91cd359389c0d1f6f785bd5c75ea3e0e8d",
   "evidencePolicy": {
     "testedCommitMeaning": "Exact committed code and artifacts executed by browser acceptance and tensor parity.",
     "evidenceCommitRelationship": "The evidence-only commit is expected to have testedCommit as its direct parent."
@@ -53,11 +53,11 @@
   "sourceReports": {
     "browserAcceptance": {
       "path": "web_demo/.generated-tests/browser-acceptance/latest.json",
-      "sha256": "b107ae9ab4ac5692599c59afbb572f4eb48e089958457b2ee6a77a2afdd99f63"
+      "sha256": "70f0d77459d63776a2f752f8056e9dd9109d9f2421afcfd7262e466c6fced8d2"
     },
     "preprocessParity": {
       "path": "web_demo/.generated-tests/parity/browser-results.json",
-      "sha256": "d4762dfc7aa98efacfef69896a587c811e72b8861a15b1e698e9079d07b1bb85"
+      "sha256": "86aabf564c670ca8217444cb6fa5818d734b94b152a41a73cb9c5b3ae48a6da0"
     },
     "parityManifest": {
       "path": "web_demo/.generated-tests/parity/manifest.json",
@@ -67,7 +67,7 @@
   "tensorParity": {
     "report": {
       "schema_version": 1,
-      "generated_at": "2026-08-30T02:20:55.481Z",
+      "generated_at": "2026-08-30T05:40:57.497Z",
       "manifest": {
         "path": "web_demo/.generated-tests/parity/manifest.json",
         "sha256": "cb6f9005beb6179c965d81046446e250e9568764294ac6d77627824d2c7e57d5"
@@ -92,39 +92,39 @@
         "failures": []
       },
       "request_urls": [
-        "http://127.0.0.1:3016/.generated-tests/parity/manifest.json",
-        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__f1.f32",
-        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__f2.f32",
-        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__f3.f32",
-        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__f4.f32",
-        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__f5.f32",
-        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__r1.f32",
-        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__r2.f32",
-        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__r3.f32",
-        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__r4.f32",
-        "http://127.0.0.1:3016/.generated-tests/parity/tensors/demo_images__r5.f32",
-        "http://127.0.0.1:3016/.generated-tests/parity/tensors/web_demo__tests__fixtures__exif-orientation-6.f32",
-        "http://127.0.0.1:3016/.generated-tests/parity/tensors/web_demo__tests__fixtures__grayscale.f32",
-        "http://127.0.0.1:3016/.generated-tests/parity/tensors/web_demo__tests__fixtures__near-threshold-synthetic.f32",
-        "http://127.0.0.1:3016/.generated-tests/parity/tensors/web_demo__tests__fixtures__non-square.f32",
-        "http://127.0.0.1:3016/.generated-tests/parity/tensors/web_demo__tests__fixtures__rgba-hidden-rgb.f32",
-        "http://127.0.0.1:3016/@vite/client",
-        "http://127.0.0.1:3016/node_modules/.vite/deps/@jsquash_jpeg_decode__js.js?v=54dcc0d8",
-        "http://127.0.0.1:3016/node_modules/.vite/deps/@jsquash_png_decode__js.js?v=54dcc0d8",
-        "http://127.0.0.1:3016/node_modules/.vite/deps/@jsquash_resize.js?v=54dcc0d8",
-        "http://127.0.0.1:3016/node_modules/.vite/deps/@jsquash_webp_decode__js.js?v=54dcc0d8",
-        "http://127.0.0.1:3016/node_modules/@jsquash/jpeg/codec/dec/mozjpeg_dec.wasm",
-        "http://127.0.0.1:3016/node_modules/@jsquash/png/codec/pkg/squoosh_png_bg.wasm",
-        "http://127.0.0.1:3016/node_modules/@jsquash/resize/lib/resize/pkg/squoosh_resize_bg.wasm",
-        "http://127.0.0.1:3016/node_modules/vite/dist/client/env.mjs",
-        "http://127.0.0.1:3016/src/runtime/exif.ts",
-        "http://127.0.0.1:3016/src/runtime/preprocess.ts",
-        "http://127.0.0.1:3016/src/runtime/upload.ts",
-        "http://127.0.0.1:3016/tests/browser/preprocess-harness.html",
-        "http://127.0.0.1:3016/tests/browser/preprocess-harness.ts"
+        "http://127.0.0.1:3567/.generated-tests/parity/manifest.json",
+        "http://127.0.0.1:3567/.generated-tests/parity/tensors/demo_images__f1.f32",
+        "http://127.0.0.1:3567/.generated-tests/parity/tensors/demo_images__f2.f32",
+        "http://127.0.0.1:3567/.generated-tests/parity/tensors/demo_images__f3.f32",
+        "http://127.0.0.1:3567/.generated-tests/parity/tensors/demo_images__f4.f32",
+        "http://127.0.0.1:3567/.generated-tests/parity/tensors/demo_images__f5.f32",
+        "http://127.0.0.1:3567/.generated-tests/parity/tensors/demo_images__r1.f32",
+        "http://127.0.0.1:3567/.generated-tests/parity/tensors/demo_images__r2.f32",
+        "http://127.0.0.1:3567/.generated-tests/parity/tensors/demo_images__r3.f32",
+        "http://127.0.0.1:3567/.generated-tests/parity/tensors/demo_images__r4.f32",
+        "http://127.0.0.1:3567/.generated-tests/parity/tensors/demo_images__r5.f32",
+        "http://127.0.0.1:3567/.generated-tests/parity/tensors/web_demo__tests__fixtures__exif-orientation-6.f32",
+        "http://127.0.0.1:3567/.generated-tests/parity/tensors/web_demo__tests__fixtures__grayscale.f32",
+        "http://127.0.0.1:3567/.generated-tests/parity/tensors/web_demo__tests__fixtures__near-threshold-synthetic.f32",
+        "http://127.0.0.1:3567/.generated-tests/parity/tensors/web_demo__tests__fixtures__non-square.f32",
+        "http://127.0.0.1:3567/.generated-tests/parity/tensors/web_demo__tests__fixtures__rgba-hidden-rgb.f32",
+        "http://127.0.0.1:3567/@vite/client",
+        "http://127.0.0.1:3567/node_modules/.vite/deps/@jsquash_jpeg_decode__js.js?v=54dcc0d8",
+        "http://127.0.0.1:3567/node_modules/.vite/deps/@jsquash_png_decode__js.js?v=54dcc0d8",
+        "http://127.0.0.1:3567/node_modules/.vite/deps/@jsquash_resize.js?v=54dcc0d8",
+        "http://127.0.0.1:3567/node_modules/.vite/deps/@jsquash_webp_decode__js.js?v=54dcc0d8",
+        "http://127.0.0.1:3567/node_modules/@jsquash/jpeg/codec/dec/mozjpeg_dec.wasm",
+        "http://127.0.0.1:3567/node_modules/@jsquash/png/codec/pkg/squoosh_png_bg.wasm",
+        "http://127.0.0.1:3567/node_modules/@jsquash/resize/lib/resize/pkg/squoosh_resize_bg.wasm",
+        "http://127.0.0.1:3567/node_modules/vite/dist/client/env.mjs",
+        "http://127.0.0.1:3567/src/runtime/exif.ts",
+        "http://127.0.0.1:3567/src/runtime/preprocess.ts",
+        "http://127.0.0.1:3567/src/runtime/upload.ts",
+        "http://127.0.0.1:3567/tests/browser/preprocess-harness.html",
+        "http://127.0.0.1:3567/tests/browser/preprocess-harness.ts"
       ],
       "websocket_urls": [
-        "ws://127.0.0.1:3016/?token=7qXM9bx9HKl2"
+        "ws://127.0.0.1:3567/?token=vh4dW55RIG8I"
       ],
       "blocked_requests": [],
       "browser_errors": [],
@@ -823,8 +823,8 @@
   "browserAcceptance": {
     "schemaVersion": 1,
     "passed": true,
-    "generatedAt": "2026-08-30T02:20:02.572Z",
-    "commit": "45e64db10b2411d6bf2034ca0119c0771677c7e7",
+    "generatedAt": "2026-08-30T05:39:34.137Z",
+    "commit": "e9b4cc91cd359389c0d1f6f785bd5c75ea3e0e8d",
     "parityManifest": {
       "path": "web_demo/.generated-tests/parity/manifest.json",
       "sha256": "cb6f9005beb6179c965d81046446e250e9568764294ac6d77627824d2c7e57d5"
@@ -851,7 +851,7 @@
     },
     "portFallback": {
       "occupiedPort": 8765,
-      "occupation": "acceptance-holder",
+      "occupation": "preexisting",
       "selectedPort": 8766,
       "passed": true
     },
@@ -884,7 +884,7 @@
               "absoluteError": 1.9147905294669698e-7,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 245.4,
+              "elapsedMs": 217.1,
               "thresholdFlip": false
             },
             {
@@ -895,7 +895,7 @@
               "absoluteError": 8.209570023787194e-9,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 24.9,
+              "elapsedMs": 24.3,
               "thresholdFlip": false
             },
             {
@@ -906,7 +906,7 @@
               "absoluteError": 5.767387700750248e-8,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 22.3,
+              "elapsedMs": 24.6,
               "thresholdFlip": false
             },
             {
@@ -917,7 +917,7 @@
               "absoluteError": 4.149824399668489e-7,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 21,
+              "elapsedMs": 21.1,
               "thresholdFlip": false
             },
             {
@@ -928,7 +928,7 @@
               "absoluteError": 8.510969662367529e-8,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 24.4,
+              "elapsedMs": 21.7,
               "thresholdFlip": false
             },
             {
@@ -939,7 +939,7 @@
               "absoluteError": 0.001108635937982938,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 27.1,
+              "elapsedMs": 21.8,
               "thresholdFlip": false
             },
             {
@@ -950,7 +950,7 @@
               "absoluteError": 1.17657931529779e-12,
               "label": "Real",
               "provider": "WebGPU",
-              "elapsedMs": 24.2,
+              "elapsedMs": 26.2,
               "thresholdFlip": false
             },
             {
@@ -961,7 +961,7 @@
               "absoluteError": 2.739965046589792e-12,
               "label": "Real",
               "provider": "WebGPU",
-              "elapsedMs": 22.2,
+              "elapsedMs": 22.8,
               "thresholdFlip": false
             },
             {
@@ -972,7 +972,7 @@
               "absoluteError": 1.931830334027005e-12,
               "label": "Real",
               "provider": "WebGPU",
-              "elapsedMs": 22.6,
+              "elapsedMs": 22.3,
               "thresholdFlip": false
             },
             {
@@ -983,7 +983,7 @@
               "absoluteError": 1.362583831462794e-11,
               "label": "Real",
               "provider": "WebGPU",
-              "elapsedMs": 21,
+              "elapsedMs": 22.9,
               "thresholdFlip": false
             },
             {
@@ -994,7 +994,7 @@
               "absoluteError": 0.0024650450724319484,
               "label": "Real",
               "provider": "WebGPU",
-              "elapsedMs": 20.5,
+              "elapsedMs": 22.8,
               "thresholdFlip": false
             },
             {
@@ -1005,7 +1005,7 @@
               "absoluteError": 1.3016915431554154e-9,
               "label": "Real",
               "provider": "WebGPU",
-              "elapsedMs": 24.3,
+              "elapsedMs": 24,
               "thresholdFlip": false
             },
             {
@@ -1016,7 +1016,7 @@
               "absoluteError": 0.000014503507815843975,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 24.3,
+              "elapsedMs": 21.2,
               "thresholdFlip": false
             },
             {
@@ -1027,7 +1027,7 @@
               "absoluteError": 0.000005021909939562086,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 21.3,
+              "elapsedMs": 21.6,
               "thresholdFlip": false
             },
             {
@@ -1038,7 +1038,7 @@
               "absoluteError": 0.00019608284638994444,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 21.4,
+              "elapsedMs": 22.3,
               "thresholdFlip": false
             }
           ],
@@ -1088,7 +1088,7 @@
               "absoluteError": 1.9147595919921656e-7,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 418.2,
+              "elapsedMs": 441.3,
               "thresholdFlip": false
             },
             {
@@ -1099,7 +1099,7 @@
               "absoluteError": 8.212709845523136e-9,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 344.6,
+              "elapsedMs": 386.5,
               "thresholdFlip": false
             },
             {
@@ -1110,7 +1110,7 @@
               "absoluteError": 5.767364230635508e-8,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 360,
+              "elapsedMs": 370.8,
               "thresholdFlip": false
             },
             {
@@ -1121,7 +1121,7 @@
               "absoluteError": 4.1498102110182344e-7,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 352.7,
+              "elapsedMs": 345.7,
               "thresholdFlip": false
             },
             {
@@ -1132,7 +1132,7 @@
               "absoluteError": 8.508007387497685e-8,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 320.9,
+              "elapsedMs": 331.3,
               "thresholdFlip": false
             },
             {
@@ -1143,7 +1143,7 @@
               "absoluteError": 0.001108670614105134,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 337.1,
+              "elapsedMs": 320.3,
               "thresholdFlip": false
             },
             {
@@ -1154,7 +1154,7 @@
               "absoluteError": 1.17657931529779e-12,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 361,
+              "elapsedMs": 333.9,
               "thresholdFlip": false
             },
             {
@@ -1165,7 +1165,7 @@
               "absoluteError": 1.0154081122556458e-12,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 343.2,
+              "elapsedMs": 335.3,
               "thresholdFlip": false
             },
             {
@@ -1176,7 +1176,7 @@
               "absoluteError": 6.870561573883594e-12,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 338.3,
+              "elapsedMs": 326.5,
               "thresholdFlip": false
             },
             {
@@ -1187,7 +1187,7 @@
               "absoluteError": 1.8761679680387837e-11,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 357.5,
+              "elapsedMs": 370.8,
               "thresholdFlip": false
             },
             {
@@ -1198,7 +1198,7 @@
               "absoluteError": 0.0024652219798388907,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 365.8,
+              "elapsedMs": 337.9,
               "thresholdFlip": false
             },
             {
@@ -1209,7 +1209,7 @@
               "absoluteError": 3.347224375248965e-9,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 369.8,
+              "elapsedMs": 323.1,
               "thresholdFlip": false
             },
             {
@@ -1220,7 +1220,7 @@
               "absoluteError": 0.000018167064806617894,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 320.9,
+              "elapsedMs": 344.6,
               "thresholdFlip": false
             },
             {
@@ -1231,7 +1231,7 @@
               "absoluteError": 0.0000050212228677182225,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 415.4,
+              "elapsedMs": 360.2,
               "thresholdFlip": false
             },
             {
@@ -1242,7 +1242,7 @@
               "absoluteError": 0.0001960790858787087,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 331.4,
+              "elapsedMs": 345.4,
               "thresholdFlip": false
             }
           ],
@@ -1293,7 +1293,7 @@
               "absoluteError": 1.9147595919921656e-7,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 420.5,
+              "elapsedMs": 418.7,
               "thresholdFlip": false
             },
             {
@@ -1304,7 +1304,7 @@
               "absoluteError": 8.212709845523136e-9,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 339,
+              "elapsedMs": 319.3,
               "thresholdFlip": false
             },
             {
@@ -1315,7 +1315,7 @@
               "absoluteError": 5.767364230635508e-8,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 357.8,
+              "elapsedMs": 371.4,
               "thresholdFlip": false
             },
             {
@@ -1326,7 +1326,7 @@
               "absoluteError": 4.1498102110182344e-7,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 346.9,
+              "elapsedMs": 398.6,
               "thresholdFlip": false
             },
             {
@@ -1337,7 +1337,7 @@
               "absoluteError": 8.508007387497685e-8,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 365.7,
+              "elapsedMs": 369.6,
               "thresholdFlip": false
             },
             {
@@ -1348,7 +1348,7 @@
               "absoluteError": 0.001108670614105134,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 332.8,
+              "elapsedMs": 343.2,
               "thresholdFlip": false
             },
             {
@@ -1359,7 +1359,7 @@
               "absoluteError": 1.17657931529779e-12,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 351.5,
+              "elapsedMs": 341.7,
               "thresholdFlip": false
             },
             {
@@ -1370,7 +1370,7 @@
               "absoluteError": 1.0154081122556458e-12,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 414,
+              "elapsedMs": 374.1,
               "thresholdFlip": false
             },
             {
@@ -1381,7 +1381,7 @@
               "absoluteError": 6.870561573883594e-12,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 331.1,
+              "elapsedMs": 371.7,
               "thresholdFlip": false
             },
             {
@@ -1392,7 +1392,7 @@
               "absoluteError": 1.8761679680387837e-11,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 332.1,
+              "elapsedMs": 326.1,
               "thresholdFlip": false
             },
             {
@@ -1403,7 +1403,7 @@
               "absoluteError": 0.0024652219798388907,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 316.4,
+              "elapsedMs": 355.1,
               "thresholdFlip": false
             },
             {
@@ -1414,7 +1414,7 @@
               "absoluteError": 3.347224375248965e-9,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 355.3,
+              "elapsedMs": 337.3,
               "thresholdFlip": false
             },
             {
@@ -1425,7 +1425,7 @@
               "absoluteError": 0.000018167064806617894,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 366.5,
+              "elapsedMs": 362.9,
               "thresholdFlip": false
             },
             {
@@ -1436,7 +1436,7 @@
               "absoluteError": 0.0000050212228677182225,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 325,
+              "elapsedMs": 337,
               "thresholdFlip": false
             },
             {
@@ -1447,7 +1447,7 @@
               "absoluteError": 0.0001960790858787087,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 321.4,
+              "elapsedMs": 363,
               "thresholdFlip": false
             }
           ],
@@ -1489,8 +1489,8 @@
     },
     "freshCopy": {
       "directoryName": "LingShu 评委 本地复现",
-      "sourceCommit": "45e64db10b2411d6bf2034ca0119c0771677c7e7",
-      "trackedFileCount": 129,
+      "sourceCommit": "e9b4cc91cd359389c0d1f6f785bd5c75ea3e0e8d",
+      "trackedFileCount": 138,
       "excluded": [
         ".git",
         "node_modules",
@@ -1502,7 +1502,7 @@
         "exitCode": 0,
         "output": "Distribution verification passed."
       },
-      "serverUrl": "http://127.0.0.1:8765/",
+      "serverUrl": "http://127.0.0.1:8766/",
       "providers": {
         "normal": {
           "mode": "normal",
@@ -1530,7 +1530,7 @@
               "absoluteError": 1.9147905294669698e-7,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 258.4,
+              "elapsedMs": 206.9,
               "thresholdFlip": false
             },
             {
@@ -1541,7 +1541,7 @@
               "absoluteError": 8.209570023787194e-9,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 31.5,
+              "elapsedMs": 24.2,
               "thresholdFlip": false
             },
             {
@@ -1552,7 +1552,7 @@
               "absoluteError": 5.767387700750248e-8,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 20.6,
+              "elapsedMs": 24.4,
               "thresholdFlip": false
             },
             {
@@ -1563,7 +1563,7 @@
               "absoluteError": 4.149824399668489e-7,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 21.9,
+              "elapsedMs": 26.1,
               "thresholdFlip": false
             },
             {
@@ -1574,7 +1574,7 @@
               "absoluteError": 8.510969662367529e-8,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 22.3,
+              "elapsedMs": 21.6,
               "thresholdFlip": false
             },
             {
@@ -1585,7 +1585,7 @@
               "absoluteError": 0.001108635937982938,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 23.8,
+              "elapsedMs": 21.8,
               "thresholdFlip": false
             },
             {
@@ -1596,7 +1596,7 @@
               "absoluteError": 1.17657931529779e-12,
               "label": "Real",
               "provider": "WebGPU",
-              "elapsedMs": 23.4,
+              "elapsedMs": 25,
               "thresholdFlip": false
             },
             {
@@ -1607,7 +1607,7 @@
               "absoluteError": 2.739965046589792e-12,
               "label": "Real",
               "provider": "WebGPU",
-              "elapsedMs": 23,
+              "elapsedMs": 21.4,
               "thresholdFlip": false
             },
             {
@@ -1618,7 +1618,7 @@
               "absoluteError": 1.931830334027005e-12,
               "label": "Real",
               "provider": "WebGPU",
-              "elapsedMs": 23.2,
+              "elapsedMs": 21.5,
               "thresholdFlip": false
             },
             {
@@ -1629,7 +1629,7 @@
               "absoluteError": 1.362583831462794e-11,
               "label": "Real",
               "provider": "WebGPU",
-              "elapsedMs": 20.5,
+              "elapsedMs": 22.6,
               "thresholdFlip": false
             },
             {
@@ -1640,7 +1640,7 @@
               "absoluteError": 0.0024650450724319484,
               "label": "Real",
               "provider": "WebGPU",
-              "elapsedMs": 20.9,
+              "elapsedMs": 21.8,
               "thresholdFlip": false
             },
             {
@@ -1651,7 +1651,7 @@
               "absoluteError": 1.3016915431554154e-9,
               "label": "Real",
               "provider": "WebGPU",
-              "elapsedMs": 19.9,
+              "elapsedMs": 21.7,
               "thresholdFlip": false
             },
             {
@@ -1662,7 +1662,7 @@
               "absoluteError": 0.000014503507815843975,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 21.9,
+              "elapsedMs": 22,
               "thresholdFlip": false
             },
             {
@@ -1673,7 +1673,7 @@
               "absoluteError": 0.000005021909939562086,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 21.7,
+              "elapsedMs": 22.1,
               "thresholdFlip": false
             },
             {
@@ -1684,7 +1684,7 @@
               "absoluteError": 0.00019608284638994444,
               "label": "AIGC",
               "provider": "WebGPU",
-              "elapsedMs": 21.4,
+              "elapsedMs": 22.8,
               "thresholdFlip": false
             }
           ],
@@ -1692,7 +1692,7 @@
           "thresholdFlips": 0,
           "workflowChecks": false,
           "requestOrigins": [
-            "http://127.0.0.1:8765"
+            "http://127.0.0.1:8766"
           ],
           "webSocketOrigins": [],
           "requestPaths": {
@@ -1734,7 +1734,7 @@
               "absoluteError": 1.9147595919921656e-7,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 473.8,
+              "elapsedMs": 473,
               "thresholdFlip": false
             },
             {
@@ -1745,7 +1745,7 @@
               "absoluteError": 8.212709845523136e-9,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 396.7,
+              "elapsedMs": 362.2,
               "thresholdFlip": false
             },
             {
@@ -1756,7 +1756,7 @@
               "absoluteError": 5.767364230635508e-8,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 383.6,
+              "elapsedMs": 323.4,
               "thresholdFlip": false
             },
             {
@@ -1767,7 +1767,7 @@
               "absoluteError": 4.1498102110182344e-7,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 335.5,
+              "elapsedMs": 353.2,
               "thresholdFlip": false
             },
             {
@@ -1778,7 +1778,7 @@
               "absoluteError": 8.508007387497685e-8,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 334.8,
+              "elapsedMs": 367,
               "thresholdFlip": false
             },
             {
@@ -1789,7 +1789,7 @@
               "absoluteError": 0.001108670614105134,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 409.7,
+              "elapsedMs": 333.2,
               "thresholdFlip": false
             },
             {
@@ -1800,7 +1800,7 @@
               "absoluteError": 1.17657931529779e-12,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 347.2,
+              "elapsedMs": 318.5,
               "thresholdFlip": false
             },
             {
@@ -1811,7 +1811,7 @@
               "absoluteError": 1.0154081122556458e-12,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 355.9,
+              "elapsedMs": 355.7,
               "thresholdFlip": false
             },
             {
@@ -1822,7 +1822,7 @@
               "absoluteError": 6.870561573883594e-12,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 343.3,
+              "elapsedMs": 359.1,
               "thresholdFlip": false
             },
             {
@@ -1833,7 +1833,7 @@
               "absoluteError": 1.8761679680387837e-11,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 351.2,
+              "elapsedMs": 361.1,
               "thresholdFlip": false
             },
             {
@@ -1844,7 +1844,7 @@
               "absoluteError": 0.0024652219798388907,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 357.6,
+              "elapsedMs": 385.6,
               "thresholdFlip": false
             },
             {
@@ -1855,7 +1855,7 @@
               "absoluteError": 3.347224375248965e-9,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 344.2,
+              "elapsedMs": 360.5,
               "thresholdFlip": false
             },
             {
@@ -1866,7 +1866,7 @@
               "absoluteError": 0.000018167064806617894,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 373.8,
+              "elapsedMs": 375.6,
               "thresholdFlip": false
             },
             {
@@ -1877,7 +1877,7 @@
               "absoluteError": 0.0000050212228677182225,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 345.9,
+              "elapsedMs": 332.8,
               "thresholdFlip": false
             },
             {
@@ -1888,7 +1888,7 @@
               "absoluteError": 0.0001960790858787087,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 364.1,
+              "elapsedMs": 377.1,
               "thresholdFlip": false
             }
           ],
@@ -1896,7 +1896,7 @@
           "thresholdFlips": 0,
           "workflowChecks": false,
           "requestOrigins": [
-            "http://127.0.0.1:8765"
+            "http://127.0.0.1:8766"
           ],
           "webSocketOrigins": [],
           "requestPaths": {
@@ -1939,7 +1939,7 @@
               "absoluteError": 1.9147595919921656e-7,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 428.6,
+              "elapsedMs": 445.1,
               "thresholdFlip": false
             },
             {
@@ -1950,7 +1950,7 @@
               "absoluteError": 8.212709845523136e-9,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 364,
+              "elapsedMs": 377.7,
               "thresholdFlip": false
             },
             {
@@ -1961,7 +1961,7 @@
               "absoluteError": 5.767364230635508e-8,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 351.6,
+              "elapsedMs": 341.9,
               "thresholdFlip": false
             },
             {
@@ -1972,7 +1972,7 @@
               "absoluteError": 4.1498102110182344e-7,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 366.2,
+              "elapsedMs": 361,
               "thresholdFlip": false
             },
             {
@@ -1983,7 +1983,7 @@
               "absoluteError": 8.508007387497685e-8,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 369.1,
+              "elapsedMs": 335.3,
               "thresholdFlip": false
             },
             {
@@ -1994,7 +1994,7 @@
               "absoluteError": 0.001108670614105134,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 397,
+              "elapsedMs": 346.9,
               "thresholdFlip": false
             },
             {
@@ -2005,7 +2005,7 @@
               "absoluteError": 1.17657931529779e-12,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 400,
+              "elapsedMs": 323.4,
               "thresholdFlip": false
             },
             {
@@ -2016,7 +2016,7 @@
               "absoluteError": 1.0154081122556458e-12,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 346.8,
+              "elapsedMs": 343.8,
               "thresholdFlip": false
             },
             {
@@ -2027,7 +2027,7 @@
               "absoluteError": 6.870561573883594e-12,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 357.6,
+              "elapsedMs": 362.6,
               "thresholdFlip": false
             },
             {
@@ -2038,7 +2038,7 @@
               "absoluteError": 1.8761679680387837e-11,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 353.8,
+              "elapsedMs": 374.5,
               "thresholdFlip": false
             },
             {
@@ -2049,7 +2049,7 @@
               "absoluteError": 0.0024652219798388907,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 320,
+              "elapsedMs": 354.5,
               "thresholdFlip": false
             },
             {
@@ -2060,7 +2060,7 @@
               "absoluteError": 3.347224375248965e-9,
               "label": "Real",
               "provider": "WASM",
-              "elapsedMs": 329,
+              "elapsedMs": 335.9,
               "thresholdFlip": false
             },
             {
@@ -2071,7 +2071,7 @@
               "absoluteError": 0.000018167064806617894,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 327.7,
+              "elapsedMs": 343.1,
               "thresholdFlip": false
             },
             {
@@ -2082,7 +2082,7 @@
               "absoluteError": 0.0000050212228677182225,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 350.9,
+              "elapsedMs": 397,
               "thresholdFlip": false
             },
             {
@@ -2093,7 +2093,7 @@
               "absoluteError": 0.0001960790858787087,
               "label": "AIGC",
               "provider": "WASM",
-              "elapsedMs": 350.3,
+              "elapsedMs": 359.2,
               "thresholdFlip": false
             }
           ],
@@ -2101,7 +2101,7 @@
           "thresholdFlips": 0,
           "workflowChecks": true,
           "requestOrigins": [
-            "http://127.0.0.1:8765"
+            "http://127.0.0.1:8766"
           ],
           "webSocketOrigins": [],
           "requestPaths": {
