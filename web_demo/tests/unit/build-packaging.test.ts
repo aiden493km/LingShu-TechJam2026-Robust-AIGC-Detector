@@ -50,7 +50,7 @@ describe('static runtime build configuration', () => {
     ) as { scripts?: Record<string, string> };
 
     expect(packageJson.scripts?.['build:online']).toBe(
-      'node tools/preflight_online_build.mjs && node tools/normalize_build_inputs.mjs && vite build --mode online && node tools/prepare_online_dist.mjs && node tools/copy_ort_runtime.mjs dist-online && node tools/write_dist_integrity.mjs dist-online && node tools/verify_online_dist.mjs',
+      'node tools/normalize_build_inputs.mjs && node tools/preflight_online_build.mjs && vite build --mode online && node tools/prepare_online_dist.mjs && node tools/copy_ort_runtime.mjs dist-online && node tools/write_dist_integrity.mjs dist-online && node tools/verify_online_dist.mjs',
     );
   });
 
