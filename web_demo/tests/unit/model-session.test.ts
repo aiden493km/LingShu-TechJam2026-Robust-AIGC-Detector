@@ -9,7 +9,9 @@ import {
   createOrtSession,
   fetchModelBytes,
   fetchModelManifest,
+  fetchVerifiedModelBytes,
   hasWebGpuAdapter,
+  loadModelSession,
   ModelSessionContractError,
   ModelSessionInitializationError,
   parseProviderPreference,
@@ -358,6 +360,63 @@ describe('manifest and streamed model loading', () => {
     ]);
     expect(fixture.cancel).not.toHaveBeenCalled();
     expect(fixture.releaseLock).toHaveBeenCalledOnce();
+  });
+
+  it('verifies the exact five streamed bytes and applies cache override only to the model', async () => {
+    const fixture = streamResponse({
+      chunks: [Uint8Array.of(1, 2), Uint8Array.of(3, 4, 5)],
+    });
+    const fetcher = vi.fn().mockResolvedValue(fixture.response);
+    const verifier = vi.fn().mockResolvedValue(undefined);
+    const expectedSha256 = 'a'.repeat(64);
+
+    const bytes = await fetchVerifiedModelBytes(
+      { file: 'tiny.onnx', bytes: 5, sha256: expectedSha256 },
+      { fetch: fetcher, modelCache: 'reload', verifySha256: verifier },
+    );
+
+    expect(bytes).toEqual(Uint8Array.of(1, 2, 3, 4, 5));
+    expect(fetcher).toHaveBeenCalledWith('/models/tiny.onnx', { cache: 'reload' });
+    expect(verifier).toHaveBeenCalledOnce();
+    expect(verifier).toHaveBeenCalledWith(bytes, expectedSha256);
+  });
+
+  it('stops before provider selection and session creation when verification fails', async () => {
+    const integrityFailure = new Error('downloaded model failed verification');
+    const modelFixture = streamResponse({
+      chunks: [new Uint8Array(manifest.model.bytes)],
+    });
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(manifestJson), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(modelFixture.response);
+    const verifySha256 = vi.fn().mockRejectedValue(integrityFailure);
+    const hasAdapter = vi.fn().mockResolvedValue(true);
+    const create = vi.fn().mockResolvedValue(validSession());
+
+    await expect(
+      loadModelSession({
+        fetch: fetcher,
+        modelCache: 'reload',
+        verifySha256,
+        hasWebGpuAdapter: hasAdapter,
+        create,
+      }),
+    ).rejects.toBe(integrityFailure);
+
+    expect(fetcher).toHaveBeenNthCalledWith(1, '/models/manifest.json', undefined);
+    expect(fetcher).toHaveBeenNthCalledWith(2, `/models/${manifest.model.file}`, {
+      cache: 'reload',
+    });
+    expect(verifySha256).toHaveBeenCalledWith(expect.any(Uint8Array), manifest.model.sha256);
+    expect(hasAdapter).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+    expect(ortMock.create).not.toHaveBeenCalled();
   });
 
   it.each([

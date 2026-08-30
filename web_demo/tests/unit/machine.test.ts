@@ -422,11 +422,12 @@ describe('DetectorController', () => {
   it('loads one cached session, reports progress, and reuses it for repeated images', async () => {
     const model = loadedModel();
     const bytes = new ArrayBuffer(16);
+    const loadModel = vi.fn(async ({ onProgress }) => {
+      onProgress?.({ loaded: 44_000_000, total: 88_123_029 });
+      return model;
+    });
     const dependencies = controllerDependencies({
-      loadModel: vi.fn(async ({ onProgress }) => {
-        onProgress?.({ loaded: 44_000_000, total: 88_123_029 });
-        return model;
-      }),
+      loadModel,
       readAndValidate: vi.fn().mockResolvedValue({ buffer: bytes, format: 'png' }),
     });
     const controller = new DetectorController(dependencies);
@@ -447,6 +448,7 @@ describe('DetectorController', () => {
     await controller.selectFile([{ name: 'second.png' } as File]);
     expect(controller.getSnapshot()).toMatchObject({ phase: 'success', result });
     expect(dependencies.loadModel).toHaveBeenCalledTimes(1);
+    expect(loadModel.mock.calls[0]?.[0].modelCache).toBeUndefined();
     expect(dependencies.collectEnvironment).not.toHaveBeenCalled();
     expect(dependencies.readAndValidate).toHaveBeenCalledTimes(2);
     expect(dependencies.preprocess).toHaveBeenNthCalledWith(1, bytes, 'png');
@@ -539,6 +541,8 @@ describe('DetectorController', () => {
     await controller.retryModel();
     expect(controller.getSnapshot()).toEqual({ phase: 'ready', model });
     expect(loadModel).toHaveBeenCalledTimes(2);
+    expect(loadModel.mock.calls[0]?.[0].modelCache).toBeUndefined();
+    expect(loadModel.mock.calls[1]?.[0].modelCache).toBe('reload');
   });
 
   it('preserves separate full WebGPU and WASM diagnostics from a typed initialization failure', async () => {

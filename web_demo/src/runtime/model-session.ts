@@ -1,6 +1,7 @@
 import * as ort from 'onnxruntime-web/webgpu';
 
 import { parseModelManifest, type ModelManifest } from './contract';
+import { verifyModelSha256 } from './model-integrity';
 
 export type ExecutionProvider = 'webgpu' | 'wasm';
 export type ProviderPreference = 'auto' | 'wasm';
@@ -63,11 +64,21 @@ export interface FetchOptions {
 
 export interface ModelFetchOptions extends FetchOptions {
   readonly onProgress?: (progress: ModelLoadProgress) => void;
+  readonly modelCache?: RequestCache;
 }
 
 export interface ModelDownloadDescriptor {
   readonly file: string;
   readonly bytes: number;
+  readonly sha256?: string;
+}
+
+export interface VerifiedModelDownloadDescriptor extends ModelDownloadDescriptor {
+  readonly sha256: string;
+}
+
+export interface VerifiedModelFetchOptions extends ModelFetchOptions {
+  readonly verifySha256?: typeof verifyModelSha256;
 }
 
 export interface ChooseProviderOptions {
@@ -82,7 +93,7 @@ export interface ChooseProviderOptions {
   ) => Promise<ort.InferenceSession>;
 }
 
-export interface LoadModelSessionOptions extends ModelFetchOptions {
+export interface LoadModelSessionOptions extends VerifiedModelFetchOptions {
   readonly search?: string;
   readonly environment?: RuntimeEnvironment;
   readonly navigator?: WebGpuNavigator;
@@ -120,8 +131,17 @@ function defaultFetch(): FetchFunction {
   return globalThis.fetch.bind(globalThis) as FetchFunction;
 }
 
-function fetchInit(signal: AbortSignal | undefined): RequestInit | undefined {
-  return signal === undefined ? undefined : { signal };
+function fetchInit(
+  signal: AbortSignal | undefined,
+  cache?: RequestCache,
+): RequestInit | undefined {
+  if (signal === undefined && cache === undefined) {
+    return undefined;
+  }
+  return {
+    ...(signal === undefined ? {} : { signal }),
+    ...(cache === undefined ? {} : { cache }),
+  };
 }
 
 function sanitizeDiagnostic(error: unknown): string {
@@ -475,7 +495,7 @@ export async function fetchModelBytes(
 
   const fetcher = options.fetch ?? defaultFetch();
   const path = `/models/${descriptor.file}`;
-  const response = await fetcher(path, fetchInit(options.signal));
+  const response = await fetcher(path, fetchInit(options.signal, options.modelCache));
   if (typeof response !== 'object' || response === null || response.ok !== true) {
     if (typeof response === 'object' && response !== null) {
       await cancelBody(response, 'model response rejected');
@@ -490,6 +510,15 @@ export async function fetchModelBytes(
   return streamModelResponse(response, descriptor.bytes, options.signal, options.onProgress);
 }
 
+export async function fetchVerifiedModelBytes(
+  descriptor: VerifiedModelDownloadDescriptor,
+  options: VerifiedModelFetchOptions = {},
+): Promise<Uint8Array> {
+  const bytes = await fetchModelBytes(descriptor, options);
+  await (options.verifySha256 ?? verifyModelSha256)(bytes, descriptor.sha256);
+  return bytes;
+}
+
 export async function loadModelSession(
   options: LoadModelSessionOptions = {},
 ): Promise<LoadedModelSession> {
@@ -499,11 +528,15 @@ export async function loadModelSession(
   const sharedFetchOptions: FetchOptions =
     options.signal === undefined ? { fetch: fetcher } : { fetch: fetcher, signal: options.signal };
   const manifest = await fetchModelManifest(sharedFetchOptions);
-  const modelFetchOptions: ModelFetchOptions = {
+  const modelFetchOptions: VerifiedModelFetchOptions = {
     ...sharedFetchOptions,
     ...(options.onProgress === undefined ? {} : { onProgress: options.onProgress }),
+    ...(options.modelCache === undefined ? {} : { modelCache: options.modelCache }),
+    ...(options.verifySha256 === undefined
+      ? {}
+      : { verifySha256: options.verifySha256 }),
   };
-  const modelBytes = await fetchModelBytes(manifest.model, modelFetchOptions);
+  const modelBytes = await fetchVerifiedModelBytes(manifest.model, modelFetchOptions);
   const browserNavigator = options.navigator ?? currentNavigator();
 
   return chooseProvider({

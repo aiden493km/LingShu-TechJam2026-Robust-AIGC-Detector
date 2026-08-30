@@ -289,11 +289,12 @@ export class DetectorController {
       });
   }
 
-  private async performModelLoad(): Promise<void> {
+  private async performModelLoad(modelCache?: RequestCache): Promise<void> {
     const operation = this.gate.begin();
     try {
       const model = await this.dependencies.loadModel({
         signal: operation.signal,
+        ...(modelCache === undefined ? {} : { modelCache }),
         onProgress: (progress) => {
           if (this.gate.isCurrent(operation) && !this.disposed) {
             this.publish({ type: 'model-progressed', progress });
@@ -330,17 +331,17 @@ export class DetectorController {
     }
   }
 
-  private beginModelLoad(): Promise<void> {
+  private beginModelLoad(modelCache?: RequestCache): Promise<void> {
     const active = this.activeLoad;
     if (active !== undefined) {
       return active.then(() => {
         if (!this.disposed && this.model === undefined && this.state.phase === 'booting') {
-          return this.beginModelLoad();
+          return this.beginModelLoad(modelCache);
         }
       });
     }
 
-    const work = this.performModelLoad();
+    const work = this.performModelLoad(modelCache);
     const tracked = work.finally(() => {
       if (this.activeLoad === tracked) {
         this.activeLoad = undefined;
@@ -452,7 +453,7 @@ export class DetectorController {
     this.gate.cancel();
     this.previews.clear();
     this.publish({ type: 'retry-model' });
-    await this.beginModelLoad();
+    await this.beginModelLoad('reload');
   };
 
   async dispose(): Promise<void> {
