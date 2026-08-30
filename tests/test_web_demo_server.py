@@ -1,9 +1,12 @@
 import contextlib
 import http.client
+import importlib.util
 import io
 import os
+import shutil
 import socket
 import subprocess
+import sys
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler
@@ -482,6 +485,12 @@ class BindingTests(unittest.TestCase):
         finally:
             holder.server_close()
 
+    def test_explicit_zero_port_is_rejected(self):
+        with mock.patch.object(serve_demo_module, "_new_server") as new_server:
+            with self.assertRaisesRegex(ValueError, "1 through 65535"):
+                bind_server(self.root, port=0)
+        new_server.assert_not_called()
+
 
 class RuntimeAndCliTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -490,6 +499,75 @@ class RuntimeAndCliTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.temporary_directory.cleanup()
+
+    def _load_copied_server(self, verifier_source: Path):
+        tools_directory = self.root / "bundle" / "tools"
+        tools_directory.mkdir(parents=True)
+        copied_server = tools_directory / "serve_demo.py"
+        copied_verifier = tools_directory / "verify_distribution.py"
+        shutil.copyfile(serve_demo_module.__file__, copied_server)
+        shutil.copyfile(verifier_source, copied_verifier)
+
+        spec = importlib.util.spec_from_file_location(
+            "bundled_serve_demo_test",
+            copied_server,
+        )
+        if spec is None or spec.loader is None:
+            self.fail("could not create a module spec for copied serve_demo.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module, copied_verifier
+
+    def test_direct_script_loader_uses_its_sibling_verifier_not_sys_path(self):
+        decoy_directory = self.root / "decoy"
+        decoy_directory.mkdir()
+        decoy_marker = decoy_directory / "executed.txt"
+        (decoy_directory / "verify_distribution.py").write_text(
+            "from pathlib import Path\n"
+            f"Path({str(decoy_marker)!r}).write_text('executed', encoding='utf-8')\n"
+            "def verify_distribution(repository_root):\n"
+            "    return ['decoy verifier ran']\n",
+            encoding="utf-8",
+        )
+        real_verifier = Path(serve_demo_module.__file__).with_name(
+            "verify_distribution.py"
+        )
+
+        original_top_level_verifier = sys.modules.pop("verify_distribution", None)
+        try:
+            with mock.patch.object(
+                sys,
+                "path",
+                [str(decoy_directory), *sys.path],
+            ):
+                copied_server, copied_verifier = self._load_copied_server(real_verifier)
+                verifier = copied_server._load_distribution_verifier()
+        finally:
+            sys.modules.pop("verify_distribution", None)
+            if original_top_level_verifier is not None:
+                sys.modules["verify_distribution"] = original_top_level_verifier
+
+        self.assertFalse(decoy_marker.exists())
+        self.assertEqual(Path(verifier.__code__.co_filename).resolve(), copied_verifier)
+
+    def test_verifier_loader_removes_a_module_that_fails_during_execution(self):
+        broken_verifier = self.root / "broken_verify_distribution.py"
+        broken_verifier.write_text(
+            "raise RuntimeError('broken sibling verifier')\n",
+            encoding="utf-8",
+        )
+        copied_server, copied_verifier = self._load_copied_server(broken_verifier)
+
+        with self.assertRaisesRegex(RuntimeError, "broken sibling verifier"):
+            copied_server._load_distribution_verifier()
+
+        leaked_modules = [
+            name
+            for name, module in sys.modules.items()
+            if (module_file := getattr(module, "__file__", None)) is not None
+            and Path(module_file).resolve() == copied_verifier
+        ]
+        self.assertEqual(leaked_modules, [])
 
     def test_validate_runtime_calls_task2_verifier_and_reports_all_errors(self):
         with mock.patch.object(
@@ -528,7 +606,10 @@ class RuntimeAndCliTests(unittest.TestCase):
         validate.assert_called_once_with(self.root.resolve())
         binder.assert_not_called()
         browser_open.assert_not_called()
-        self.assertIn("Distribution verification passed.", stdout.getvalue())
+        self.assertEqual(
+            stdout.getvalue(),
+            "VERIFIED FP32 model and WebDemo distribution\n",
+        )
 
     def test_check_returns_nonzero_with_actionable_validation_errors(self):
         stderr = io.StringIO()
@@ -595,7 +676,78 @@ class RuntimeAndCliTests(unittest.TestCase):
 
         self.assertEqual(result, 0)
         self.assertEqual(events, ["validate", "bind", "browser", "serve", "close"])
-        print_mock.assert_any_call("READY http://127.0.0.1:43210/", flush=True)
+        self.assertEqual(
+            print_mock.call_args_list,
+            [
+                mock.call(
+                    "VERIFIED FP32 model and WebDemo distribution",
+                    flush=True,
+                ),
+                mock.call("READY http://127.0.0.1:43210/", flush=True),
+                mock.call(
+                    "STOP Press Ctrl+C or close this window to stop the local server.",
+                    flush=True,
+                ),
+            ],
+        )
+
+    def test_explicit_zero_port_is_rejected_before_validation_or_binding(self):
+        with (
+            mock.patch.object(serve_demo_module, "validate_runtime") as validate,
+            mock.patch.object(serve_demo_module, "bind_server") as binder,
+            mock.patch("builtins.print"),
+            contextlib.redirect_stderr(io.StringIO()),
+        ):
+            with self.assertRaises(SystemExit) as raised:
+                main(["--port", "0"], repository_root=self.root)
+
+        self.assertEqual(raised.exception.code, 2)
+        validate.assert_not_called()
+        binder.assert_not_called()
+
+    def test_browser_open_failure_prints_manual_url_and_keeps_serving(self):
+        for browser_result in (False, RuntimeError("browser unavailable")):
+            with self.subTest(browser_result=browser_result):
+                events: list[str] = []
+
+                class FakeServer:
+                    server_address = ("127.0.0.1", 43210)
+
+                    def serve_forever(self):
+                        events.append("serve")
+                        raise KeyboardInterrupt
+
+                    def server_close(self):
+                        events.append("close")
+
+                def open_browser(url):
+                    self.assertEqual(url, "http://127.0.0.1:43210/")
+                    if isinstance(browser_result, Exception):
+                        raise browser_result
+                    return browser_result
+
+                with (
+                    mock.patch.object(serve_demo_module, "validate_runtime"),
+                    mock.patch.object(
+                        serve_demo_module,
+                        "bind_server",
+                        return_value=FakeServer(),
+                    ),
+                    mock.patch.object(
+                        serve_demo_module.webbrowser,
+                        "open",
+                        side_effect=open_browser,
+                    ),
+                    mock.patch("builtins.print") as print_mock,
+                ):
+                    result = main([], repository_root=self.root)
+
+                self.assertEqual(result, 0)
+                self.assertEqual(events, ["serve", "close"])
+                print_mock.assert_any_call(
+                    "Open the READY URL manually: http://127.0.0.1:43210/",
+                    flush=True,
+                )
 
     def test_no_browser_mode_never_opens_a_browser(self):
         class FakeServer:

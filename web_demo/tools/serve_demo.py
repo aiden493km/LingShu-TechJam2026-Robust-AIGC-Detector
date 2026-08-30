@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import mimetypes
 import os
 import re
@@ -15,11 +16,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path, PurePosixPath
 from typing import Sequence
 from urllib.parse import unquote_to_bytes, urlsplit
-
-if __package__:
-    from .verify_distribution import verify_distribution
-else:
-    from verify_distribution import verify_distribution
 
 
 DEFAULT_PORTS = tuple(range(8765, 8785))
@@ -303,8 +299,8 @@ def bind_server(
 
     root = Path(repository_root).resolve()
     if port is not None:
-        if type(port) is not int or not 0 <= port <= 65535:
-            raise ValueError("port must be an integer from 0 through 65535")
+        if type(port) is not int or not 1 <= port <= 65535:
+            raise ValueError("port must be an integer from 1 through 65535")
         try:
             return _new_server(root, port)
         except OSError as error:
@@ -326,6 +322,30 @@ def bind_server(
         ) from error
 
 
+def _load_distribution_verifier():
+    verifier_path = Path(__file__).resolve().with_name("verify_distribution.py")
+    module_name = "_lingshu_web_demo_verify_distribution"
+    spec = importlib.util.spec_from_file_location(module_name, verifier_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Could not load distribution verifier from {verifier_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        sys.modules.pop(module_name, None)
+        raise
+    return module.verify_distribution
+
+
+def verify_distribution(repository_root: Path) -> list[str]:
+    """Load and run the verifier bundled beside this server script."""
+
+    verifier = _load_distribution_verifier()
+    return verifier(repository_root)
+
+
 def validate_runtime(repository_root: Path) -> None:
     """Raise with every Task 2 verification error before the server starts."""
 
@@ -341,8 +361,8 @@ def _port_argument(value: str) -> int:
         port = int(value, 10)
     except ValueError as error:
         raise argparse.ArgumentTypeError("port must be an integer") from error
-    if not 0 <= port <= 65535:
-        raise argparse.ArgumentTypeError("port must be from 0 through 65535")
+    if not 1 <= port <= 65535:
+        raise argparse.ArgumentTypeError("port must be from 1 through 65535")
     return port
 
 
@@ -386,8 +406,8 @@ def main(
         print(error, file=sys.stderr)
         return 1
 
+    print("VERIFIED FP32 model and WebDemo distribution", flush=True)
     if arguments.check:
-        print("Distribution verification passed.")
         return 0
 
     try:
@@ -400,11 +420,17 @@ def main(
     url = f"http://127.0.0.1:{port}/"
     try:
         print(f"READY {url}", flush=True)
+        print(
+            "STOP Press Ctrl+C or close this window to stop the local server.",
+            flush=True,
+        )
         if not arguments.no_browser:
             try:
-                webbrowser.open(url)
-            except Exception as error:
-                print(f"Could not open the browser automatically: {error}", file=sys.stderr)
+                browser_opened = webbrowser.open(url)
+            except Exception:
+                browser_opened = False
+            if not browser_opened:
+                print(f"Open the READY URL manually: {url}", flush=True)
         try:
             server.serve_forever()
         except KeyboardInterrupt:
