@@ -24,15 +24,20 @@ For clarity, the TikTok TechJam project-specific training, robustness ablation, 
 
 ## Model provenance
 
-The initial detector used in this project is pinned to:
+The initial detector was loaded from:
 
 ```text
-OwensLab/commfor-model-384@6076002bf0d9dd37537f965ee2f06f826c333b61
+OwensLab/commfor-model-384
 ```
 
-The upstream Hugging Face model card identifies that revision as MIT-licensed. The
-final submitted `.pt` checkpoint and its FP32 ONNX export are robustness-aware
-fine-tuned derivatives of that detector.
+The training scripts did not pass a Hugging Face `revision`, and the frozen
+protocol/manifest did not record the resolved Hub commit. The exact historical
+base-model revision is therefore unproven. During the 2026-08-30 documentation
+review, the then-current upstream commit
+`6076002bf0d9dd37537f965ee2f06f826c333b61` identified the model as MIT-licensed;
+that observation is provenance context, not retroactive proof of the training
+revision. The final submitted `.pt` checkpoint and its FP32 ONNX export are
+robustness-aware fine-tuned derivatives of the named detector.
 
 The fine-tuning used SID and WildFake training images. Dataset files are not
 redistributed by this repository, but the exact source terms governing their use in
@@ -46,8 +51,8 @@ redistribution.
 
 ## Committed browser runtime
 
-The committed `web_demo/dist/` build contains runtime code from these direct
-dependencies:
+The committed `web_demo/dist/` build contains runtime code associated with these
+primary components:
 
 | Component | Version | Redistributed use | License and attribution |
 |---|---:|---|---|
@@ -59,6 +64,7 @@ dependencies:
 | `@jsquash/png` | 3.1.1 | PNG decode | Apache License 2.0 for the package; codec notice detailed below. |
 | `@jsquash/resize` | 2.1.1 | Browser resize | Apache License 2.0 for the package; bundled resize-module notices detailed below. |
 | `@jsquash/webp` | 1.5.0 | WebP decode | Apache License 2.0 for the package; codec notice detailed below. |
+| Vite | 8.2.2 | Build-generated modulepreload compatibility helper present in the browser bundle | MIT; build-tool output must remain in the actual-bundle license audit. |
 
 The jSquash package readmes identify codec/supporting code as derived from the
 GoogleChromeLabs Squoosh project. The package JavaScript notices include Copyright
@@ -69,8 +75,10 @@ The production lock also resolves these runtime/transitive packages: `flatbuffer
 25.9.23, `guid-typescript` 1.0.9, `long` 5.3.2, `onnxruntime-common` 1.29.0,
 `platform` 1.3.6, `protobufjs` 7.6.6 and its `@protobufjs/*` helpers,
 `wasm-feature-detect` 1.9.0, plus type-only packages selected by npm's production
-tree. Build-only and test-only packages are not listed because they are not shipped
-as the judge-facing browser application.
+tree. Most build-only and test-only packages are not installed by judges as runtime
+packages, but generated code such as Vite's modulepreload helper can still be
+present in `dist`; this is why the actual production bundle remains the release
+audit boundary.
 
 ## Browser codec and resize notices
 

@@ -224,15 +224,15 @@ not selected for the CPU/WASM path, and the tested dynamic INT8 variants showed
 unacceptable drift and threshold flips. Shipping one model also keeps WebGPU and
 WASM on one auditable identity.
 
-## Direct browser dependency licenses
+## Browser runtime dependency licenses
 
 The pinned versions are recorded in [`package-lock.json`](package-lock.json).
-Package-level license declarations for the direct runtime dependencies are:
+Package-level license declarations for the main runtime components are:
 
 | Dependency | Version | License |
 |---|---:|---|
 | React / React DOM | 19.2.8 | MIT |
-| Scheduler | 0.27.0 | MIT |
+| Scheduler (via React DOM) | 0.27.0 | MIT |
 | ONNX Runtime Web | 1.29.0 | MIT |
 | `@jsquash/jpeg` | 1.6.0 | Apache-2.0 (bundled codec notices also apply) |
 | `@jsquash/png` | 3.1.1 | Apache-2.0 (bundled codec notices also apply) |
