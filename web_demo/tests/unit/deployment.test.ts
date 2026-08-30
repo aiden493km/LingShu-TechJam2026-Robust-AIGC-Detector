@@ -1,8 +1,8 @@
-import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 import {
   DEPLOYMENT_MODE,
+  deploymentModeFromViteMode,
   modelDeliveryCopy,
 } from '../../src/runtime/deployment';
 
@@ -28,14 +28,10 @@ describe('deployment model delivery copy', () => {
     expect(DEPLOYMENT_MODE).toBe('local');
   });
 
-  it('maps only the exact Vite online mode to the online deployment', async () => {
-    const source = await readFile(
-      new URL('../../src/runtime/deployment.ts', import.meta.url),
-      'utf8',
-    );
-
-    expect(source).toMatch(
-      /DEPLOYMENT_MODE:\s*DeploymentMode\s*=\s*import\.meta\.env\.MODE\s*===\s*'online'\s*\?\s*'online'\s*:\s*'local'/,
-    );
+  it('maps only the Vite online mode to the online deployment', () => {
+    expect(deploymentModeFromViteMode('online')).toBe('online');
+    expect(
+      ['production', 'test', 'development'].map(deploymentModeFromViteMode),
+    ).toEqual(['local', 'local', 'local']);
   });
 });

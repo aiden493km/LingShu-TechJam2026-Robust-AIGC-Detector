@@ -1,16 +1,15 @@
 export type DeploymentMode = 'local' | 'online';
 
-export const DEPLOYMENT_MODE: DeploymentMode =
-  import.meta.env.MODE === 'online' ? 'online' : 'local';
+export function deploymentModeFromViteMode(viteMode: string): DeploymentMode {
+  return viteMode === 'online' ? 'online' : 'local';
+}
 
-const ONLINE_TITLE = import.meta.env.MODE === 'online'
-  ? 'DOWNLOADING MODEL'
-  : ['DOWNLOADING', 'MODEL'].join(' ');
+export const DEPLOYMENT_MODE = deploymentModeFromViteMode(import.meta.env.MODE);
 
 export function modelDeliveryCopy(mode: DeploymentMode) {
   if (mode === 'online') {
     return {
-      title: ONLINE_TITLE,
+      title: 'DOWNLOADING MODEL',
       detail: 'Downloading and verifying the frozen FP32 model in this browser.',
       progressLabel: 'FP32 model download progress',
     };

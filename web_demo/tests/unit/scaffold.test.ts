@@ -1,4 +1,3 @@
-import { readFile } from 'node:fs/promises';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
@@ -7,10 +6,13 @@ import {
   APP_NAME,
   consumeSelectedFiles,
   DetectorScreen,
+  LocalFieldCard,
+  PhaseStatus,
   requestImageSelection,
 } from '../../src/App';
 import type { DetectorState } from '../../src/detector/machine';
 import type { RuntimeEnvironmentSnapshot } from '../../src/runtime/capabilities';
+import { modelDeliveryCopy, type DeploymentMode } from '../../src/runtime/deployment';
 import type { LoadedModelSession } from '../../src/runtime/model-session';
 import { DetectorEvidence } from '../../src/site/DetectorEvidence';
 import type { RecentDetection } from '../../src/site/session-history';
@@ -48,18 +50,10 @@ function render(state: DetectorState): string {
   );
 }
 
-async function appComponentSource(
-  componentName: 'PhaseStatus' | 'LocalFieldCard',
-  nextComponentName: 'SiteRail' | 'IdleActions',
-): Promise<string> {
-  const source = await readFile(new URL('../../src/App.tsx', import.meta.url), 'utf8');
-  const start = source.indexOf(`function ${componentName}`);
-  const end = source.indexOf(`function ${nextComponentName}`, start);
-
-  expect(start).toBeGreaterThanOrEqual(0);
-  expect(end).toBeGreaterThan(start);
-  return source.slice(start, end);
-}
+type LoadingViewProps = {
+  readonly state: Extract<DetectorState, { phase: 'booting' }>;
+  readonly delivery: ReturnType<typeof modelDeliveryCopy>;
+};
 
 describe('frontend scaffold', () => {
   it('uses the frozen product name', () => {
@@ -88,14 +82,24 @@ describe('frontend scaffold', () => {
     expect(html).toContain('never uploaded or saved');
   });
 
-  it('assembles both model-loading views from the shared deployment copy', async () => {
-    const phaseStatus = await appComponentSource('PhaseStatus', 'SiteRail');
-    const localFieldCard = await appComponentSource('LocalFieldCard', 'IdleActions');
+  const loadingState: LoadingViewProps['state'] = {
+    phase: 'booting',
+    progress: { loaded: 44_061_514, total: 88_123_029 },
+  };
 
-    for (const loadingView of [phaseStatus, localFieldCard]) {
-      expect(loadingView).toContain('delivery.title');
-      expect(loadingView).toContain('delivery.detail');
-      expect(loadingView).toContain('delivery.progressLabel');
+  it.each([
+    ['phase content', PhaseStatus],
+    ['local field card', LocalFieldCard],
+  ])('renders explicit local and online delivery copy in the %s', (_name, LoadingView) => {
+    for (const mode of ['local', 'online'] satisfies readonly DeploymentMode[]) {
+      const delivery = modelDeliveryCopy(mode);
+      const html = renderToStaticMarkup(
+        createElement(LoadingView, { state: loadingState, delivery }),
+      );
+
+      expect(html).toContain(delivery.title);
+      expect(html).toContain(delivery.detail);
+      expect(html).toContain(`aria-label="${delivery.progressLabel}"`);
     }
   });
 
