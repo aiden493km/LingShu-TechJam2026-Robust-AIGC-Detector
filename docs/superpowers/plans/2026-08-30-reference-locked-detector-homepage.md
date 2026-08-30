@@ -67,7 +67,7 @@ describe('recent detection history', () => {
 
 - [ ] **Step 2: Run the test and verify RED**
 
-Run: `npm.cmd test -- tests/unit/session-history.test.ts`  
+Run: `npm.cmd test -- tests/unit/session-history.test.ts`
 Expected: FAIL because `src/site/session-history.ts` does not exist.
 
 - [ ] **Step 3: Implement the capped reducer and thumbnail generator**
@@ -85,7 +85,7 @@ export function appendRecentDetection(
 
 - [ ] **Step 4: Run the focused test and verify GREEN**
 
-Run: `npm.cmd test -- tests/unit/session-history.test.ts`  
+Run: `npm.cmd test -- tests/unit/session-history.test.ts`
 Expected: 3 tests pass.
 
 ### Task 2: Evidence strip semantics
@@ -111,7 +111,7 @@ Render `DetectorEvidence` with three `RecentDetection` fixtures and assert all t
 
 - [ ] **Step 2: Run scaffold tests and verify RED**
 
-Run: `npm.cmd test -- tests/unit/scaffold.test.ts`  
+Run: `npm.cmd test -- tests/unit/scaffold.test.ts`
 Expected: FAIL because the current trace and development tile do not implement the required semantics.
 
 - [ ] **Step 3: Implement focused evidence components**
@@ -120,7 +120,7 @@ Create `ThresholdBar`, `ProtocolSignal`, `RecentImages`, and `DetectorEvidence`.
 
 - [ ] **Step 4: Run scaffold tests and verify GREEN**
 
-Run: `npm.cmd test -- tests/unit/scaffold.test.ts`  
+Run: `npm.cmd test -- tests/unit/scaffold.test.ts`
 Expected: focused tests pass.
 
 ### Task 3: Routes, About, and technical notes
@@ -148,7 +148,7 @@ Require Technology content to include `BROWSER RUNTIME`, `DATASET & EVALUATION P
 
 - [ ] **Step 2: Run route/content tests and verify RED**
 
-Run: `npm.cmd test -- tests/unit/site-routes.test.ts tests/unit/site-content.test.ts`  
+Run: `npm.cmd test -- tests/unit/site-routes.test.ts tests/unit/site-content.test.ts`
 Expected: FAIL because the app still exposes Team and lacks the sourced About/notes content.
 
 - [ ] **Step 3: Implement route alias and factual content**
@@ -157,7 +157,7 @@ Replace the public `team` route with `about`; map `#/team` to `about` before rou
 
 - [ ] **Step 4: Run route/content tests and verify GREEN**
 
-Run: `npm.cmd test -- tests/unit/site-routes.test.ts tests/unit/site-content.test.ts`  
+Run: `npm.cmd test -- tests/unit/site-routes.test.ts tests/unit/site-content.test.ts`
 Expected: focused tests pass.
 
 ### Task 4: Rail links, privacy card, persistent history, and return control
@@ -185,7 +185,7 @@ Update the render helper to accept optional recent-history fixtures so success m
 
 - [ ] **Step 2: Run scaffold tests and verify RED**
 
-Run: `npm.cmd test -- tests/unit/scaffold.test.ts`  
+Run: `npm.cmd test -- tests/unit/scaffold.test.ts`
 Expected: FAIL on the hand-drawn GitHub mark, duplicate repository link, lower privacy overlay, and missing back control.
 
 - [ ] **Step 3: Acquire the official mark without redrawing it**
@@ -207,7 +207,7 @@ In `DetectorScreen`:
 
 - [ ] **Step 5: Run scaffold and history tests and verify GREEN**
 
-Run: `npm.cmd test -- tests/unit/scaffold.test.ts tests/unit/session-history.test.ts`  
+Run: `npm.cmd test -- tests/unit/scaffold.test.ts tests/unit/session-history.test.ts`
 Expected: focused tests pass.
 
 ### Task 5: Reference-locked layout and motion
@@ -222,7 +222,7 @@ Require CSS selectors/properties for a two-row `application-frame`, nested `.her
 
 - [ ] **Step 2: Run the style test and verify RED**
 
-Run: `npm.cmd test -- tests/unit/site-style.test.ts`  
+Run: `npm.cmd test -- tests/unit/site-style.test.ts`
 Expected: FAIL because the existing frame uses a full-height rail/offset evidence strip and lacks reverse-motion styles.
 
 - [ ] **Step 3: Implement the approved spatial thesis**
@@ -254,12 +254,12 @@ Match the reference title scale/anchors, left-aligned actions, upper-right card,
 
 - [ ] **Step 4: Run style and scaffold tests and verify GREEN**
 
-Run: `npm.cmd test -- tests/unit/site-style.test.ts tests/unit/scaffold.test.ts`  
+Run: `npm.cmd test -- tests/unit/site-style.test.ts tests/unit/scaffold.test.ts`
 Expected: focused tests pass.
 
 - [ ] **Step 5: Run the Impeccable mechanical layout scan**
 
-Run: `node C:\Users\123\.codex\skills\impeccable\scripts\detect.mjs --json --scope layout web_demo/src/App.tsx web_demo/src/app.css`  
+Run: `node C:\Users\123\.codex\skills\impeccable\scripts\detect.mjs --json --scope layout web_demo/src/App.tsx web_demo/src/app.css`
 Expected: no unexplained layout findings. Fix any in-scope findings, then rerun the focused tests.
 
 ### Task 6: Full verification and bounded visual review

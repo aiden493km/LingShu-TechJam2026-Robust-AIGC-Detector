@@ -281,4 +281,3 @@ feat(web): add evidence and team views
 style(web): implement semantic signal visual system
 build(web): refresh committed demo distribution
 ```
-

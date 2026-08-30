@@ -1,8 +1,8 @@
 # Reference-Locked Detector Homepage Revision
 
-**Date:** 2026-08-30  
-**Status:** Ready for user review  
-**Scope:** Detector homepage and its in-session analysis transition  
+**Date:** 2026-08-30
+**Status:** Ready for user review
+**Scope:** Detector homepage and its in-session analysis transition
 **Visual authority:** `C:\Users\123\AppData\Local\Temp\codex-clipboard-cdd9bdc1-cfcf-4b64-bfc2-4438674061bc.png`
 
 ## 1. Design contract
@@ -103,14 +103,14 @@ All four tiles retain the reference's white background, thin borders, compact up
 
 ### Tile 1 — Frozen Threshold
 
-Heading: `FROZEN THRESHOLD`  
+Heading: `FROZEN THRESHOLD`
 Primary value: `0.55657113`
 
 The graph reproduces the supplied reference: a thin vertical axis labelled `1.0`, `0.5`, and `0.0`, plus a thin horizontal trace that oscillates with small deterministic waves around 0.5 and terminates in a black endpoint. Accessible text exposes the exact frozen threshold and, when present, the current score; the score must not replace or deform the reference waveform.
 
 ### Tile 2 — Robustness Protocol
 
-Heading: `ROBUSTNESS PROTOCOL`  
+Heading: `ROBUSTNESS PROTOCOL`
 Concise supporting line: `NJR · 14 FIXED CONDITIONS`
 
 No explanatory paragraph is added to the tile. A compact fine-black curve cloud fills the remaining space, closely matching the reference's development-log graph: several smooth lobes form a central wave while hundreds of deterministic micro-points create a varying-width distribution around it. It represents the fixed evaluation protocol without inventing live measurements and must not degrade into parallel dashes or a flat equal-density strip.
