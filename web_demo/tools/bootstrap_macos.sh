@@ -10,6 +10,7 @@ umask 077
 
 temp_cache=''
 invalid_cache=''
+lock_error_file=''
 lock_path=''
 cache_root=''
 last_probe_error=''
@@ -32,6 +33,15 @@ cleanup() {
      [ "$(/usr/bin/dirname -- "$invalid_cache")" = "$cache_root" ] &&
      [ -d "$invalid_cache" ] && [ ! -L "$invalid_cache" ]; then
     /bin/rm -rf "$invalid_cache" 2>/dev/null || :
+  fi
+  if [ -n "$lock_error_file" ] && [ -n "$cache_root" ] &&
+     [ "$(/usr/bin/dirname -- "$lock_error_file")" = "$cache_root" ] &&
+     [ -f "$lock_error_file" ] && [ ! -L "$lock_error_file" ]; then
+    case "$lock_error_file" in
+      "$cache_root/$CACHE_NAME.lock-error."*)
+        /bin/rm -f "$lock_error_file" 2>/dev/null || :
+        ;;
+    esac
   fi
   exit "$cleanup_status"
 }
@@ -93,6 +103,22 @@ lock_file_is_safe() {
     [ -f "$lock_path" ] && [ ! -L "$lock_path" ]
 }
 
+lock_error_file_is_safe() {
+  [ -n "$lock_error_file" ] && [ -n "$cache_root" ] &&
+    [ "$(/usr/bin/dirname -- "$lock_error_file")" = "$cache_root" ] &&
+    [ -f "$lock_error_file" ] && [ ! -L "$lock_error_file" ] || return 1
+  case "$lock_error_file" in
+    "$cache_root/$CACHE_NAME.lock-error."*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+remove_lock_error_file() {
+  lock_error_file_is_safe || return 1
+  /bin/rm -f "$lock_error_file" 2>/dev/null || return 1
+  lock_error_file=''
+}
+
 run_cache_phase() {
   phase_name=$1
   shift
@@ -101,23 +127,52 @@ run_cache_phase() {
   [ -x /usr/bin/lockf ] ||
     fail 'Required macOS kernel lock utility is missing: /usr/bin/lockf'
 
+  lock_error_file=$(/usr/bin/mktemp "$cache_root/$CACHE_NAME.lock-error.XXXXXXXX") ||
+    fail "Could not create a private runtime cache lock diagnostic file in $cache_root"
+  lock_error_file_is_safe ||
+    fail "Runtime cache lock diagnostic file is unsafe: $lock_error_file"
+
   cache_phase_output=$(
     /usr/bin/env "LINGSHU_MACOS_CACHE_TOKEN=$cache_phase_token" \
       /usr/bin/lockf -s -t 8 -k "$lock_path" \
       "$bootstrap_script" --internal-cache-phase "$cache_phase_token" \
-      "$phase_name" "$cache_root" "$fixed_cache" "$lock_path" "$@"
+      "$phase_name" "$cache_root" "$fixed_cache" "$lock_path" "$@" \
+      2>"$lock_error_file"
   )
   cache_phase_status=$?
-  if [ "$cache_phase_status" -eq 75 ]; then
-    fail "Timed out after 8 seconds waiting for the runtime cache lock: $lock_path. Close any stuck WebDemo launcher and retry."
+
+  if [ "$cache_phase_status" -eq 0 ]; then
+    lock_error_file_is_safe ||
+      fail "Runtime cache lock diagnostic file became unsafe: $lock_error_file"
+    if [ -s "$lock_error_file" ]; then
+      remove_lock_error_file || :
+      fail "macOS runtime cache lock emitted unexpected diagnostics despite success: $lock_path. Retry the WebDemo launcher."
+    fi
+    remove_lock_error_file ||
+      fail "Could not remove the runtime cache lock diagnostic file: $lock_error_file"
+    return 0
   fi
+
   case "$cache_phase_status" in
+    75)
+      remove_lock_error_file || :
+      printf '%s\n' "ERROR: WebDemo bootstrap failed: Timed out after 8 seconds waiting for the runtime cache lock: $lock_path. Close any stuck WebDemo launcher and retry." >&2
+      exit "$cache_phase_status"
+      ;;
     64|69|70|71|73)
+      remove_lock_error_file || :
       printf '%s\n' "ERROR: WebDemo bootstrap failed: Could not acquire/use the macOS runtime cache lock: $lock_path (lockf status $cache_phase_status). Check that the WebDemo runtime cache is writable and retry." >&2
       exit "$cache_phase_status"
       ;;
   esac
-  [ "$cache_phase_status" -eq 0 ] || exit "$cache_phase_status"
+
+  if lock_error_file_is_safe && [ -s "$lock_error_file" ]; then
+    /bin/cat "$lock_error_file" >&2
+  else
+    printf '%s\n' "ERROR: WebDemo bootstrap failed: Internal macOS runtime cache phase failed without diagnostics: $lock_path (lockf status $cache_phase_status). Retry the WebDemo launcher." >&2
+  fi
+  remove_lock_error_file || :
+  exit "$cache_phase_status"
 }
 
 remove_invalid_fixed_cache() {

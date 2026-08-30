@@ -201,6 +201,20 @@ exit "$status"
         ):
             self.assertNotIn(forbidden, content)
 
+    def test_macos_bootstrap_normalizes_kernel_lock_diagnostics(self):
+        bootstrap = self.REPOSITORY_ROOT / "web_demo" / "tools" / "bootstrap_macos.sh"
+        content = bootstrap.read_text(encoding="utf-8")
+
+        for fragment in (
+            "lock_error_file=''",
+            'lock_error_file=$(/usr/bin/mktemp "$cache_root/$CACHE_NAME.lock-error.XXXXXXXX")',
+            '2>"$lock_error_file"',
+            '/bin/cat "$lock_error_file" >&2',
+            '/bin/rm -f "$lock_error_file"',
+            "Internal macOS runtime cache phase failed without diagnostics",
+        ):
+            self.assertIn(fragment, content)
+
     def test_posix_launcher_only_adds_exact_darwin_preamble(self):
         launcher = self.REPOSITORY_ROOT / "web_demo" / "start-demo.sh"
         preamble = b'''\
