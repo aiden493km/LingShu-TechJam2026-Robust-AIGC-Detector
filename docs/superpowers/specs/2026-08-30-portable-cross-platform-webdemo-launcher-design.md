@@ -2,11 +2,17 @@
 
 ## Status
 
-The design decisions in this document were approved in conversation on
-2026-08-30. This written specification is the review gate before an implementation
-plan or launcher code changes are made.
+> [!IMPORTANT]
+> **Historical design — superseded.** The deadline implementation is defined by
+> the [implementation plan](../plans/2026-08-30-portable-cross-platform-webdemo-launcher.md)
+> and the current judge-facing [repository README](../../../README.md) and
+> [WebDemo README](../../../web_demo/README.md). The delivered portable slice has
+> only two bundled runtimes: Windows x86-64 and Apple Silicon macOS. It has no
+> Intel macOS archive, adds no new `--system-python` option, and the two runtime
+> archives total exactly 36,103,844 bytes. The three-runtime design below is
+> retained as historical design context, not as a delivery commitment.
 
-This document supersedes only the launcher and host-runtime portions of
+This document originally superseded only the launcher and host-runtime portions of
 `2026-08-30-offline-fp32-webdemo-design.md`. The frozen FP32 ONNX model, browser
 inference contract, local-only HTTP server, integrity checks, and privacy boundary
 remain unchanged. Existing Windows acceptance files remain valid historical
