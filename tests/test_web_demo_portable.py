@@ -283,6 +283,18 @@ fi
 class PortableDocumentationAndWorkflowTests(unittest.TestCase):
     REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
     TASK4_COMMIT = "3036c0cad46934aa83ac4fe0574b99e6cd99a1fa"
+    GIT_ATTRIBUTES = (
+        "web_demo/models/baseline2_njr_fp32.onnx binary -diff -merge",
+        "web_demo/dist/** -text",
+        "web_demo/dist/assets/ort-wasm-simd-threaded.asyncify.mjs binary -diff -merge",
+        "web_demo/dist/assets/ort-wasm-simd-threaded.asyncify.wasm binary -diff -merge",
+        "web_demo/runtimes/windows-x86_64-python.zip binary -diff -merge",
+        "web_demo/runtimes/macos-arm64-python.tar.gz binary -diff -merge",
+        "web_demo/start-demo.bat text eol=crlf",
+        "web_demo/start-demo.sh text eol=lf",
+        "web_demo/start-demo.command text eol=lf",
+        "web_demo/tools/bootstrap_macos.sh text eol=lf",
+    )
 
     @classmethod
     def setUpClass(cls):
@@ -296,8 +308,12 @@ class PortableDocumentationAndWorkflowTests(unittest.TestCase):
         return re.sub(r"\s+", " ", text).strip()
 
     def assertDocumentsRegex(self, pattern, message):
-        combined = self._single_line(f"{self.root_readme}\n{self.web_readme}")
-        self.assertRegex(combined, pattern, message)
+        for name, content in (
+            ("README.md", self.root_readme),
+            ("web_demo/README.md", self.web_readme),
+        ):
+            with self.subTest(readme=name, requirement=message):
+                self.assertRegex(self._single_line(content), pattern, message)
 
     def test_judge_quick_starts_are_ordered_and_portable(self):
         for name, content in (
@@ -345,7 +361,7 @@ class PortableDocumentationAndWorkflowTests(unittest.TestCase):
             "the repository-local runtime cache path is documented",
         )
         self.assertDocumentsRegex(
-            r"(?i)(?:first|initial)[^.]{0,120}(?:create|extract|populate)[^.]{0,120}cache",
+            r"(?i)(?:first|initial).{0,120}(?:create|extract|populate).{0,120}cache",
             "first-launch cache creation is explained",
         )
         self.assertDocumentsRegex(
@@ -395,6 +411,13 @@ class PortableDocumentationAndWorkflowTests(unittest.TestCase):
             r"(?i)tracked Git blob size.{0,240}not.{0,120}(?:checkout|history|clone transfer)",
         )
 
+    def test_git_attributes_freeze_portable_files_without_git_lfs(self):
+        attributes_path = self.REPOSITORY_ROOT / ".gitattributes"
+        content = attributes_path.read_text(encoding="utf-8")
+
+        self.assertEqual(content.strip().splitlines(), list(self.GIT_ATTRIBUTES))
+        self.assertNotRegex(content, r"(?i)filter\s*=\s*lfs")
+
     def test_portable_workflow_has_both_required_smoke_jobs(self):
         workflow = self.REPOSITORY_ROOT / ".github" / "workflows" / "web-demo-portable.yml"
         self.assertTrue(workflow.is_file(), workflow)
@@ -407,6 +430,8 @@ class PortableDocumentationAndWorkflowTests(unittest.TestCase):
             "web_demo/**",
             "tests/test_web_demo_*.py",
             ".github/workflows/web-demo-portable.yml",
+            "README.md",
+            ".gitattributes",
         ):
             self.assertEqual(content.count(watched_path), 2)
 
@@ -426,7 +451,7 @@ class PortableDocumentationAndWorkflowTests(unittest.TestCase):
         self.assertIn("/bin/sh web_demo/start-demo.command --check", content)
 
         self.assertDocumentsRegex(
-            r"(?i)CI smoke[^.]{0,160}(?:not|does not)[^.]{0,160}(?:Finder|real browser inference)",
+            r"(?i)CI smoke.{0,240}(?:not|does not).{0,160}(?:Finder|real browser inference)",
             "docs must bound what the CI smoke proves",
         )
 

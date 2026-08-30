@@ -5,11 +5,15 @@ on:
     paths:
       - "web_demo/**"
       - "tests/test_web_demo_*.py"
+      - "README.md"
+      - ".gitattributes"
       - ".github/workflows/web-demo-portable.yml"
   pull_request:
     paths:
       - "web_demo/**"
       - "tests/test_web_demo_*.py"
+      - "README.md"
+      - ".gitattributes"
       - ".github/workflows/web-demo-portable.yml"
 
 jobs:
