@@ -1,6 +1,16 @@
 # Reference-Locked Detector Homepage Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+## Status
+
+Completed and approved on 2026-08-30. The visual implementation was integrated on
+top of the portable-launcher `main` architecture and finalized at visual commit
+`ca6308b`. The unchecked steps below preserve the original TDD plan and are not an
+active backlog; use the current source, `PRODUCT.md`, and `DESIGN.md` as the live
+contract.
+
+> **Historical execution instructions:** the original implementation used the
+> Impeccable workflow and focused TDD. Do not reuse its temporary branch or
+> no-publication constraints for current work.
 
 **Goal:** Rebuild the detector surface to match the approved reference image while adding persistent three-image session history, factual About content, correct repository/contact links, upper-right privacy status, and a reversible analysis transition.
 
@@ -8,7 +18,9 @@
 
 **Tech Stack:** React 19, TypeScript, Vite, Vitest, CSS animations, local SVG/font assets, browser Canvas for in-memory thumbnails.
 
-**Working constraints:** Execute in `feat/web-demo-visual-design`. Do not commit, push, merge, or modify `feat/web-demo`; the user has authorized implementation but not source-control publication.
+**Historical working constraints:** The original work was isolated on
+`feat/web-demo-visual-design` before integration. That branch instruction no longer
+describes the current published handoff.
 
 ---
 

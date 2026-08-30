@@ -1,9 +1,9 @@
 # Reference-Locked Detector Homepage Revision
 
 **Date:** 2026-08-30
-**Status:** Ready for user review
+**Status:** Implemented and user-approved
 **Scope:** Detector homepage and its in-session analysis transition
-**Visual authority:** `C:\Users\123\AppData\Local\Temp\codex-clipboard-cdd9bdc1-cfcf-4b64-bfc2-4438674061bc.png`
+**Visual authority:** User-supplied 1584 × 1024 reference; its durable implementation contract is captured in this specification.
 
 ## 1. Design contract
 

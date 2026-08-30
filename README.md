@@ -225,10 +225,12 @@ accuracy benchmark.
 [Judge and developer guide](web_demo/README.md) ·
 [Formal acceptance evidence](results/web_demo_acceptance/README.md)
 
-The image below remains a **concept visual direction** for the later high-polish
-design slice; it is not a screenshot of the current functional inference screen.
-
-![Web demo preview](assets/figures/web_demo_preview.png)
+The committed WebDemo now uses the reference-locked **Semantic Signal** interface:
+Detector is the default route, while Technology, Results, Error Analysis, and
+About remain directly reachable without reloading the model. Successful results
+are retained as an in-memory three-image session history, and the title-to-analysis
+transition preserves the same local-only inference and privacy boundary described
+above. See the [WebDemo guide](web_demo/README.md) for interaction details.
 
 ### Frozen deployment artifacts
 

@@ -1,6 +1,16 @@
 # Semantic Signal WebDemo Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+## Status
+
+Completed on 2026-08-30. The reference-locked homepage revision subsequently
+refined this direction, and the resulting implementation is recorded in the
+current `web_demo/src/`, committed `web_demo/dist/`, `PRODUCT.md`, and `DESIGN.md`.
+The unchecked steps below preserve the original execution plan and are not an
+active backlog.
+
+> **Historical execution instructions:** the original work used the Impeccable
+> design workflow and TDD. Do not treat the steps below as current branch or
+> publication instructions.
 
 **Goal:** Rebuild the offline LingShu browser detector around the approved Semantic Signal Weather v2 composition while preserving the frozen B2-NJR inference workflow and adding directly addressable technical, results, error-analysis, and team views.
 

@@ -35,7 +35,7 @@ The same disclosed FP32 B2-NJR model runs locally through WebGPU or the WASM com
 - Deploy only `web_demo/models/baseline2_njr_fp32.onnx`; WebGPU and WASM must use that same model and frozen threshold `0.55657113`.
 - Keep the committed `web_demo/dist/` synchronized with `web_demo/src/`; judges run the committed build.
 - Do not imply CUDA, batch inference, server inference, alternate deployed models, or public-release clearance that the repository does not support.
-- Detector, Technology, Results, Error Analysis, and Team are required information destinations. Whether the secondary destinations are URL-addressable views or anchored sections within one document remains a surface-design decision; Detector must remain the no-friction default.
+- Detector, Technology, Results, Error Analysis, and About are the implemented information destinations. About contains the bounded team and TechJam context; Detector remains the no-friction default.
 
 ## Brand Commitments
 

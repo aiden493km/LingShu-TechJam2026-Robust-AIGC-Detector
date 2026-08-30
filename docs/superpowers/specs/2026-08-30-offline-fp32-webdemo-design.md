@@ -7,8 +7,8 @@ recorded in the [formal acceptance evidence](../../../results/web_demo_acceptanc
 The launcher and host-runtime details in this original specification are
 superseded by the
 [portable launcher plan](../plans/2026-08-30-portable-cross-platform-webdemo-launcher.md)
-and the current repository runbooks. The visual-polish and narrative slice remains
-separate from this specification.
+and the current repository runbooks. The visual-polish and narrative slice was
+implemented later and remains architecturally separate from this specification.
 
 ## Objective
 

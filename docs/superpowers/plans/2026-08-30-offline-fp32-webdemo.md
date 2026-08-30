@@ -7,8 +7,9 @@ are recorded in
 [`results/web_demo_acceptance/`](../../../results/web_demo_acceptance/README.md).
 This file is retained as the historical task-by-task execution plan; its checkbox
 markers describe the original TDD sequence and are not an active backlog. The
-separate high-polish visual/narrative slice remains gated by the Impeccable product
-and design workflow described below.
+separate high-polish visual/narrative slice was subsequently completed through the
+Semantic Signal and reference-locked design plans; use `PRODUCT.md`, `DESIGN.md`,
+and the current source for its final contract.
 
 > **Historical execution instructions:** implementation used
 > superpowers:subagent-driven-development and superpowers:executing-plans with
@@ -808,4 +809,4 @@ git commit -m "docs(web): document offline judge workflow"
 - No implementation task deploys FP16, INT8, FastAPI, CDN assets, external fonts, analytics, persistence, batch upload, video, accounts, team profiles, or cloud configuration.
 - Public type names are consistent across tasks: `ModelManifest`, `PreprocessedImage`, `DetectionResult`, provider values `webgpu | wasm`, model input `input`, model output `logits`, threshold `0.55657113`.
 - No ordinary browser launch depends on Node.js, `node_modules`, the PyTorch checkpoint, or a network request.
-- The visual-polish slice remains gated behind verified runtime parity and a separate Impeccable direction decision.
+- The visual-polish slice was completed later and remains intentionally separate from this runtime-foundation plan.
