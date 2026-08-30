@@ -179,6 +179,57 @@ describe('browser request boundary', () => {
     });
     expect(audit.violations).toContain('wss://remote.example/events');
   });
+
+  it('closes the browser context before freezing the network evidence', async () => {
+    const acceptance = await import('../../tools/run_browser_acceptance.mjs');
+    expect(acceptance.closeAndSnapshotNetworkAudit).toBeTypeOf('function');
+
+    const audit = {
+      origins: new Set([origin]),
+      webSocketOrigins: new Set(),
+      paths: new Map([['/', 1]]),
+      violations: [],
+      pageErrors: [],
+      consoleMessages: [],
+    };
+    const context = {
+      close: vi.fn(async () => {
+        audit.violations.push('https://late-close.example/telemetry');
+      }),
+    };
+
+    await expect(
+      acceptance.closeAndSnapshotNetworkAudit(context, audit, origin, []),
+    ).rejects.toThrow(/late-close\.example|wrong-origin|remote/i);
+    expect(context.close).toHaveBeenCalledOnce();
+  });
+
+  it('includes allowed close-time activity in the frozen network snapshot', async () => {
+    const acceptance = await import('../../tools/run_browser_acceptance.mjs');
+    expect(acceptance.closeAndSnapshotNetworkAudit).toBeTypeOf('function');
+
+    const audit = {
+      origins: new Set([origin]),
+      webSocketOrigins: new Set(),
+      paths: new Map([['/', 1]]),
+      violations: [],
+      pageErrors: [],
+      consoleMessages: [],
+    };
+    const context = {
+      close: vi.fn(async () => {
+        audit.paths.set('/close-time-resource', 1);
+      }),
+    };
+
+    const snapshot = await acceptance.closeAndSnapshotNetworkAudit(
+      context,
+      audit,
+      origin,
+      [],
+    );
+    expect(snapshot.requestPaths).toMatchObject({ '/': 1, '/close-time-resource': 1 });
+  });
 });
 
 describe('frozen score references', () => {
@@ -239,6 +290,34 @@ describe('frozen score references', () => {
 });
 
 describe('tracked-only fresh copy', () => {
+  it('requires a clean unchanged full Git HEAD before evidence is emitted', async () => {
+    const acceptance = await import('../../tools/run_browser_acceptance.mjs');
+    expect(acceptance.assertSameCleanTrackedGitState).toBeTypeOf('function');
+    const initial = { head: 'a'.repeat(40), porcelain: '' };
+
+    expect(acceptance.assertSameCleanTrackedGitState(initial, { ...initial })).toBe(
+      initial.head,
+    );
+    expect(() =>
+      acceptance.assertSameCleanTrackedGitState(
+        { ...initial, porcelain: 'M  web_demo/dist/index.html' },
+        initial,
+      ),
+    ).toThrow(/start.*clean|clean.*start|index\/worktree/i);
+    expect(() =>
+      acceptance.assertSameCleanTrackedGitState(initial, {
+        ...initial,
+        porcelain: ' M web_demo/dist/index.html',
+      }),
+    ).toThrow(/before.*report|clean|index\/worktree/i);
+    expect(() =>
+      acceptance.assertSameCleanTrackedGitState(initial, {
+        head: 'b'.repeat(40),
+        porcelain: '',
+      }),
+    ).toThrow(/HEAD.*changed|changed.*HEAD/i);
+  });
+
   it('tree-terminates both direct and BAT-launched servers on Windows', () => {
     expect(shouldTerminateProcessTree('win32', 'direct')).toBe(true);
     expect(shouldTerminateProcessTree('win32', 'launcher')).toBe(true);
@@ -259,6 +338,71 @@ describe('tracked-only fresh copy', () => {
         1234,
       ),
     ).toBeTruthy();
+  });
+
+  it('allows a nonzero taskkill only when the child is confirmed already exited', () => {
+    const racedExit = {
+      code: 128,
+      signal: null,
+      stdout: '',
+      stderr: 'ERROR: The process was not found.',
+    };
+
+    expect(() =>
+      assertSuccessfulProcessTreeTermination(racedExit, 1234, { processExited: false }),
+    ).toThrow(/process was not found/i);
+    expect(
+      assertSuccessfulProcessTreeTermination(racedExit, 1234, { processExited: true }),
+    ).toBe(racedExit);
+  });
+
+  it('checks bounded synchronous taskkill results used by READY failure paths', async () => {
+    const acceptance = await import('../../tools/run_browser_acceptance.mjs');
+    expect(acceptance.terminateWindowsProcessTreeSync).toBeTypeOf('function');
+    const deniedTaskkill = vi.fn(() => ({
+      status: 1,
+      signal: null,
+      stdout: '',
+      stderr: 'ERROR: Access denied',
+    }));
+
+    expect(() => acceptance.terminateWindowsProcessTreeSync(2468, deniedTaskkill)).toThrow(
+      /PID 2468.*Access denied/i,
+    );
+    expect(deniedTaskkill).toHaveBeenCalledWith(
+      'taskkill.exe',
+      ['/PID', '2468', '/T', '/F'],
+      expect.objectContaining({ encoding: 'utf8', timeout: 15_000, windowsHide: true }),
+    );
+  });
+
+  it('runs every outer cleanup and reports cleanup failure with the primary error', async () => {
+    const acceptance = await import('../../tools/run_browser_acceptance.mjs');
+    expect(acceptance.runCleanupActions).toBeTypeOf('function');
+    const finalCleanup = vi.fn(async () => {});
+    const primary = new Error('browser acceptance failed');
+
+    await expect(
+      acceptance.runCleanupActions(
+        [
+          {
+            label: 'source demo server',
+            action: async () => {
+              throw new Error('taskkill access denied');
+            },
+          },
+          { label: 'browser', action: finalCleanup },
+        ],
+        primary,
+      ),
+    ).rejects.toSatisfy(
+      (error) =>
+        error instanceof AggregateError &&
+        error.message.includes('cleanup') &&
+        error.errors.includes(primary) &&
+        error.errors.some((entry) => entry.message.includes('taskkill access denied')),
+    );
+    expect(finalCleanup).toHaveBeenCalledOnce();
   });
 
   it.each([
@@ -350,7 +494,17 @@ describe('acceptance evidence schema', () => {
     return {
       mode,
       expectedProvider: provider,
-      gpu: { apiAvailable: true, adapterAvailable: provider === 'WebGPU', adapterInfo: null },
+      gpu: {
+        apiAvailable: mode !== 'fallback',
+        adapterAvailable: provider === 'WebGPU',
+        adapterInfo: null,
+      },
+      webGpuDisabledByHarness: mode === 'fallback',
+      fallbackNote:
+        mode === 'fallback'
+          ? 'Compatibility note: WebGPU adapter unavailable. The same FP32 model is running with WASM.'
+          : null,
+      fallbackNoteVisible: mode === 'fallback',
       crossOriginIsolated: true,
       images,
       maxAbsoluteError: 0,
@@ -396,6 +550,7 @@ describe('acceptance evidence schema', () => {
         serverUrl: `${sourceOrigin}/`,
         providers: {
           normal: providerEvidence('normal', 'WebGPU', sourceOrigin),
+          fallback: providerEvidence('fallback', 'WASM', sourceOrigin),
           wasm: providerEvidence('wasm', 'WASM', sourceOrigin),
         },
         terminationUnreachable: true,
@@ -406,6 +561,7 @@ describe('acceptance evidence schema', () => {
       },
       freshCopy: {
         directoryName: 'LingShu 评委 本地复现',
+        sourceCommit: 'a'.repeat(40),
         trackedFileCount: 100,
         excluded: ['.git', 'node_modules', '.venv', 'web_models'],
         npmInstallRun: false,
@@ -413,6 +569,7 @@ describe('acceptance evidence schema', () => {
         serverUrl: `${freshOrigin}/`,
         providers: {
           normal: providerEvidence('normal', 'WebGPU', freshOrigin),
+          fallback: providerEvidence('fallback', 'WASM', freshOrigin),
           wasm: providerEvidence('wasm', 'WASM', freshOrigin),
         },
         terminationUnreachable: true,
@@ -422,6 +579,48 @@ describe('acceptance evidence schema', () => {
 
   it('accepts a complete source and Unicode fresh-copy report', () => {
     expect(validateAcceptanceReport(report())).toBeTruthy();
+  });
+
+  it('requires automatic no-WebGPU fallback evidence for both repository copies', () => {
+    const missingSourceFallback = report();
+    delete missingSourceFallback.source.providers.fallback;
+    expect(() => validateAcceptanceReport(missingSourceFallback)).toThrow(/fallback/i);
+
+    const missingFreshFallback = report();
+    delete missingFreshFallback.freshCopy.providers.fallback;
+    expect(() => validateAcceptanceReport(missingFreshFallback)).toThrow(/fallback/i);
+
+    const extraProvider = report();
+    extraProvider.source.providers.legacy = providerEvidence(
+      'wasm',
+      'WASM',
+      'http://127.0.0.1:8766',
+    );
+    expect(() => validateAcceptanceReport(extraProvider)).toThrow(/provider set|providers/i);
+  });
+
+  it('requires fallback to run WASM and expose the visible compatibility note', () => {
+    const wrongProvider = report();
+    wrongProvider.source.providers.fallback.expectedProvider = 'WebGPU';
+    expect(() => validateAcceptanceReport(wrongProvider)).toThrow(/fallback|WASM/i);
+
+    const hiddenNote = report();
+    hiddenNote.freshCopy.providers.fallback.fallbackNote = null;
+    expect(() => validateAcceptanceReport(hiddenNote)).toThrow(/fallback|compatibility note/i);
+
+    const falselyHiddenNote = report();
+    falselyHiddenNote.source.providers.fallback.fallbackNoteVisible = false;
+    expect(() => validateAcceptanceReport(falselyHiddenNote)).toThrow(/fallback|visible/i);
+  });
+
+  it('binds the Unicode fresh copy to the exact tested commit', () => {
+    const missingCommit = report();
+    delete missingCommit.freshCopy.sourceCommit;
+    expect(() => validateAcceptanceReport(missingCommit)).toThrow(/fresh.*commit|sourceCommit/i);
+
+    const differentCommit = report();
+    differentCommit.freshCopy.sourceCommit = 'b'.repeat(40);
+    expect(() => validateAcceptanceReport(differentCommit)).toThrow(/fresh.*commit|sourceCommit/i);
   });
 
   it.each([

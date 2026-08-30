@@ -331,9 +331,24 @@ function validateGpuEvidence(value, label) {
 
 export function validateProviderEvidence(value, allowedOrigin) {
   invariant(isRecord(value), 'provider evidence must be an object');
-  invariant(value.mode === 'normal' || value.mode === 'wasm', 'provider evidence mode is invalid');
+  invariant(
+    value.mode === 'normal' || value.mode === 'fallback' || value.mode === 'wasm',
+    'provider evidence mode is invalid',
+  );
   invariant(value.expectedProvider === 'WebGPU' || value.expectedProvider === 'WASM', 'expected provider is invalid');
   validateGpuEvidence(value.gpu, `${value.mode} GPU evidence`);
+  invariant(
+    value.webGpuDisabledByHarness === (value.mode === 'fallback'),
+    `${value.mode}.webGpuDisabledByHarness is inconsistent`,
+  );
+  invariant(
+    value.fallbackNote === null || typeof value.fallbackNote === 'string',
+    `${value.mode}.fallbackNote must be null or a string`,
+  );
+  invariant(
+    typeof value.fallbackNoteVisible === 'boolean',
+    `${value.mode}.fallbackNoteVisible must be boolean`,
+  );
   invariant(value.crossOriginIsolated === true, `${value.mode} must record cross-origin isolation`);
   invariant(Array.isArray(value.images) && value.images.length === 15, `${value.mode} must contain 15 image results`);
 
@@ -403,14 +418,45 @@ export function validateProviderEvidence(value, allowedOrigin) {
     value.mode !== 'normal' || value.expectedProvider === (value.gpu.adapterAvailable ? 'WebGPU' : 'WASM'),
     'normal evidence provider disagrees with adapter availability',
   );
+  if (value.mode === 'fallback') {
+    invariant(value.expectedProvider === 'WASM', 'automatic fallback evidence must record the WASM provider');
+    invariant(
+      value.gpu.apiAvailable === false && value.gpu.adapterAvailable === false,
+      'automatic fallback must make WebGPU unavailable before the app starts',
+    );
+    nonEmptyString(value.fallbackNote, 'automatic fallback compatibility note');
+    invariant(
+      value.fallbackNote.startsWith('Compatibility note:') &&
+        value.fallbackNote.includes('same FP32 model is running with WASM'),
+      'automatic fallback must expose the visible compatibility note',
+    );
+  } else if (value.mode === 'wasm' || value.expectedProvider === 'WebGPU') {
+    invariant(value.fallbackNote === null, `${value.mode} must not record an automatic fallback note`);
+  } else {
+    nonEmptyString(value.fallbackNote, 'normal automatic-fallback compatibility note');
+  }
+  const shouldShowFallbackNote =
+    value.mode === 'fallback' ||
+    (value.mode === 'normal' && value.expectedProvider === 'WASM');
+  invariant(
+    value.fallbackNoteVisible === shouldShowFallbackNote,
+    `${value.mode} fallback-note visibility is inconsistent`,
+  );
   return value;
 }
 
 function validateProviderSet(value, allowedOrigin, label) {
   invariant(isRecord(value), `${label} providers must be an object`);
+  invariant(
+    JSON.stringify(Object.keys(value).sort()) ===
+      JSON.stringify(['fallback', 'normal', 'wasm']),
+    `${label} provider set must contain exactly normal, fallback, and wasm`,
+  );
   invariant(value.normal?.mode === 'normal', `${label} normal provider evidence is missing`);
+  invariant(value.fallback?.mode === 'fallback', `${label} automatic fallback evidence is missing`);
   invariant(value.wasm?.mode === 'wasm', `${label} forced-WASM evidence is missing`);
   validateProviderEvidence(value.normal, allowedOrigin);
+  validateProviderEvidence(value.fallback, allowedOrigin);
   validateProviderEvidence(value.wasm, allowedOrigin);
 }
 
@@ -467,6 +513,10 @@ export function validateAcceptanceReport(value) {
 
   invariant(isRecord(value.freshCopy), 'acceptance report freshCopy must be an object');
   invariant(value.freshCopy.directoryName === FRESH_COPY_NAME, 'fresh-copy directory name is invalid');
+  invariant(
+    value.freshCopy.sourceCommit === value.commit,
+    'fresh-copy sourceCommit must equal the exact tested commit',
+  );
   invariant(Number.isInteger(value.freshCopy.trackedFileCount) && value.freshCopy.trackedFileCount > 0, 'fresh-copy tracked file count is invalid');
   invariant(
     JSON.stringify(value.freshCopy.excluded) === JSON.stringify(['.git', 'node_modules', '.venv', 'web_models']),
@@ -556,18 +606,76 @@ export function shouldTerminateProcessTree(platform, mode) {
   return platform === 'win32' || mode === 'launcher';
 }
 
-export function assertSuccessfulProcessTreeTermination(result, processId) {
+export function assertSuccessfulProcessTreeTermination(
+  result,
+  processId,
+  { processExited = false } = {},
+) {
   invariant(isRecord(result), 'taskkill result must be an object');
+  invariant(typeof processExited === 'boolean', 'processExited must be boolean');
   const diagnostic = `${result.stdout ?? ''}${result.stderr ?? ''}`
     .replace(/\s+/g, ' ')
     .trim();
   invariant(
-    result.code === 0,
+    result.code === 0 || processExited,
     `Could not terminate demo process tree at PID ${String(processId)}${
       diagnostic === '' ? '' : `: ${diagnostic}`
     }`,
   );
   return result;
+}
+
+export function terminateWindowsProcessTreeSync(
+  processId,
+  spawnSyncImplementation = spawnSync,
+) {
+  invariant(Number.isInteger(processId) && processId > 0, 'Windows process-tree PID is invalid');
+  const result = spawnSyncImplementation(
+    'taskkill.exe',
+    ['/PID', String(processId), '/T', '/F'],
+    {
+      encoding: 'utf8',
+      maxBuffer: PROCESS_OUTPUT_LIMIT,
+      timeout: 15_000,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
+  return assertSuccessfulProcessTreeTermination(
+    {
+      code: result.status,
+      signal: result.signal,
+      stdout: result.stdout ?? '',
+      stderr: `${result.stderr ?? ''}${result.error === undefined ? '' : ` ${result.error.message}`}`,
+    },
+    processId,
+  );
+}
+
+export async function runCleanupActions(actions, primaryError) {
+  invariant(Array.isArray(actions), 'cleanup actions must be an array');
+  const cleanupErrors = [];
+  for (const [index, entry] of actions.entries()) {
+    invariant(isRecord(entry), `cleanup actions[${index}] must be an object`);
+    const label = nonEmptyString(entry.label, `cleanup actions[${index}].label`);
+    invariant(typeof entry.action === 'function', `cleanup action ${label} must be a function`);
+    try {
+      await entry.action();
+    } catch (error) {
+      const diagnostic = error instanceof Error ? error.message : String(error);
+      cleanupErrors.push(new Error(`${label} cleanup failed: ${diagnostic}`, { cause: error }));
+    }
+  }
+  if (primaryError !== undefined && cleanupErrors.length > 0) {
+    throw new AggregateError(
+      [primaryError, ...cleanupErrors],
+      'Browser acceptance failed and one or more cleanup actions also failed',
+    );
+  }
+  if (cleanupErrors.length > 0) {
+    throw new AggregateError(cleanupErrors, 'One or more browser acceptance cleanup actions failed');
+  }
+  if (primaryError !== undefined) throw primaryError;
 }
 
 function delay(milliseconds) {
@@ -630,16 +738,23 @@ async function runCaptured(command, arguments_, options = {}) {
     running.exit,
     new Promise((_, rejectTimeout) => {
       timeout = setTimeout(() => {
+        const timeoutError = new Error(`Process timed out after ${timeoutMs} ms: ${command}`);
         if (
           options.killTreeOnTimeout === true &&
           process.platform === 'win32' &&
           running.child.pid !== undefined
         ) {
-          spawnSync(
-            'taskkill.exe',
-            ['/PID', String(running.child.pid), '/T', '/F'],
-            { windowsHide: true, stdio: 'ignore' },
-          );
+          try {
+            terminateWindowsProcessTreeSync(running.child.pid);
+          } catch (cleanupError) {
+            rejectTimeout(
+              new AggregateError(
+                [timeoutError, cleanupError],
+                `Process timeout cleanup failed for PID ${String(running.child.pid)}`,
+              ),
+            );
+            return;
+          }
         } else if (
           options.killTreeOnTimeout === true &&
           options.detached === true &&
@@ -654,7 +769,7 @@ async function runCaptured(command, arguments_, options = {}) {
         } else {
           running.child.kill();
         }
-        rejectTimeout(new Error(`Process timed out after ${timeoutMs} ms: ${command}`));
+        rejectTimeout(timeoutError);
       }, timeoutMs);
     }),
   ]).finally(() => clearTimeout(timeout));
@@ -810,22 +925,27 @@ async function startDemoServer(repositoryRoot, python, mode) {
           readyResolve(ready);
         }
       } catch (error) {
+        const readyWasAlreadySettled = settled;
         protocolError = error;
         if (!settled) {
           settled = true;
           readyReject(error);
         }
         if (
+          readyWasAlreadySettled &&
           shouldTerminateProcessTree(process.platform, mode) &&
           process.platform === 'win32' &&
           running.child.pid !== undefined
         ) {
-          spawnSync(
-            'taskkill.exe',
-            ['/PID', String(running.child.pid), '/T', '/F'],
-            { windowsHide: true, stdio: 'ignore' },
-          );
-        } else {
+          try {
+            terminateWindowsProcessTreeSync(running.child.pid);
+          } catch (cleanupError) {
+            protocolError = new AggregateError(
+              [error, cleanupError],
+              `Late READY protocol failure cleanup failed for PID ${String(running.child.pid)}`,
+            );
+          }
+        } else if (readyWasAlreadySettled) {
           running.child.kill();
         }
       }
@@ -873,28 +993,13 @@ async function startDemoServer(repositoryRoot, python, mode) {
       },
     };
   } catch (error) {
-    if (
-      shouldTerminateProcessTree(process.platform, mode) &&
-      process.platform === 'win32' &&
-      running.child.pid !== undefined
-    ) {
-      spawnSync(
-        'taskkill.exe',
-        ['/PID', String(running.child.pid), '/T', '/F'],
-        { windowsHide: true, stdio: 'ignore' },
+    try {
+      await terminateDemoServer({ ...running, mode });
+    } catch (cleanupError) {
+      throw new AggregateError(
+        [error, cleanupError],
+        `Demo server READY failed and process cleanup also failed (mode=${mode})`,
       );
-    } else if (
-      shouldTerminateProcessTree(process.platform, mode) &&
-      process.platform !== 'win32' &&
-      running.child.pid !== undefined
-    ) {
-      try {
-        process.kill(-running.child.pid, 'SIGKILL');
-      } catch {
-        running.child.kill('SIGKILL');
-      }
-    } else {
-      running.child.kill();
     }
     throw error;
   } finally {
@@ -916,6 +1021,16 @@ async function waitForProcessExit(running, timeoutMs) {
   }
 }
 
+async function confirmProcessExited(running, graceMs = 250) {
+  if (running.child.exitCode !== null || running.child.signalCode !== null) return true;
+  try {
+    await waitForProcessExit(running, graceMs);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function terminateDemoServer(running) {
   if (running.child.exitCode !== null || running.child.signalCode !== null) {
     return running.exit;
@@ -928,9 +1043,9 @@ async function terminateDemoServer(running) {
     const termination = await runCaptured('taskkill.exe', ['/PID', String(running.child.pid), '/T', '/F'], {
       timeoutMs: 15_000,
     });
-    if (running.child.exitCode === null && running.child.signalCode === null) {
-      assertSuccessfulProcessTreeTermination(termination, running.child.pid);
-    }
+    assertSuccessfulProcessTreeTermination(termination, running.child.pid, {
+      processExited: await confirmProcessExited(running),
+    });
   } else if (
     shouldTerminateProcessTree(process.platform, running.mode) &&
     running.child.pid !== undefined
@@ -951,9 +1066,9 @@ async function terminateDemoServer(running) {
       const termination = await runCaptured('taskkill.exe', ['/PID', String(running.child.pid), '/T', '/F'], {
         timeoutMs: 15_000,
       });
-      if (running.child.exitCode === null && running.child.signalCode === null) {
-        assertSuccessfulProcessTreeTermination(termination, running.child.pid);
-      }
+      assertSuccessfulProcessTreeTermination(termination, running.child.pid, {
+        processExited: await confirmProcessExited(running),
+      });
     } else {
       running.child.kill('SIGKILL');
     }
@@ -1137,6 +1252,40 @@ export async function installNetworkBoundary(context, allowedOrigin, audit) {
   });
 }
 
+export async function closeAndSnapshotNetworkAudit(
+  context,
+  audit,
+  allowedOrigin,
+  resourceUrls,
+) {
+  invariant(Array.isArray(resourceUrls), 'resource URL evidence must be an array');
+  await context.close();
+  for (const resourceUrl of resourceUrls) {
+    const inspection = inspectRequestUrl(resourceUrl, allowedOrigin);
+    if (inspection.kind === 'blocked-network') audit.violations.push(resourceUrl);
+  }
+  invariant(
+    audit.violations.length === 0,
+    `Remote or wrong-origin requests observed: ${audit.violations.join(', ')}`,
+  );
+  invariant(
+    audit.pageErrors.length === 0,
+    `Browser page errors observed: ${audit.pageErrors.join('; ')}`,
+  );
+  invariant(
+    audit.origins.size === 1 && audit.origins.has(allowedOrigin),
+    'Request origin audit must contain only the selected server',
+  );
+  return {
+    requestOrigins: [...audit.origins].sort(),
+    webSocketOrigins: [...audit.webSocketOrigins].sort(),
+    requestPaths: Object.fromEntries(
+      [...audit.paths.entries()].sort(([left], [right]) => left.localeCompare(right)),
+    ),
+    consoleMessages: [...audit.consoleMessages],
+  };
+}
+
 async function currentPhase(page) {
   const locator = page.locator('[aria-live="polite"]');
   if ((await locator.count()) === 0) return '';
@@ -1296,6 +1445,18 @@ async function runProviderSuite({
   const context = await browser.newContext({ serviceWorkers: 'block' });
   const audit = networkAudit();
   await installNetworkBoundary(context, server.ready.origin, audit);
+  if (providerMode === 'fallback') {
+    await context.addInitScript(() => {
+      const descriptor = { configurable: true, get: () => undefined };
+      for (const target of [Object.getPrototypeOf(navigator), navigator]) {
+        try {
+          Object.defineProperty(target, 'gpu', descriptor);
+        } catch {
+          // The post-load capability probe below is the authoritative gate.
+        }
+      }
+    });
+  }
   const page = await context.newPage();
   page.on('pageerror', (error) => audit.pageErrors.push(error.message));
   page.on('console', (message) => {
@@ -1307,6 +1468,9 @@ async function runProviderSuite({
   const pageUrl = new URL(server.ready.href);
   if (providerMode === 'wasm') pageUrl.searchParams.set('provider', 'wasm');
   const results = [];
+  let resourceUrls = [];
+  let suiteCore;
+  let operationError;
   try {
     progress(`${providerMode}: opening ${pageUrl.href}`);
     const response = await page.goto(pageUrl.href, { waitUntil: 'domcontentloaded', timeout: 30_000 });
@@ -1315,11 +1479,36 @@ async function runProviderSuite({
     progress(`${providerMode}: model ready`);
     invariant(await page.evaluate(() => window.crossOriginIsolated), 'Built demo must be cross-origin isolated');
     const gpu = await probeWebGpu(page);
-    const expectedProvider = providerMode === 'wasm'
+    if (providerMode === 'fallback') {
+      invariant(
+        gpu.apiAvailable === false && gpu.adapterAvailable === false,
+        'Acceptance harness could not make WebGPU unavailable before the app script',
+      );
+    }
+    const expectedProvider = providerMode === 'wasm' || providerMode === 'fallback'
       ? 'WASM'
       : gpu.adapterAvailable
         ? 'WebGPU'
         : 'WASM';
+    const fallbackNoteLocator = page.locator('.fallback-note');
+    if (
+      providerMode === 'fallback' ||
+      (providerMode === 'normal' && expectedProvider === 'WASM')
+    ) {
+      await fallbackNoteLocator.first().waitFor({ state: 'visible' });
+    }
+    const fallbackNote = (await fallbackNoteLocator.count()) === 0
+      ? null
+      : (await fallbackNoteLocator.first().textContent())?.replace(/\s+/g, ' ').trim() ?? null;
+    const fallbackNoteVisible =
+      fallbackNote !== null && (await fallbackNoteLocator.first().isVisible());
+    if (providerMode === 'fallback') {
+      invariant(
+        fallbackNote?.startsWith('Compatibility note:') === true &&
+          fallbackNote.includes('same FP32 model is running with WASM'),
+        'Automatic WebGPU fallback did not expose its nonblocking compatibility note',
+      );
+    }
     const input = page.locator('input[type="file"]');
     invariant(await input.count() === 1, 'Demo must expose exactly one file input');
 
@@ -1365,33 +1554,46 @@ async function runProviderSuite({
       await runInvalidAndOversizedChecks(page);
     }
 
-    const resourceUrls = await page.evaluate(() =>
+    resourceUrls = await page.evaluate(() =>
       performance.getEntriesByType('resource').map((entry) => entry.name),
     );
-    for (const resourceUrl of resourceUrls) {
-      const inspection = inspectRequestUrl(resourceUrl, server.ready.origin);
-      if (inspection.kind === 'blocked-network') audit.violations.push(resourceUrl);
-    }
-    invariant(audit.violations.length === 0, `Remote or wrong-origin requests observed: ${audit.violations.join(', ')}`);
-    invariant(audit.pageErrors.length === 0, `Browser page errors observed: ${audit.pageErrors.join('; ')}`);
-    invariant(audit.origins.size === 1 && audit.origins.has(server.ready.origin), 'Request origin audit must contain only the selected server');
-    return {
+    suiteCore = {
       mode: providerMode,
       expectedProvider,
       gpu,
+      webGpuDisabledByHarness: providerMode === 'fallback',
+      fallbackNote,
+      fallbackNoteVisible,
       crossOriginIsolated: true,
       images: results,
       maxAbsoluteError: Math.max(...results.map(({ absoluteError }) => absoluteError)),
       thresholdFlips: results.filter(({ thresholdFlip }) => thresholdFlip).length,
-      requestOrigins: [...audit.origins].sort(),
-      webSocketOrigins: [...audit.webSocketOrigins].sort(),
-      requestPaths: Object.fromEntries([...audit.paths.entries()].sort(([left], [right]) => left.localeCompare(right))),
-      consoleMessages: audit.consoleMessages,
       workflowChecks,
     };
-  } finally {
-    await context.close();
+  } catch (error) {
+    operationError = error;
   }
+
+  let networkEvidence;
+  try {
+    networkEvidence = await closeAndSnapshotNetworkAudit(
+      context,
+      audit,
+      server.ready.origin,
+      resourceUrls,
+    );
+  } catch (auditError) {
+    if (operationError !== undefined) {
+      throw new AggregateError(
+        [operationError, auditError],
+        `${providerMode} browser workflow and post-close network audit both failed`,
+      );
+    }
+    throw auditError;
+  }
+  if (operationError !== undefined) throw operationError;
+  invariant(suiteCore !== undefined, `${providerMode} provider suite produced no evidence`);
+  return { ...suiteCore, ...networkEvidence };
 }
 
 async function runBothProviders(browser, server, targetRepositoryRoot, parity, demoPredictions) {
@@ -1404,6 +1606,15 @@ async function runBothProviders(browser, server, targetRepositoryRoot, parity, d
     providerMode: 'normal',
     workflowChecks: false,
   });
+  const fallback = await runProviderSuite({
+    browser,
+    server,
+    targetRepositoryRoot,
+    parity,
+    demoPredictions,
+    providerMode: 'fallback',
+    workflowChecks: false,
+  });
   const wasm = await runProviderSuite({
     browser,
     server,
@@ -1413,14 +1624,18 @@ async function runBothProviders(browser, server, targetRepositoryRoot, parity, d
     providerMode: 'wasm',
     workflowChecks: true,
   });
-  invariant(normal.images.length === 15 && wasm.images.length === 15, 'Each provider must process all 15 images');
+  invariant(
+    normal.images.length === 15 && fallback.images.length === 15 && wasm.images.length === 15,
+    'Each provider scenario must process all 15 images',
+  );
+  invariant(fallback.expectedProvider === 'WASM', 'Automatic no-WebGPU scenario did not fall back to WASM');
   invariant(wasm.expectedProvider === 'WASM', 'Forced WASM mode did not require WASM');
   const nearThreshold = 'web_demo/tests/fixtures/near-threshold-synthetic.png';
-  for (const suite of [normal, wasm]) {
+  for (const suite of [normal, fallback, wasm]) {
     const row = suite.images.find(({ source }) => source === nearThreshold);
     invariant(row !== undefined && !row.thresholdFlip, `${suite.mode}: near-threshold fixture changed decision`);
   }
-  return { normal, wasm };
+  return { normal, fallback, wasm };
 }
 
 async function copyRuntimeSkeleton(repositoryRoot, label) {
@@ -1512,7 +1727,11 @@ async function gitTrackedFiles(repositoryRoot) {
   return parseTrackedFiles(result.stdout).filter((relativePath) => !shouldExcludeTrackedPath(relativePath));
 }
 
-async function createTrackedFreshCopy(repositoryRoot) {
+async function createTrackedFreshCopy(repositoryRoot, sourceCommit) {
+  invariant(
+    typeof sourceCommit === 'string' && /^[0-9a-f]{40}$/.test(sourceCommit),
+    'fresh-copy source commit must be a full Git SHA-1',
+  );
   const base = await mkdtemp(path.join(os.tmpdir(), 'lingshu-fresh-copy-'));
   const copyRoot = path.join(base, FRESH_COPY_NAME);
   await mkdir(copyRoot);
@@ -1549,7 +1768,13 @@ async function createTrackedFreshCopy(repositoryRoot) {
     ]) {
       invariant((await stat(containedPath(copyRoot, required, required))).isFile(), `Fresh copy is missing ${required}`);
     }
-    return { base, root: copyRoot, fileCount: files.length, validated: false };
+    return {
+      base,
+      root: copyRoot,
+      fileCount: files.length,
+      sourceCommit,
+      validated: false,
+    };
   } catch (error) {
     await rm(base, { recursive: true, force: true });
     throw error;
@@ -1589,15 +1814,44 @@ async function runBatchCheck(repositoryRoot) {
   return { exitCode: result.code, output: output.replace(/\s+/g, ' ').trim() };
 }
 
-async function gitHead(repositoryRoot) {
-  const result = spawnSync('git', ['rev-parse', 'HEAD'], {
+function captureTrackedGitState(repositoryRoot) {
+  const head = spawnSync('git', ['rev-parse', 'HEAD'], {
     cwd: repositoryRoot,
     encoding: 'utf8',
     windowsHide: true,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  invariant(result.status === 0, `git rev-parse HEAD failed: ${result.stderr}`);
-  return result.stdout.trim();
+  invariant(head.status === 0, `git rev-parse HEAD failed: ${head.stderr}`);
+  const status = spawnSync(
+    'git',
+    ['status', '--porcelain=v1', '--untracked-files=no'],
+    {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+      windowsHide: true,
+      maxBuffer: PROCESS_OUTPUT_LIMIT,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
+  invariant(status.status === 0, `git tracked-state inspection failed: ${status.stderr}`);
+  return { head: head.stdout.trim(), porcelain: status.stdout };
+}
+
+export function assertSameCleanTrackedGitState(initial, current) {
+  invariant(isRecord(initial), 'initial Git state must be an object');
+  invariant(isRecord(current), 'current Git state must be an object');
+  invariant(
+    typeof initial.head === 'string' && /^[0-9a-f]{40}$/.test(initial.head),
+    'initial Git HEAD must be a full SHA-1',
+  );
+  invariant(
+    typeof current.head === 'string' && /^[0-9a-f]{40}$/.test(current.head),
+    'current Git HEAD must be a full SHA-1',
+  );
+  invariant(initial.porcelain === '', 'Tracked index/worktree must be clean at acceptance start');
+  invariant(current.porcelain === '', 'Tracked index/worktree must remain clean before the report');
+  invariant(current.head === initial.head, 'Git HEAD changed during browser acceptance');
+  return initial.head;
 }
 
 async function writeAtomicJson(destination, value) {
@@ -1610,6 +1864,9 @@ async function writeAtomicJson(destination, value) {
 async function main() {
   const repositoryRoot = DEFAULT_REPOSITORY_ROOT;
   progress(`repository ${repositoryRoot}`);
+  const initialGitState = captureTrackedGitState(repositoryRoot);
+  const testedCommit = assertSameCleanTrackedGitState(initialGitState, initialGitState);
+  progress(`testing clean commit ${testedCommit}`);
   const python = await discoverPython(repositoryRoot);
   const edgeExecutable = await discoverEdge();
   progress(`Python ${python.version}; Edge ${edgeExecutable}`);
@@ -1636,6 +1893,8 @@ async function main() {
   let freshServer;
   let sourceReady;
   let freshReady;
+  let validatedReport;
+  let executionError;
   try {
     holder = await occupyDefaultPort();
     sourceServer = await startDemoServer(repositoryRoot, python, 'direct');
@@ -1661,7 +1920,7 @@ async function main() {
     progress('source server terminated; running disposable artifact-failure checks');
     const artifactFailures = await runArtifactFailureChecks(repositoryRoot, python);
 
-    fresh = await createTrackedFreshCopy(repositoryRoot);
+    fresh = await createTrackedFreshCopy(repositoryRoot, testedCommit);
     progress(`fresh tracked copy created at ${fresh.root}`);
     const batchCheck = await runBatchCheck(fresh.root);
     progress('fresh-copy BAT --check passed');
@@ -1687,7 +1946,7 @@ async function main() {
       schemaVersion: 1,
       passed: true,
       generatedAt: new Date().toISOString(),
-      commit: await gitHead(repositoryRoot),
+      commit: testedCommit,
       platform: { platform: process.platform, release: os.release(), arch: os.arch() },
       runtime: {
         node: process.version,
@@ -1712,6 +1971,7 @@ async function main() {
       artifactFailures,
       freshCopy: {
         directoryName: FRESH_COPY_NAME,
+        sourceCommit: fresh.sourceCommit,
         trackedFileCount: fresh.fileCount,
         excluded: ['.git', 'node_modules', '.venv', 'web_models'],
         npmInstallRun: false,
@@ -1721,37 +1981,50 @@ async function main() {
         terminationUnreachable: true,
       },
     };
-    const validatedReport = validateAcceptanceReport(report);
-    await writeAtomicJson(
-      path.join(
-        repositoryRoot,
-        'web_demo',
-        '.generated-tests',
-        'browser-acceptance',
-        'latest.json',
-      ),
-      validatedReport,
-    );
+    validatedReport = validateAcceptanceReport(report);
     fresh.validated = true;
     await deleteValidatedFreshCopy(fresh);
     fresh = undefined;
-    progress('acceptance passed and validated disposable copy was removed');
-    process.stdout.write(`${JSON.stringify(validatedReport, null, 2)}\n`);
   } catch (error) {
+    executionError = error;
     if (fresh !== undefined) {
       process.stderr.write(`Fresh copy preserved for diagnosis: ${fresh.root}\n`);
     }
-    throw error;
-  } finally {
-    await closeServer(holder?.server ?? null).catch(() => {});
-    if (sourceServer !== undefined) {
-      await terminateDemoServer(sourceServer).catch(() => {});
-    }
-    if (freshServer !== undefined) {
-      await terminateDemoServer(freshServer).catch(() => {});
-    }
-    await browser.close();
   }
+  await runCleanupActions(
+    [
+      {
+        label: 'occupied port holder',
+        action: () => closeServer(holder?.server ?? null),
+      },
+      {
+        label: 'source demo server',
+        action: () =>
+          sourceServer === undefined ? Promise.resolve() : terminateDemoServer(sourceServer),
+      },
+      {
+        label: 'fresh-copy demo server',
+        action: () =>
+          freshServer === undefined ? Promise.resolve() : terminateDemoServer(freshServer),
+      },
+      { label: 'Microsoft Edge browser', action: () => browser.close() },
+    ],
+    executionError,
+  );
+  invariant(validatedReport !== undefined, 'Acceptance completed without validated report evidence');
+  assertSameCleanTrackedGitState(initialGitState, captureTrackedGitState(repositoryRoot));
+  await writeAtomicJson(
+    path.join(
+      repositoryRoot,
+      'web_demo',
+      '.generated-tests',
+      'browser-acceptance',
+      'latest.json',
+    ),
+    validatedReport,
+  );
+  progress('acceptance passed and validated disposable copy was removed');
+  process.stdout.write(`${JSON.stringify(validatedReport, null, 2)}\n`);
 }
 
 const invokedPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : '';
