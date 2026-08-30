@@ -58,7 +58,7 @@ it('builds the online artifact without copying the ONNX model', async () => {
   ) as { scripts?: Record<string, string> };
 
   expect(packageJson.scripts?.['build:online']).toBe(
-    'node tools/normalize_build_inputs.mjs && vite build --mode online && node tools/prepare_online_dist.mjs && node tools/copy_ort_runtime.mjs dist-online && node tools/write_dist_integrity.mjs dist-online && node tools/verify_online_dist.mjs',
+    'node tools/preflight_online_build.mjs && node tools/normalize_build_inputs.mjs && vite build --mode online && node tools/prepare_online_dist.mjs && node tools/copy_ort_runtime.mjs dist-online && node tools/write_dist_integrity.mjs dist-online && node tools/verify_online_dist.mjs',
   );
 });
 ```
@@ -82,11 +82,11 @@ Run:
 
 ```powershell
 Set-Location web_demo
-npm.cmd test -- tests/unit/build-packaging.test.ts tests/unit/online-distribution.test.ts
+npm.cmd test -- tests/unit/build-packaging.test.ts tests/unit/online-build-preflight.test.ts tests/unit/online-distribution.test.ts
 ```
 
-Expected: FAIL because `buildOutputDirectory`, `prepareOnlineDist`, and the
-online script do not exist.
+Expected: FAIL because `buildOutputDirectory`, the online preflight,
+`prepareOnlineDist`, and the online script do not exist.
 
 - [ ] **Step 3: Implement isolated Vite output and online packaging**
 
@@ -126,6 +126,11 @@ async function runCli() {
 }
 ```
 
+Implement `preflight_online_build.mjs` before Vite. It accepts the optional
+online dist directory and, before Vite can empty the output, rejects a
+pre-existing symbolic link, Windows junction, or non-directory. A missing
+output directory remains valid because Vite creates it.
+
 Implement `prepare_online_dist.mjs` as a focused module that:
 
 1. resolves `dist-online/` and `models/manifest.json`;
@@ -164,7 +169,7 @@ dist-online/
 models/*.onnx
 .generated-tests/
 .runtime-cache/
-runtime/
+runtimes/
 start-demo.bat
 start-demo.command
 start-demo.sh
@@ -174,7 +179,7 @@ start-demo.sh
 
 ```powershell
 Set-Location web_demo
-npm.cmd test -- tests/unit/build-packaging.test.ts tests/unit/online-distribution.test.ts tests/unit/ort-runtime-copy.test.ts tests/unit/dist-integrity.test.ts
+npm.cmd test -- tests/unit/build-packaging.test.ts tests/unit/online-build-preflight.test.ts tests/unit/online-distribution.test.ts tests/unit/ort-runtime-copy.test.ts tests/unit/dist-integrity.test.ts
 npm.cmd run typecheck
 npm.cmd run build:online
 npm.cmd run verify:dist

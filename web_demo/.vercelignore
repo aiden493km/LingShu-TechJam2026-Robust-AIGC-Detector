@@ -3,7 +3,7 @@ dist-online/
 models/*.onnx
 .generated-tests/
 .runtime-cache/
-runtime/
+runtimes/
 start-demo.bat
 start-demo.command
 start-demo.sh

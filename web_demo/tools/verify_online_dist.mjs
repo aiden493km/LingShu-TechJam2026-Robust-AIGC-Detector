@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { lstat, readFile, readdir, realpath } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { lstat, open, readdir, realpath } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -11,11 +12,14 @@ import {
   ORT_RUNTIME_NAME,
   ORT_RUNTIME_SHA256,
 } from './copy_ort_runtime.mjs';
+import { validateFrozenModelManifest } from './prepare_online_dist.mjs';
 
 const FORBIDDEN_MODEL_FILE = /\.onnx(?:\.data)?$/i;
 const MODEL_MANIFEST_PATH = 'models/manifest.json';
 const INTEGRITY_PATH = 'integrity.json';
 const INDEX_PATH = 'index.html';
+const NO_FOLLOW =
+  typeof constants.O_NOFOLLOW === 'number' ? constants.O_NOFOLLOW : 0;
 
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
@@ -41,7 +45,7 @@ async function resolveOnlineDistDirectory(distDirectory) {
 async function inspectRegularFile(path, label) {
   let stats;
   try {
-    stats = await lstat(path);
+    stats = await lstat(path, { bigint: true });
   } catch (error) {
     throw new Error(`Could not inspect ${label}: ${errorMessage(error)}`);
   }
@@ -49,6 +53,17 @@ async function inspectRegularFile(path, label) {
     throw new Error(`${label} must be a regular non-symlink file`);
   }
   return stats;
+}
+
+function sameFileIdentity(left, right) {
+  return (
+    left.dev === right.dev &&
+    left.ino === right.ino &&
+    left.mode === right.mode &&
+    left.size === right.size &&
+    left.mtimeNs === right.mtimeNs &&
+    left.ctimeNs === right.ctimeNs
+  );
 }
 
 async function rejectForbiddenEntries(directory, relativePath = '') {
@@ -87,13 +102,43 @@ async function assertOnlyModelManifest(modelsDirectory) {
   }
 }
 
-async function digestFile(path, label) {
-  const stats = await inspectRegularFile(path, label);
-  const contents = await readFile(path);
-  const after = await inspectRegularFile(path, label);
-  if (stats.size !== after.size) {
-    throw new Error(`${label} changed while it was being read`);
+async function readVerifiedRegularFile(path, label, relativePath, testHooks) {
+  let handle;
+  let primaryError;
+  try {
+    const before = await inspectRegularFile(path, label);
+    handle = await open(path, constants.O_RDONLY | NO_FOLLOW);
+    const openedBefore = await handle.stat({ bigint: true });
+    if (!openedBefore.isFile() || !sameFileIdentity(before, openedBefore)) {
+      throw new Error(`${label} changed while it was being opened`);
+    }
+    await testHooks.afterFileOpen?.({ absolutePath: path, path: relativePath });
+    const contents = await handle.readFile();
+    const openedAfter = await handle.stat({ bigint: true });
+    const after = await inspectRegularFile(path, label);
+    if (
+      !sameFileIdentity(openedBefore, openedAfter) ||
+      !sameFileIdentity(openedAfter, after)
+    ) {
+      throw new Error(`${label} changed while it was being read`);
+    }
+    return contents;
+  } catch (error) {
+    primaryError = error;
+    throw error;
+  } finally {
+    try {
+      await handle?.close();
+    } catch (error) {
+      if (primaryError === undefined) {
+        throw new Error(`Could not close ${label}: ${errorMessage(error)}`);
+      }
+    }
   }
+}
+
+async function digestFile(path, label, relativePath, testHooks) {
+  const contents = await readVerifiedRegularFile(path, label, relativePath, testHooks);
   return {
     bytes: contents.byteLength,
     sha256: createHash('sha256').update(contents).digest('hex'),
@@ -137,7 +182,7 @@ export function defaultOnlineDistDirectory() {
 }
 
 /** Verify the deployable, model-free Vercel distribution. */
-export async function verifyOnlineDist(distDirectory = defaultOnlineDistDirectory()) {
+export async function verifyOnlineDist(distDirectory = defaultOnlineDistDirectory(), testHooks = {}) {
   const root = await resolveOnlineDistDirectory(distDirectory);
   await rejectForbiddenEntries(root);
   await assertOnlyModelManifest(join(root, 'models'));
@@ -149,10 +194,35 @@ export async function verifyOnlineDist(distDirectory = defaultOnlineDistDirector
   const wasmPath = join(root, 'assets', ORT_RUNTIME_NAME);
 
   await inspectRegularFile(integrityPath, INTEGRITY_PATH);
-  const integrityContents = await readFile(integrityPath);
-  const modelDigest = await digestFile(manifestPath, MODEL_MANIFEST_PATH);
-  const mjsDigest = await digestFile(mjsPath, `assets/${ORT_RUNTIME_MJS_NAME}`);
-  const wasmDigest = await digestFile(wasmPath, `assets/${ORT_RUNTIME_NAME}`);
+  const integrityContents = await readVerifiedRegularFile(
+    integrityPath,
+    INTEGRITY_PATH,
+    INTEGRITY_PATH,
+    testHooks,
+  );
+  const modelContents = await readVerifiedRegularFile(
+    manifestPath,
+    MODEL_MANIFEST_PATH,
+    MODEL_MANIFEST_PATH,
+    testHooks,
+  );
+  validateFrozenModelManifest(modelContents);
+  const modelDigest = {
+    bytes: modelContents.byteLength,
+    sha256: createHash('sha256').update(modelContents).digest('hex'),
+  };
+  const mjsDigest = await digestFile(
+    mjsPath,
+    `assets/${ORT_RUNTIME_MJS_NAME}`,
+    `assets/${ORT_RUNTIME_MJS_NAME}`,
+    testHooks,
+  );
+  const wasmDigest = await digestFile(
+    wasmPath,
+    `assets/${ORT_RUNTIME_NAME}`,
+    `assets/${ORT_RUNTIME_NAME}`,
+    testHooks,
+  );
   assertDigest(mjsDigest, { bytes: ORT_RUNTIME_MJS_BYTES, sha256: ORT_RUNTIME_MJS_SHA256 }, 'ORT runtime MJS');
   assertDigest(wasmDigest, { bytes: ORT_RUNTIME_BYTES, sha256: ORT_RUNTIME_SHA256 }, 'ORT runtime WASM');
 

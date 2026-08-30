@@ -50,7 +50,7 @@ describe('static runtime build configuration', () => {
     ) as { scripts?: Record<string, string> };
 
     expect(packageJson.scripts?.['build:online']).toBe(
-      'node tools/normalize_build_inputs.mjs && vite build --mode online && node tools/prepare_online_dist.mjs && node tools/copy_ort_runtime.mjs dist-online && node tools/write_dist_integrity.mjs dist-online && node tools/verify_online_dist.mjs',
+      'node tools/preflight_online_build.mjs && node tools/normalize_build_inputs.mjs && vite build --mode online && node tools/prepare_online_dist.mjs && node tools/copy_ort_runtime.mjs dist-online && node tools/write_dist_integrity.mjs dist-online && node tools/verify_online_dist.mjs',
     );
   });
 
@@ -109,7 +109,7 @@ describe('static runtime build configuration', () => {
 
   it('excludes local and model-bearing content from Vercel uploads', async () => {
     expect(await readFile(new URL('../../.vercelignore', import.meta.url), 'utf8')).toBe(
-      'dist/\ndist-online/\nmodels/*.onnx\n.generated-tests/\n.runtime-cache/\nruntime/\nstart-demo.bat\nstart-demo.command\nstart-demo.sh\n',
+      'dist/\ndist-online/\nmodels/*.onnx\n.generated-tests/\n.runtime-cache/\nruntimes/\nstart-demo.bat\nstart-demo.command\nstart-demo.sh\n',
     );
   });
 

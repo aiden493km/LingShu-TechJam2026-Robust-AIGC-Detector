@@ -78,7 +78,7 @@ function requireFrozenField(value, expected, label) {
   }
 }
 
-function validateFrozenManifest(bytes) {
+export function validateFrozenModelManifest(bytes) {
   let manifest;
   try {
     manifest = JSON.parse(bytes.toString('utf8'));
@@ -147,7 +147,7 @@ export async function prepareOnlineDist({
 
   await copyFile(sourceManifest, destinationManifest);
   await inspectRegularFile(destinationManifest, 'Copied model manifest');
-  validateFrozenManifest(await readFile(destinationManifest));
+  validateFrozenModelManifest(await readFile(destinationManifest));
   await rejectForbiddenOutputEntries(onlineDistDirectory);
 }
 

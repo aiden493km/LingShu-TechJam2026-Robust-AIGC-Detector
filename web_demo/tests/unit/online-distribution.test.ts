@@ -38,7 +38,12 @@ async function loadPrepareOnlineDist(): Promise<{
 }
 
 async function loadVerifyOnlineDist(): Promise<{
-  verifyOnlineDist: (distDirectory: string) => Promise<void>;
+  verifyOnlineDist: (
+    distDirectory: string,
+    testHooks?: {
+      afterFileOpen?: (file: { absolutePath: string; path: string }) => Promise<void>;
+    },
+  ) => Promise<void>;
 }> {
   return import(new URL('../../tools/verify_online_dist.mjs', import.meta.url).href);
 }
@@ -139,5 +144,40 @@ describe('online distribution packaging', () => {
 
     const { verifyOnlineDist } = await loadVerifyOnlineDist();
     await expect(verifyOnlineDist(distDirectory)).rejects.toThrow(/integrity\.json.*regular/i);
+  });
+
+  it('rejects a rewritten integrity manifest when its frozen model contract was tampered', async () => {
+    const root = await makeTemporaryDirectory();
+    const distDirectory = await createVerifiedOnlineDist(root);
+    await writeFile(
+      join(distDirectory, 'models', 'manifest.json'),
+      frozenManifest().replace('FP32', 'FP33'),
+    );
+    await buildIntegrityManifest(distDirectory);
+
+    const { verifyOnlineDist } = await loadVerifyOnlineDist();
+    await expect(verifyOnlineDist(distDirectory)).rejects.toThrow(/precision.*FP32/i);
+  });
+
+  it('rejects a same-size manifest rewrite after the file handle opens', async () => {
+    const root = await makeTemporaryDirectory();
+    const distDirectory = await createVerifiedOnlineDist(root);
+    const destination = join(distDirectory, 'models', 'manifest.json');
+    let replaced = false;
+
+    const { verifyOnlineDist } = await loadVerifyOnlineDist();
+    await expect(
+      verifyOnlineDist(distDirectory, {
+        afterFileOpen: async ({ absolutePath, path }) => {
+          if (path !== 'models/manifest.json' || replaced) {
+            return;
+          }
+          replaced = true;
+          await writeFile(absolutePath, frozenManifest().replace('FP32', 'FP33'));
+        },
+      }),
+    ).rejects.toThrow(/changed while it was being read/i);
+    expect(replaced).toBe(true);
+    expect(destination).toBe(join(distDirectory, 'models', 'manifest.json'));
   });
 });
