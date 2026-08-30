@@ -176,19 +176,25 @@ exit "$status"
         ):
             self.assertIn(tool, content)
 
-    def test_macos_bootstrap_owns_and_recovers_stale_locks(self):
+    def test_macos_bootstrap_uses_kernel_lock_file_descriptor(self):
         bootstrap = self.REPOSITORY_ROOT / "web_demo" / "tools" / "bootstrap_macos.sh"
         content = bootstrap.read_text(encoding="utf-8")
 
         for fragment in (
-            'lock_owner_file="$lock_path/.owner"',
-            'lock_owned_by_this_process',
-            '/bin/date +%s',
-            '/bin/kill -0 "$owner_pid"',
-            '.stale-',
-            '/bin/mv "$lock_path" "$stale_quarantine"',
+            'exec 9>>"$lock_path"',
+            '/usr/bin/lockf -s -t 8 9',
+            'exec 9>&-',
         ):
             self.assertIn(fragment, content)
+        for forbidden in (
+            ".owner",
+            ".stale-",
+            "owner_pid",
+            "lock_token",
+            '/bin/kill -0',
+            '/bin/mv "$lock_path"',
+        ):
+            self.assertNotIn(forbidden, content)
 
     def test_posix_launcher_only_adds_exact_darwin_preamble(self):
         launcher = self.REPOSITORY_ROOT / "web_demo" / "start-demo.sh"

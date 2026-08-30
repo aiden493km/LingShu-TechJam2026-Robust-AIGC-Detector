@@ -427,13 +427,12 @@ class MacOSLauncherTests(unittest.TestCase):
             check=False,
         )
 
-    def _create_runtime_lock(self, *, owner_pid: int, created: int, token: str):
+    def _create_runtime_lock_file(self) -> Path:
         cache_root = self.web_demo / ".runtime-cache"
         lock_path = cache_root / "macos-arm64-8b0f1fa71eab.lock"
-        lock_path.mkdir(parents=True)
-        metadata = f"{owner_pid}\n{created}\n{token}\n"
-        _write_text(lock_path / ".owner", metadata)
-        return lock_path, metadata
+        cache_root.mkdir(parents=True)
+        lock_path.write_bytes(b"")
+        return lock_path
 
     def test_real_command_uses_bundled_runtime_and_reuses_cache(self):
         first = self._run("--check")
@@ -485,49 +484,116 @@ class MacOSLauncherTests(unittest.TestCase):
             ["--check", "--label", "参数 路径 中文"],
         )
 
-    def test_real_command_recovers_stale_dead_owner_lock(self):
-        lock_path, _ = self._create_runtime_lock(
-            owner_pid=99_999_999,
-            created=int(time.time()) - 60,
-            token="00000000-0000-4000-8000-000000000001",
-        )
+    def test_real_command_ignores_unlocked_crash_residue_file(self):
+        lock_path = self._create_runtime_lock_file()
 
         result = self._run("--check")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertFalse(lock_path.exists(), lock_path)
-        self.assertEqual(
-            list(lock_path.parent.glob(f"{lock_path.name}.stale-*")),
-            [],
-        )
+        self.assertTrue(lock_path.is_file(), lock_path)
 
     def test_real_command_preserves_live_owner_lock_and_times_out_cleanly(self):
-        lock_path, metadata = self._create_runtime_lock(
-            owner_pid=os.getpid(),
-            created=int(time.time()) - 60,
-            token="00000000-0000-4000-8000-000000000002",
-        )
-        started = time.monotonic()
+        lock_path = self._create_runtime_lock_file()
+        ready_path = self.root / "kernel lock ready"
+        holder_source = r'''
+import fcntl
+import pathlib
+import sys
 
-        result = self._run("--check")
+with open(sys.argv[1], "a+b", buffering=0) as lock_file:
+    fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+    pathlib.Path(sys.argv[2]).write_text("ready", encoding="utf-8")
+    sys.stdin.buffer.read()
+'''
+        holder = subprocess.Popen(
+            [sys.executable, "-c", holder_source, str(lock_path), str(ready_path)],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+        )
+        try:
+            deadline = time.monotonic() + 5
+            while not ready_path.is_file() and time.monotonic() < deadline:
+                if holder.poll() is not None:
+                    break
+                time.sleep(0.02)
+            holder_error = ""
+            if holder.poll() is not None:
+                assert holder.stderr is not None
+                holder_error = holder.stderr.read()
+            self.assertTrue(ready_path.is_file(), holder_error)
+            self.assertIsNone(holder.poll(), "lock holder exited before launcher test")
 
-        elapsed = time.monotonic() - started
-        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertLess(elapsed, 12, elapsed)
-        self.assertEqual(result.stdout, "")
-        error_lines = result.stderr.splitlines()
-        self.assertEqual(len(error_lines), 1, result.stderr)
-        self.assertTrue(error_lines[0].startswith("ERROR: "), result.stderr)
-        self.assertNotIn("trace", result.stderr.lower())
-        self.assertTrue(lock_path.is_dir(), lock_path)
-        self.assertEqual(
-            (lock_path / ".owner").read_text(encoding="utf-8"),
-            metadata,
+            started = time.monotonic()
+            result = self._run("--check")
+            elapsed = time.monotonic() - started
+
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertGreaterEqual(elapsed, 7, elapsed)
+            self.assertLess(elapsed, 12, elapsed)
+            self.assertEqual(result.stdout, "")
+            error_lines = result.stderr.splitlines()
+            self.assertEqual(len(error_lines), 1, result.stderr)
+            self.assertTrue(error_lines[0].startswith("ERROR: "), result.stderr)
+            self.assertNotIn("trace", result.stderr.lower())
+            self.assertIsNone(holder.poll(), "launcher disrupted the live lock holder")
+            self.assertTrue(lock_path.is_file(), lock_path)
+        finally:
+            if holder.poll() is None:
+                assert holder.stdin is not None
+                holder.stdin.close()
+                try:
+                    holder.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    holder.terminate()
+                    holder.wait(timeout=5)
+
+    def test_four_cold_launches_share_one_atomic_cache(self):
+        processes = []
+        try:
+            for _ in range(4):
+                processes.append(
+                    subprocess.Popen(
+                        ["./start-demo.command", "--check"],
+                        cwd=self.web_demo,
+                        env=self._base_environment(),
+                        stdin=subprocess.DEVNULL,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace",
+                    )
+                )
+
+            results = [process.communicate(timeout=90) for process in processes]
+        finally:
+            for process in processes:
+                if process.poll() is None:
+                    process.kill()
+                    process.wait(timeout=5)
+
+        cache_events = []
+        for process, (stdout, stderr) in zip(processes, results):
+            self.assertEqual(process.returncode, 0, stdout + stderr)
+            events = [line for line in stdout.splitlines() if line.startswith("CACHE ")]
+            self.assertEqual(len(events), 1, stdout)
+            cache_events.extend(events)
+        self.assertCountEqual(
+            cache_events,
+            ["CACHE created", "CACHE reused", "CACHE reused", "CACHE reused"],
         )
-        self.assertEqual(
-            list(lock_path.parent.glob(f"{lock_path.name}.stale-*")),
-            [],
-        )
+        self.assertEqual(len(_server_records(self.server_log)), 4)
+
+        cache_root = self.web_demo / ".runtime-cache"
+        cache_name = "macos-arm64-8b0f1fa71eab"
+        residuals = [
+            *cache_root.glob(f"{cache_name}.tmp.*"),
+            *cache_root.glob(f"{cache_name}.invalid-*"),
+        ]
+        self.assertEqual(residuals, [])
 
 
 if __name__ == "__main__":
