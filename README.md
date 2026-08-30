@@ -13,13 +13,17 @@ Our final model, **B2-NJR**, is based on the Community Forensics ViT-S/16 detect
 - **Directory-in, JSON-out inference** with a continuous AIGC confidence score for every image.
 - **CPU and CUDA support**.
 - Final inference loads the frozen local checkpoint directly and does **not require model-weight downloads at inference time**.
+- **Clone-and-run local WebDemo** with browser-side FP32 inference and no inference server.
 - Systematic augmentation ablation rather than blindly stacking all transformations.
 - Frozen validation threshold and one-time held-out test evaluation.
 - External demonstration benchmark on **COCO + DALL·E Advanced**.
 - Exact-duplicate and near-duplicate leakage audit.
 
-The browser-deployment spike, measurements, and reproduction steps are recorded in
+The historical browser-deployment spike is recorded in
 [`results/web_model_experiment/README.md`](results/web_model_experiment/README.md).
+The formal offline FP32 WebDemo workflow and browser evidence are documented in
+[`web_demo/README.md`](web_demo/README.md) and
+[`results/web_demo_acceptance/`](results/web_demo_acceptance/README.md).
 
 ---
 
@@ -41,7 +45,42 @@ The output field `pred` is the estimated probability/confidence that an image is
 
 ---
 
-## Quick Start
+## Local WebDemo (judge path)
+
+> For the competition handoff, merge and publish the WebDemo branch before sharing
+> the repository link. Judges should use the submitted revision that contains
+> `web_demo/models/baseline2_njr_fp32.onnx`, rather than assume an older default
+> branch already includes it.
+
+1. Clone the submitted revision or use GitHub **Download ZIP** and extract it.
+2. Double-click `web_demo/start-demo.bat`.
+3. Wait for the local browser tab and the verified FP32 model to become ready.
+4. Choose one JPEG, PNG, or WebP still image.
+
+Python 3.11+ is the only launcher/toolchain prerequisite. The judge path does not
+need Node.js, npm, a model download, Git LFS, an Internet connection after checkout,
+or a continuously running inference server. The 84.04 MiB model is read from the
+local repository into the browser, so first-load time varies by computer. WebGPU is
+attempted first and automatically falls back to WASM using the same FP32 model.
+
+The server binds only to `127.0.0.1`. Selected image bytes remain in browser memory
+and no runtime request goes to an external origin. Stop the demo with `Ctrl+C` or by
+closing the launcher window.
+
+The two frozen deployment artifacts serve different runtimes:
+
+| Workflow | Artifact | Distribution |
+|---|---|---|
+| Python CLI / evaluation | `baseline2_njr_best.pt` | Release asset from [`v1.0.0 — Final B2-NJR Checkpoint`](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.0.0); not committed to ordinary Git |
+| Local browser WebDemo | `baseline2_njr_fp32.onnx` | FP32 export committed under `web_demo/models/` as an ordinary Git blob; included in the submitted clone/ZIP |
+
+See [`web_demo/README.md`](web_demo/README.md) for complete judge instructions,
+input limits, browser status, troubleshooting, manual commands, hashes, and
+developer audit gates.
+
+---
+
+## PyTorch CLI Quick Start
 
 ### 1. Install dependencies
 
@@ -51,7 +90,7 @@ Python 3.11+ is recommended.
 pip install -r requirements.txt
 ```
 
-### 2. Place the final checkpoint
+### 2. Download and place the final checkpoint
 
 Place the frozen checkpoint at:
 
@@ -59,7 +98,10 @@ Place the frozen checkpoint at:
 checkpoints/baseline2_njr_best.pt
 ```
 
-The checkpoint is intentionally excluded from normal Git commits. See [`checkpoints/README.md`](checkpoints/README.md).
+The checkpoint is intentionally excluded from normal Git commits. Download
+`baseline2_njr_best.pt` from
+[`v1.0.0 — Final B2-NJR Checkpoint`](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.0.0)
+and see [`checkpoints/README.md`](checkpoints/README.md) for its expected identity.
 
 ### 3. Run inference
 
@@ -259,13 +301,21 @@ The image assets used during manual review are intentionally not distributed.
 ├── checkpoints/
 │   └── README.md
 │
+├── web_demo/
+│   ├── start-demo.bat
+│   ├── models/
+│   ├── dist/
+│   ├── src/
+│   └── README.md
+│
 ├── demo_images/
 │
 ├── results/
 │   ├── ablation/
 │   ├── final_test/
 │   ├── official_demo/
-│   └── data_integrity/
+│   ├── data_integrity/
+│   └── web_demo_acceptance/
 │
 ├── reports/
 │
