@@ -1,13 +1,48 @@
-# Robust AIGC Image Detector under Real-World Transformations
+<div align="center">
 
-**TikTok TechJam 2026 — Track 5**<br>
-**Team: LingShu Intelligence**
+# Robust AIGC Image Detector
 
-A robustness-aware image-level detector for distinguishing authentic images from AI-generated images under common real-world image transformations.
+**LingShu Intelligence · TikTok TechJam 2026 · Track 5**
+
+Evidence-bounded, local-first detection of AI-generated images under real-world transformations.
+
+[![Release v1.2.0](https://img.shields.io/badge/release-v1.2.0-7c3aed?style=flat-square)](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.2.0)
+[![Portable CI](https://img.shields.io/badge/portable-CI-2088ff?style=flat-square&logo=githubactions&logoColor=white)](.github/workflows/web-demo-portable.yml)
+[![Project code MIT](https://img.shields.io/badge/project_code-MIT-22c55e?style=flat-square)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776ab?style=flat-square&logo=python&logoColor=white)](requirements.txt)
+[![PyTorch 2.10](https://img.shields.io/badge/PyTorch-2.10-ee4c2c?style=flat-square&logo=pytorch&logoColor=white)](requirements.txt)
+[![React 19](https://img.shields.io/badge/React-19-149eca?style=flat-square&logo=react&logoColor=white)](web_demo/package.json)
+[![Vite 8](https://img.shields.io/badge/Vite-8-646cff?style=flat-square&logo=vite&logoColor=white)](web_demo/package.json)
+[![ONNX Runtime Web 1.29](https://img.shields.io/badge/ONNX_Runtime_Web-1.29-005ced?style=flat-square&logo=onnx&logoColor=white)](web_demo/package.json)
+[![WebGPU](https://img.shields.io/badge/WebGPU-first-f59e0b?style=flat-square)](web_demo/README.md)
+[![WASM](https://img.shields.io/badge/WASM-fallback-654ff0?style=flat-square&logo=webassembly&logoColor=white)](web_demo/README.md)
+[![Offline](https://img.shields.io/badge/inference-offline-16a34a?style=flat-square)](web_demo/README.md)
+[![Windows x64](https://img.shields.io/badge/Windows-x64-0078d4?style=flat-square&logo=windows11&logoColor=white)](.github/workflows/web-demo-portable.yml)
+[![macOS Apple Silicon](https://img.shields.io/badge/macOS-Apple_Silicon-111827?style=flat-square&logo=apple&logoColor=white)](.github/workflows/web-demo-portable.yml)
+[![TechJam 2026](https://img.shields.io/badge/TikTok_TechJam-2026-ff0050?style=flat-square&logo=tiktok&logoColor=white)](#tiktok-techjam-2026)
+
+[**Download / Release v1.2.0**](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.2.0) · [**Frozen Checkpoint v1.0.0**](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/download/v1.0.0/baseline2_njr_best.pt) · [**WebDemo Guide**](web_demo/README.md) · [**Results**](results/) · [**数据与鲁棒性管线说明**](docs/Track5_数据处理与鲁棒性评测管线说明.docx) · Demo Video *(in progress)*
+
+<table>
+  <tr>
+    <th>Mean Robust Accuracy</th>
+    <th>Worst-case Robust Accuracy</th>
+    <th>External ROC-AUC</th>
+  </tr>
+  <tr>
+    <td><strong>0.973977</strong></td>
+    <td><strong>0.927090</strong></td>
+    <td><strong>0.993124</strong></td>
+  </tr>
+</table>
 
 **Final model: B2-NJR = Gaussian Noise + JPEG Compression + Resize**
 
-[Final Checkpoint Release](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.0.0) · [Direct Model Download](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/download/v1.0.0/baseline2_njr_best.pt) · [Local WebDemo](web_demo/README.md) · [Data & Robustness Pipeline (Chinese DOCX)](docs/Track5_数据处理与鲁棒性评测管线说明.docx) · Demo Video *(in progress)*
+</div>
+
+---
+
+**Contents:** [At a Glance](#at-a-glance) · [Problem and Method](#problem-and-method) · [Data Sources and Evaluation Protocol](#data-sources-and-evaluation-protocol) · [Robustness Ablation](#robustness-ablation) · [Final Held-Out Test](#final-held-out-test) · [External Demonstration Benchmark](#external-demonstration-benchmark) · [Data Integrity and Leakage Audit](#data-integrity-and-leakage-audit) · [Error Analysis](#error-analysis) · [Deployment and Web Demo](#deployment-and-web-demo) · [Quick Start](#quick-start) · [Reproducing Final Evaluation](#reproducing-the-final-evaluation) · [Limitations and Future Work](#limitations-and-future-work) · [Team Contributions](#team-contributions) · [Repository Structure](#repository-structure) · [Third-Party Attribution](#third-party-attribution) · [License](#license)
 
 ---
 
@@ -197,6 +232,10 @@ and normal use is offline after the repository is obtained. This portable slice 
 packaged for Windows x86-64 and Apple Silicon macOS; Intel macOS is not packaged in
 this slice.
 
+Use the [v1.2.0 release page](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.2.0)
+for portable local-release downloads and release notes. The frozen Python checkpoint
+remains on the separate v1.0.0 release linked below.
+
 The demo uses exactly `baseline2_njr_fp32.onnx` at the frozen threshold
 `0.55657113`. The first launch verifies and extracts the platform runtime to
 `web_demo/.runtime-cache/`; later launches reuse that cache. The local server is
@@ -358,6 +397,7 @@ generated, retouched, or inferred replacement portraits are used.
 ```text
 .
 ├── AGENTS.md
+├── LICENSE
 ├── README.md
 ├── requirements.txt
 ├── requirements-web-experiment.txt
@@ -417,3 +457,11 @@ review gates and must not be described as cleared without additional evidence.
 
 **Track 5 — Robust Detection of AI-Generated Images Under Real-World Transformations**<br>
 **Team — LingShu Intelligence**
+
+---
+
+## License
+
+Original LingShu Intelligence project code and original documentation are licensed under [MIT License](LICENSE), unless an individual file states otherwise.
+
+Third-party code, model components, datasets, codecs, browser dependencies, and bundled runtimes remain under their respective licenses and terms; root MIT does not relicense them. Preserve [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md), [Community Forensics license](third_party/Community-Forensics-LICENSE), and applicable dependency/runtime notices when redistributing.
