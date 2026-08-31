@@ -16,6 +16,8 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 BUILDER_PATH = REPOSITORY_ROOT / "tools" / "package_local_release.py"
+LICENSE_BUNDLE_ROOT = REPOSITORY_ROOT / "third_party" / "browser-runtime-licenses"
+LICENSE_INVENTORY_PATH = LICENSE_BUNDLE_ROOT / "inventory.json"
 STABLE_EPOCH = 1_700_000_000
 WINDOWS_ASSET = "LingShu-WebDemo-Windows-x64-v1.2.0.zip"
 MACOS_ASSET = "LingShu-WebDemo-macOS-Apple-Silicon-v1.2.0.zip"
@@ -68,6 +70,30 @@ def _load_builder(test_case: unittest.TestCase):
 
 def _sha256_bytes(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
+
+
+def _license_inventory(test_case: unittest.TestCase) -> dict:
+    test_case.assertTrue(LICENSE_INVENTORY_PATH.is_file(), LICENSE_INVENTORY_PATH)
+    return json.loads(LICENSE_INVENTORY_PATH.read_text(encoding="utf-8"))
+
+
+def _production_dependency_closure() -> dict[str, str]:
+    lock = json.loads(
+        (REPOSITORY_ROOT / "web_demo" / "package-lock.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    packages = lock["packages"]
+    pending = list(packages[""]["dependencies"])
+    closure = {}
+    while pending:
+        package_name = pending.pop()
+        if package_name in closure:
+            continue
+        package = packages[f"node_modules/{package_name}"]
+        closure[package_name] = package["version"]
+        pending.extend(package.get("dependencies", {}))
+    return closure
 
 
 def _create_directory_link(
@@ -137,27 +163,60 @@ class ReleasePackagingTests(unittest.TestCase):
 
 class BrowserRuntimeLicenseBundleTests(unittest.TestCase):
     def test_complete_vendored_license_bundle_exists_with_frozen_bytes(self) -> None:
-        bundle_root = REPOSITORY_ROOT / "third_party" / "browser-runtime-licenses"
+        inventory = _license_inventory(self)
+        referenced_notices = {
+            notice["path"]
+            for package in inventory["packages"].values()
+            for notice in package["notices"]
+        }
         actual = {
-            path.relative_to(bundle_root).as_posix()
-            for path in bundle_root.rglob("*")
+            path.relative_to(LICENSE_BUNDLE_ROOT).as_posix()
+            for path in LICENSE_BUNDLE_ROOT.rglob("*")
             if path.is_file()
-        } if bundle_root.is_dir() else set()
+        } if LICENSE_BUNDLE_ROOT.is_dir() else set()
 
-        self.assertEqual(set(LICENSE_HASHES), actual)
+        self.assertEqual(referenced_notices | {"README.md", "inventory.json"}, actual)
         for relative_path, expected_sha256 in LICENSE_HASHES.items():
             if expected_sha256 == "__README_TEXT__":
                 continue
             with self.subTest(path=relative_path):
                 self.assertEqual(
                     expected_sha256,
-                    _sha256_bytes((bundle_root / relative_path).read_bytes()),
+                    _sha256_bytes((LICENSE_BUNDLE_ROOT / relative_path).read_bytes()),
                 )
 
+    def test_inventory_covers_exact_lockfile_production_closure_and_notice_hashes(self) -> None:
+        inventory = _license_inventory(self)
+        closure = _production_dependency_closure()
+        packages = inventory["packages"]
+        self.assertEqual(set(closure), set(packages))
+        for package_name, version in closure.items():
+            with self.subTest(package=package_name):
+                package = packages[package_name]
+                self.assertEqual(version, package["version"])
+                self.assertTrue(package["source"])
+                self.assertTrue(package["notices"])
+                for notice in package["notices"]:
+                    notice_path = LICENSE_BUNDLE_ROOT / notice["path"]
+                    self.assertTrue(notice_path.is_file(), notice_path)
+                    self.assertRegex(notice["sha256"], r"^[0-9a-f]{64}$")
+                    self.assertEqual(
+                        notice["sha256"], _sha256_bytes(notice_path.read_bytes())
+                    )
+
+        for package_name in ("onnxruntime-web", "onnxruntime-common"):
+            source = packages[package_name]["source"]
+            self.assertIn("microsoft/onnxruntime", source.casefold())
+            self.assertIn("v1.29.0", source)
+
     def test_vendored_license_bytes_are_exempt_from_git_text_conversion(self) -> None:
-        for relative_path in LICENSE_HASHES:
-            if relative_path == "README.md":
-                continue
+        inventory = _license_inventory(self)
+        relative_paths = {
+            notice["path"]
+            for package in inventory["packages"].values()
+            for notice in package["notices"]
+        }
+        for relative_path in sorted(relative_paths):
             repository_path = (
                 "third_party/browser-runtime-licenses/" + relative_path
             )
@@ -439,6 +498,12 @@ class DeterministicReleaseBuilderTests(unittest.TestCase):
                     ))
 
     def test_each_archive_contains_every_vendored_notice(self) -> None:
+        inventory = _license_inventory(self)
+        notice_paths = {
+            notice["path"]
+            for package in inventory["packages"].values()
+            for notice in package["notices"]
+        }
         for platform, root_name in (
             ("windows-x64", WINDOWS_ROOT),
             ("macos-apple-silicon", MACOS_ROOT),
@@ -447,7 +512,7 @@ class DeterministicReleaseBuilderTests(unittest.TestCase):
                 built = self._archive_for(platform)
                 with zipfile.ZipFile(built.path) as archive:
                     files = self._file_members(archive)
-                for relative_path in LICENSE_HASHES:
+                for relative_path in notice_paths:
                     self.assertIn(
                         f"{root_name}/third_party/browser-runtime-licenses/{relative_path}",
                         files,

@@ -300,6 +300,7 @@ class PortableDocumentationAndWorkflowTests(unittest.TestCase):
         "web_demo/tools/bootstrap_macos.sh text eol=lf",
         "third_party/browser-runtime-licenses/** -text -diff",
         "third_party/browser-runtime-licenses/README.md text eol=lf diff",
+        "third_party/browser-runtime-licenses/inventory.json text eol=lf diff",
     )
 
     @classmethod
