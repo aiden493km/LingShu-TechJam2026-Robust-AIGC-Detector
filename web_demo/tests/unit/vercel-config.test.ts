@@ -58,17 +58,31 @@ async function readConfig(): Promise<VercelConfig> {
   ) as VercelConfig;
 }
 
-function serializedObjectKeys(value: unknown): string[] {
-  const keys: string[] = [];
+function isForbiddenMetadataKey(key: string): boolean {
+  const normalized = key.toLowerCase();
+  return (
+    FORBIDDEN_METADATA_KEYS.has(normalized) ||
+    /(?:^|[_-])(?:token|secret)(?:$|[_-])/i.test(key)
+  );
+}
 
-  JSON.parse(JSON.stringify(value), (key: string, nestedValue: unknown) => {
-    if (key !== '') {
-      keys.push(key);
-    }
-    return nestedValue;
+function forbiddenMetadataKeys(value: unknown, parentPath: string[] = []): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap((entry, index) =>
+      forbiddenMetadataKeys(entry, [...parentPath, String(index)]),
+    );
+  }
+  if (value === null || typeof value !== 'object') {
+    return [];
+  }
+
+  return Object.entries(value).flatMap(([key, nestedValue]) => {
+    const currentPath = [...parentPath, key];
+    return [
+      ...(isForbiddenMetadataKey(key) ? [currentPath.join('.')] : []),
+      ...forbiddenMetadataKeys(nestedValue, currentPath),
+    ];
   });
-
-  return keys;
 }
 
 function headerMapFor(rules: HeaderRule[], source: string): Record<string, string> {
@@ -90,16 +104,65 @@ describe('Vercel online delivery configuration', () => {
   });
 
   it('contains no serialized secret or Vercel project metadata keys', async () => {
-    const serializedKeys = serializedObjectKeys(await readConfig());
-    const forbiddenKeys = serializedKeys.filter((key) => {
-      const normalized = key.toLowerCase();
-      return (
-        FORBIDDEN_METADATA_KEYS.has(normalized) ||
-        /(?:^|[_-])(?:token|secret)(?:$|[_-])/i.test(key)
-      );
+    expect(forbiddenMetadataKeys(await readConfig())).toEqual([]);
+  });
+
+  it('reports nested forbidden metadata paths without returning fixture values', () => {
+    const fakeValues = [
+      'FAKE-BLOB-SECRET-NEVER-USE-71D4',
+      'FAKE-OIDC-SECRET-NEVER-USE-82E5',
+      'FAKE-PROJECT-ID-NEVER-USE-93F6',
+      'FAKE-ORG-ID-NEVER-USE-A407',
+      'FAKE-TOKEN-NEVER-USE-B518',
+      'FAKE-GENERIC-SECRET-NEVER-USE-C629',
+    ];
+    const controlledFixture = {
+      environment: {
+        BLOB_READ_WRITE_TOKEN: fakeValues[0],
+      },
+      deployment: {
+        nested: [
+          { VERCEL_OIDC_TOKEN: fakeValues[1] },
+          { projectId: fakeValues[2], orgId: fakeValues[3] },
+        ],
+        credentials: { token: fakeValues[4], secret: fakeValues[5] },
+      },
+      publicModel: { destination: MODEL_DESTINATION },
+    };
+
+    const findings = forbiddenMetadataKeys(controlledFixture);
+    const expectedFindings = [
+      'environment.BLOB_READ_WRITE_TOKEN',
+      'deployment.nested.0.VERCEL_OIDC_TOKEN',
+      'deployment.nested.1.projectId',
+      'deployment.nested.1.orgId',
+      'deployment.credentials.token',
+      'deployment.credentials.secret',
+    ];
+    const serializedFindings = JSON.stringify(findings);
+
+    expect({
+      everyExpectedPathFound: expectedFindings.every((path) => findings.includes(path)),
+      onlyExpectedPathsFound: findings.every((path) => expectedFindings.includes(path)),
+      findingCountMatches: findings.length === expectedFindings.length,
+      fixtureValuesRedacted: fakeValues.every((value) => !serializedFindings.includes(value)),
+    }).toEqual({
+      everyExpectedPathFound: true,
+      onlyExpectedPathsFound: true,
+      findingCountMatches: true,
+      fixtureValuesRedacted: true,
     });
 
-    expect(forbiddenKeys).toEqual([]);
+    let failureMessage = '';
+    try {
+      expect(findings).toEqual([]);
+    } catch (error) {
+      failureMessage = error instanceof Error ? error.message : String(error);
+    }
+    expect({
+      failureCaptured: failureMessage.length > 0,
+      fixtureValuesRedacted: fakeValues.every((value) => !failureMessage.includes(value)),
+    }).toEqual({ failureCaptured: true, fixtureValuesRedacted: true });
   });
 
   it('uses the isolated online Vite build output', async () => {
