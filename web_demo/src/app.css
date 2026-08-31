@@ -932,13 +932,94 @@ button:disabled { cursor: not-allowed; }
 .failure-reading-grid p { margin: 0; }
 .error-threshold-boundary p { max-width: 62rem; }
 
-.team-intro { display: grid; grid-template-columns: minmax(11rem, 0.45fr) 1fr; gap: clamp(2rem, 6vw, 7rem); width: 100%; }
-.team-intro p { margin: 0; }
-.team-pending { font-family: 'League Gothic', Impact, sans-serif; font-size: clamp(2rem, 3.3vw, 3.5rem); line-height: 0.95; text-transform: uppercase; }
-.contribution-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0; }
-.contribution-grid article { min-height: 17rem; padding: 1.5rem; border-right: var(--hairline); }
-.contribution-grid article:last-child { border-right: 0; }
-.contribution-grid p { color: var(--mid); font-size: 0.76rem; }
+.team-section { --team-signal-red: #b5122b; padding: 0; }
+.team-intro { width: 100%; padding: clamp(2.5rem, 5vw, 5.5rem); border-bottom: var(--hairline); }
+.team-intro h2 { margin: 0; }
+.team-roster-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.team-profile {
+  display: flex;
+  min-width: 0;
+  min-height: 31rem;
+  padding: clamp(1.25rem, 2.1vw, 2rem);
+  flex-direction: column;
+  border-right: var(--hairline);
+  text-align: center;
+}
+.team-profile:last-child { border-right: 0; }
+.team-portrait-frame {
+  position: relative;
+  width: min(100%, 12.5rem);
+  aspect-ratio: 1 / 1;
+  margin: 0 auto 1.6rem;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+}
+.team-portrait-frame::before,
+.team-portrait-frame::after {
+  position: absolute;
+  width: 1.1rem;
+  height: 1.1rem;
+  content: '';
+  pointer-events: none;
+}
+.team-portrait-frame::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid var(--team-signal-red);
+  border-left: 2px solid var(--team-signal-red);
+}
+.team-portrait-frame::after {
+  right: -1px;
+  bottom: -1px;
+  border-right: 2px solid var(--team-signal-red);
+  border-bottom: 2px solid var(--team-signal-red);
+}
+.team-profile-eyebrow {
+  margin: 0 0 0.55rem;
+  color: var(--mid);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.team-profile:first-child .team-profile-eyebrow { color: var(--team-signal-red); }
+.team-profile-name {
+  margin: 0;
+  font-family: 'League Gothic', Impact, sans-serif;
+  font-size: clamp(2.35rem, 3.2vw, 3.4rem);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+.team-profile-role {
+  min-height: 2.5em;
+  margin: 0.85rem 0 0;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1.3;
+}
+.team-profile-contribution {
+  margin: 1rem 0 0;
+  color: var(--mid);
+  font-size: 0.74rem;
+  line-height: 1.65;
+}
+.team-profile-github {
+  margin-top: auto;
+  padding-top: 1.5rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-underline-offset: 0.3em;
+}
 .team-contact { max-width: none; }
 .technical-notes-detail { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0; }
 .technical-notes-detail article { min-height: 15rem; padding: clamp(1.5rem, 3vw, 3.2rem); border-right: var(--hairline); border-bottom: var(--hairline); }
@@ -999,6 +1080,10 @@ button:disabled { cursor: not-allowed; }
   .model-word { font-size: clamp(6rem, 11vw, 8.2rem); }
   .analysis-workspace { grid-template-columns: minmax(0, 1.55fr) minmax(18rem, 0.8fr); }
   .evidence-strip { min-height: 12rem; }
+  .team-roster-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .team-profile { min-height: 29rem; border-bottom: var(--hairline); }
+  .team-profile:nth-child(2n) { border-right: 0; }
+  .team-profile:nth-last-child(-n + 2) { border-bottom: 0; }
 }
 
 @media (max-width: 760px) {
@@ -1069,7 +1154,7 @@ button:disabled { cursor: not-allowed; }
   .project-header h1 { margin-top: 2rem; font-size: clamp(5.4rem, 25vw, 7.4rem); }
   .project-header > p:last-child { margin-top: 1.5rem; }
   .project-section { padding: 2.3rem 1.3rem; }
-  .technology-layout, .error-layout, .error-clean-overview, .error-evidence-pair, .evidence-grid, .team-intro, .technical-notes-detail { grid-template-columns: 1fr; gap: 2.4rem; }
+  .technology-layout, .error-layout, .error-clean-overview, .error-evidence-pair, .evidence-grid, .technical-notes-detail { grid-template-columns: 1fr; gap: 2.4rem; }
   .error-transition-section .error-analysis-copy { order: 2; }
   .error-transition-section .evidence-figure { order: 1; }
   .error-condition-grid { grid-template-columns: 1fr; }
@@ -1081,9 +1166,17 @@ button:disabled { cursor: not-allowed; }
   .project-image-lightbox { padding: 4.5rem 1rem 2rem; }
   .project-image-lightbox-figure, .project-image-lightbox-figure img { max-width: 92vw; }
   .project-image-lightbox-figure img { max-height: 70vh; }
-  .contribution-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .contribution-grid article { min-height: 14rem; border-bottom: var(--hairline); }
-  .contribution-grid article:nth-child(2) { border-right: 0; }
+  .team-section { padding: 0; }
+  .team-intro { padding: 2.3rem 1.3rem; }
+  .team-roster-grid { grid-template-columns: 1fr; }
+  .team-profile,
+  .team-profile:nth-child(2n),
+  .team-profile:nth-last-child(-n + 2) {
+    min-height: 0;
+    border-right: 0;
+    border-bottom: var(--hairline);
+  }
+  .team-profile:last-child { border-bottom: 0; }
   .evidence-boundary, .team-contact { padding: 1.5rem 1.3rem; }
   .technical-notes-detail { gap: 0; padding: 0; }
   .technical-notes-detail article { min-height: 0; border-right: 0; }
@@ -1095,8 +1188,8 @@ button:disabled { cursor: not-allowed; }
   .rail-links > a span, .contact-trigger > span { display: none; }
   .rail-links a, .contact-trigger { min-width: 2.35rem; justify-content: center; padding: 0.4rem; }
   .display-title { font-size: 23vw; }
-  .evidence-strip, .contribution-grid { grid-template-columns: 1fr; }
-  .evidence-block, .contribution-grid article, .evidence-block:nth-child(2), .contribution-grid article:nth-child(2) { border-right: 0; }
+  .evidence-strip { grid-template-columns: 1fr; }
+  .evidence-block, .evidence-block:nth-child(2) { border-right: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {

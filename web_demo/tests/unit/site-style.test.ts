@@ -92,6 +92,27 @@ describe('Semantic Signal visual system', () => {
     expect(css).not.toMatch(/url\(["']?https?:/i);
   });
 
+  it('defines the flat square Signal Roster at four, two, and one columns', async () => {
+    const css = await readFile(new URL('../../src/app.css', import.meta.url), 'utf8');
+    const tabletCss = css.match(
+      /@media \(max-width: 1020px\)\s*\{([\s\S]*?)\r?\n\}\r?\n\r?\n@media \(max-width: 760px\)/,
+    )?.[1] ?? '';
+    const mobileCss = css.match(
+      /@media \(max-width: 760px\)\s*\{([\s\S]*?)\r?\n\}\r?\n\r?\n@media \(max-width: 430px\)/,
+    )?.[1] ?? '';
+    const profileRule = css.match(/\.team-profile\s*\{([^}]*)\}/s)?.[1] ?? '';
+
+    expect(css).toMatch(/\.team-section\s*\{[^}]*--team-signal-red:\s*#b5122b/s);
+    expect(css).toMatch(/\.team-roster-grid\s*\{[^}]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/s);
+    expect(css).toMatch(/\.team-portrait-frame\s*\{[^}]*aspect-ratio:\s*1\s*\/\s*1[^}]*border:\s*1px solid var\(--ink\)/s);
+    expect(css).toMatch(/\.team-portrait-frame::before[\s\S]*border-top:\s*2px solid var\(--team-signal-red\)/s);
+    expect(css).toMatch(/\.team-portrait-frame::after[\s\S]*border-bottom:\s*2px solid var\(--team-signal-red\)/s);
+    expect(tabletCss).toMatch(/\.team-roster-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/s);
+    expect(mobileCss).toMatch(/\.team-roster-grid\s*\{[^}]*grid-template-columns:\s*1fr/s);
+    expect(profileRule).not.toContain('border-radius');
+    expect(profileRule).not.toContain('box-shadow');
+  });
+
   it('serves the official GitHub mark locally instead of drawing it in the app', async () => {
     const app = await readFile(new URL('../../src/App.tsx', import.meta.url), 'utf8');
     const mark = await readFile(new URL('../../public/brands/github-mark.svg', import.meta.url), 'utf8');
