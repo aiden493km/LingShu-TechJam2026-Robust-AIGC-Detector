@@ -9,8 +9,8 @@ Evidence-bounded, local-first detection of AI-generated images under real-world 
 [![Release v1.2.0](https://img.shields.io/badge/release-v1.2.0-7c3aed?style=flat-square)](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.2.0)
 [![Portable CI](https://img.shields.io/badge/portable-CI-2088ff?style=flat-square&logo=githubactions&logoColor=white)](.github/workflows/web-demo-portable.yml)
 [![Project code MIT](https://img.shields.io/badge/project_code-MIT-22c55e?style=flat-square)](LICENSE)
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776ab?style=flat-square&logo=python&logoColor=white)](requirements.txt)
-[![PyTorch 2.10](https://img.shields.io/badge/PyTorch-2.10-ee4c2c?style=flat-square&logo=pytorch&logoColor=white)](requirements.txt)
+[![tested | Python 3.12.8](https://img.shields.io/badge/tested_%7C_Python-3.12.8-3776ab?style=flat-square&logo=python&logoColor=white)](requirements.txt)
+[![tested | PyTorch 2.10.0](https://img.shields.io/badge/tested_%7C_PyTorch-2.10.0-ee4c2c?style=flat-square&logo=pytorch&logoColor=white)](requirements.txt)
 [![React 19](https://img.shields.io/badge/React-19-149eca?style=flat-square&logo=react&logoColor=white)](web_demo/package.json)
 [![Vite 8](https://img.shields.io/badge/Vite-8-646cff?style=flat-square&logo=vite&logoColor=white)](web_demo/package.json)
 [![ONNX Runtime Web 1.29](https://img.shields.io/badge/ONNX_Runtime_Web-1.29-005ced?style=flat-square&logo=onnx&logoColor=white)](web_demo/package.json)
@@ -24,10 +24,11 @@ Evidence-bounded, local-first detection of AI-generated images under real-world 
 [**Download / Release v1.2.0**](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.2.0) · [**Frozen Checkpoint v1.0.0**](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/download/v1.0.0/baseline2_njr_best.pt) · [**WebDemo Guide**](web_demo/README.md) · [**Results**](results/) · [**数据与鲁棒性管线说明**](docs/Track5_数据处理与鲁棒性评测管线说明.docx) · Demo Video *(in progress)*
 
 <table>
+  <caption>Frozen evaluation highlights: the first two metrics are from the held-out robustness test; ROC-AUC is from the separate external demonstration benchmark.</caption>
   <tr>
-    <th>Mean Robust Accuracy</th>
-    <th>Worst-case Robust Accuracy</th>
-    <th>External ROC-AUC</th>
+    <th scope="col">Held-out Mean Robust Accuracy</th>
+    <th scope="col">Held-out Worst-case Robust Accuracy</th>
+    <th scope="col">External Demonstration ROC-AUC</th>
   </tr>
   <tr>
     <td><strong>0.973977</strong></td>
@@ -290,7 +291,8 @@ checkpoints/baseline2_njr_best.pt
 
 ### Install
 
-Python 3.11+ is recommended.
+The recorded training and evaluation environment used Python 3.12.8 and PyTorch
+2.10.0. The command below installs the repository requirements for a local setup.
 
 ```bash
 pip install -r requirements.txt
@@ -448,8 +450,9 @@ This work builds on **Community Forensics** and the `OwensLab/commfor-model-384`
 See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and [`third_party/Community-Forensics-LICENSE`](third_party/Community-Forensics-LICENSE) for attribution and licensing information.
 
 `THIRD_PARTY_NOTICES.md` is an evidence inventory, not a legal certification. Its
-model/dataset provenance and complete runtime-notice items remain public-release
-review gates and must not be described as cleared without additional evidence.
+model/dataset provenance remains an explicitly accepted, unresolved redistribution
+risk, and complete runtime notices remain a required v1.2.0 packaging action that
+must be verified before upload; neither may be described as legally cleared.
 
 ---
 
