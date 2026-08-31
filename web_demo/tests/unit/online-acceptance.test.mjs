@@ -5,12 +5,17 @@ import {
   EXPECTED_MODEL_BYTES,
   EXPECTED_MODEL_PATH,
   EXPECTED_MODEL_SHA256,
+  auditNetworkEvent,
+  beginImageInferenceWindow,
   classifyRequest,
   compactProgressSamples,
   compareOnlinePrediction,
+  createPrivacyAudit,
+  endImageInferenceWindow,
   parseCliArguments,
   parseOnlineUrl,
   runOnlineAcceptance,
+  sanitizeFailureMessage,
   validateOnlineEvidence,
   validateProgressSamples,
   validateResponseHeaders,
@@ -132,9 +137,10 @@ function validEvidence() {
       externalOrigins: [],
       disallowedMethods: [],
       imageRequests: 0,
+      webSocketRequests: 0,
       requests: [
-        { method: 'GET', kind: 'same-origin', path: '/', count: 4 },
-        { method: 'GET', kind: 'model', path: EXPECTED_MODEL_PATH, count: 4 },
+        { method: 'GET', kind: 'same-origin', origin: 'https://lingshu-preview.vercel.app', path: '/', type: 'http', count: 4 },
+        { method: 'GET', kind: 'model', origin: 'https://lingshu-preview.vercel.app', path: EXPECTED_MODEL_PATH, type: 'http', count: 4 },
       ],
     },
     cache: {
@@ -149,7 +155,7 @@ function validEvidence() {
       probability: 0.000001,
       label: 'Real',
     },
-    console: { warnings: [], errors: [], pageErrors: [] },
+    console: { warningCount: 0, errorCount: 0, pageErrorCount: 0 },
   };
 }
 
@@ -189,6 +195,67 @@ describe('request classification', () => {
   it('does not treat a lookalike model path or subdomain as the model request', () => {
     assert.equal(classifyRequest(`${DEPLOYMENT_URL}models/other.onnx`, DEPLOYMENT_URL), 'same-origin');
     assert.equal(classifyRequest('https://evil.lingshu-preview.vercel.app/models/baseline2_njr_fp32.onnx', DEPLOYMENT_URL), 'external');
+  });
+});
+
+describe('image inference privacy window', () => {
+  it('does not misclassify initial same-origin model and asset requests as image requests', () => {
+    const audit = createPrivacyAudit();
+    assert.deepEqual(
+      auditNetworkEvent(audit, {
+        type: 'http',
+        url: `${DEPLOYMENT_URL.slice(0, -1)}${EXPECTED_MODEL_PATH}`,
+        method: 'GET',
+        hasBody: false,
+      }, DEPLOYMENT_URL),
+      { allow: true, code: 'allowed-http' },
+    );
+    assert.deepEqual(
+      auditNetworkEvent(audit, {
+        type: 'http',
+        url: `${DEPLOYMENT_URL}assets/app.js?v=ignored`,
+        method: 'GET',
+        hasBody: false,
+      }, DEPLOYMENT_URL),
+      { allow: true, code: 'allowed-http' },
+    );
+    assert.equal(audit.imageRequests, 0);
+    assert.deepEqual([...audit.requests.values()].map(({ path }) => path).sort(), [
+      EXPECTED_MODEL_PATH,
+      '/assets/app.js',
+    ].sort());
+  });
+
+  it('blocks every HTTP(S) or WebSocket event during image inference without retaining a query', () => {
+    const cases = [
+      { type: 'http', url: `${DEPLOYMENT_URL}api/check?token=must-not-appear`, method: 'GET', hasBody: false },
+      { type: 'http', url: `${DEPLOYMENT_URL}upload`, method: 'POST', hasBody: true },
+      { type: 'http', url: 'https://external.example/collect?secret=must-not-appear', method: 'GET', hasBody: false },
+      { type: 'websocket', url: 'wss://lingshu-preview.vercel.app/events?token=must-not-appear', method: 'GET', hasBody: false },
+    ];
+    for (const event of cases) {
+      const audit = createPrivacyAudit();
+      beginImageInferenceWindow(audit);
+      const decision = auditNetworkEvent(audit, event, DEPLOYMENT_URL);
+      endImageInferenceWindow(audit);
+      assert.equal(decision.allow, false);
+      assert.equal(audit.imageRequests, 1);
+      assert.equal(JSON.stringify([...audit.requests.values()]).includes('must-not-appear'), false);
+    }
+  });
+
+  it('blocks all WebSockets even before the image window and records only a count', () => {
+    const audit = createPrivacyAudit();
+    const decision = auditNetworkEvent(audit, {
+      type: 'websocket',
+      url: 'wss://lingshu-preview.vercel.app/events?credential=hidden',
+      method: 'GET',
+      hasBody: false,
+    }, DEPLOYMENT_URL);
+    assert.equal(decision.allow, false);
+    assert.equal(audit.webSocketRequests, 1);
+    assert.equal(audit.imageRequests, 0);
+    assert.equal(JSON.stringify(audit).includes('credential=hidden'), false);
   });
 });
 
@@ -298,6 +365,43 @@ describe('bounded online evidence schema', () => {
     }));
     unbounded.privacy.requestCount = 101;
     assert.throws(() => validateOnlineEvidence(unbounded), /bounded|100|request/i);
+  });
+
+  it('rejects sensitive string content without echoing the value', () => {
+    const leaks = [
+      'Authorization: Bearer judge-session-abc123',
+      'Cookie: session=judge-cookie-abc123',
+      'token=judge-token-abc123',
+      'secret: judge-secret-abc123',
+      'data:image/png;base64,cHJpdmF0ZQ==',
+      'blob:https://lingshu-preview.vercel.app/private-image-id',
+      'file:///C:/Users/Judge/private.png',
+      'C:\\Users\\Judge\\private.png',
+      'https://example.test/path?credential=judge-query-abc123',
+    ];
+    for (const leak of leaks) {
+      const value = validEvidence();
+      value.cache.interpretation = `A reload observation only; no permanent-cache claim. ${leak}`;
+      assert.throws(
+        () => validateOnlineEvidence(value),
+        (error) => error instanceof Error && !error.message.includes(leak) && /sensitive|URL|query|path|credential/i.test(error.message),
+      );
+    }
+  });
+
+  it('does not treat the public Vercel Blob hostname as a credential-bearing blob URL', () => {
+    const value = validEvidence();
+    value.cache.interpretation = 'A reload observation only; no permanent-cache claim. Public model host: https://example.public.blob.vercel-storage.com/model.onnx';
+    assert.equal(validateOnlineEvidence(value).passed, true);
+  });
+
+  it('redacts secrets, query URLs, data URLs, and local paths from failure output', () => {
+    const raw = 'Authorization: Bearer judge-secret-123 at https://example.test/fail?token=judge-query-456 using data:image/png;base64,private C:\\Users\\Judge\\private.png';
+    const sanitized = sanitizeFailureMessage(raw);
+    for (const fragment of ['judge-secret-123', 'judge-query-456', 'base64,private', 'Users\\Judge']) {
+      assert.equal(sanitized.includes(fragment), false);
+    }
+    assert.match(sanitized, /\[credential\]|\[url\]|\[local-path\]/);
   });
 
   it('requires exactly ten bounded parity rows per provider and valid header evidence', () => {

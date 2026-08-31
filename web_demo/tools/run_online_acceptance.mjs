@@ -40,7 +40,7 @@ const DEMO_SOURCES = Object.freeze([
 const ALLOWED_HEADER_KINDS = new Set(['root', 'manifest', 'model', 'ort-mjs', 'ort-wasm']);
 const SAFE_METHODS = new Set(['GET', 'HEAD']);
 const SHA1_PATTERN = /^[0-9a-f]{40}$/;
-const SENSITIVE_KEY_PATTERN = /(?:authorization|cookie|password|secret|token)/i;
+const SENSITIVE_KEY_PATTERN = /(?:authorization|cookie|credential|password|secret|session|token)/i;
 const MAX_EVIDENCE_BYTES = 256 * 1024;
 const MAX_ARRAY_LENGTH = 128;
 const MAX_STRING_LENGTH = 2_000;
@@ -236,6 +236,12 @@ function assertBoundedSafeValue(value, label = 'evidence', depth = 0) {
   invariant(depth <= 10, `${label} nesting is not bounded`);
   if (typeof value === 'string') {
     invariant(value.length <= MAX_STRING_LENGTH, `${label} string is not bounded`);
+    invariant(!/\b(?:data|blob):(?![;\s]|$)/i.test(value), `${label} contains a sensitive URL protocol`);
+    invariant(!/\bfile:/i.test(value), `${label} contains a sensitive URL protocol`);
+    invariant(!/(?:^|\s)[A-Za-z]:[\\/]/.test(value), `${label} contains a local absolute path`);
+    invariant(!/(?:^|\s)\\\\[^\\\s]+\\/.test(value), `${label} contains a local UNC path`);
+    invariant(!/\b(?:authorization|cookie|credential|password|secret|session|token|api[_-]?key|access[_-]?key)\b/i.test(value), `${label} contains sensitive credential text`);
+    invariant(!/\bbearer\s+\S+/i.test(value), `${label} contains sensitive credential text`);
     const urlMatches = value.match(/https?:\/\/[^\s]+/gi) ?? [];
     for (const candidate of urlMatches) {
       let parsed;
@@ -244,6 +250,7 @@ function assertBoundedSafeValue(value, label = 'evidence', depth = 0) {
       } catch {
         continue;
       }
+      invariant(parsed.username === '' && parsed.password === '', `${label} contains URL credentials`);
       invariant(parsed.search === '' && parsed.hash === '', `${label} must not record URL query or fragment data`);
     }
     return;
@@ -313,19 +320,22 @@ function validateProviderRuns(value) {
   });
 }
 
-function validatePrivacy(value) {
-  exactKeys(value, ['disallowedMethods', 'externalOrigins', 'imageRequests', 'requestCount', 'requests'], 'privacy evidence');
+function validatePrivacy(value, deploymentUrl) {
+  exactKeys(value, ['disallowedMethods', 'externalOrigins', 'imageRequests', 'requestCount', 'requests', 'webSocketRequests'], 'privacy evidence');
   nonNegativeInteger(value.requestCount, 'privacy.requestCount');
   invariant(value.requestCount <= 1_000, 'privacy.requestCount must be bounded at 1000');
   invariant(Array.isArray(value.externalOrigins) && value.externalOrigins.length === 0, 'privacy external origins must be empty');
   invariant(Array.isArray(value.disallowedMethods) && value.disallowedMethods.length === 0, 'privacy disallowed methods must be empty');
   invariant(value.imageRequests === 0, 'privacy imageRequests must equal zero');
+  invariant(value.webSocketRequests === 0, 'privacy webSocketRequests must equal zero');
   invariant(Array.isArray(value.requests) && value.requests.length <= 100, 'privacy requests must be bounded at 100 entries');
   let counted = 0;
   for (const [index, request] of value.requests.entries()) {
-    exactKeys(request, ['count', 'kind', 'method', 'path'], `privacy.requests[${index}]`);
+    exactKeys(request, ['count', 'kind', 'method', 'origin', 'path', 'type'], `privacy.requests[${index}]`);
+    invariant(request.type === 'http', `privacy.requests[${index}] type must be http`);
     invariant(SAFE_METHODS.has(request.method), `privacy.requests[${index}] method is disallowed`);
     invariant(request.kind === 'same-origin' || request.kind === 'model', `privacy.requests[${index}] kind is invalid`);
+    invariant(request.origin === new URL(deploymentUrl).origin, `privacy.requests[${index}] origin must match the deployment`);
     safePath(request.path, `privacy.requests[${index}].path`);
     invariant(Number.isSafeInteger(request.count) && request.count >= 1, `privacy.requests[${index}].count is invalid`);
     counted += request.count;
@@ -390,7 +400,7 @@ export function validateOnlineEvidence(value) {
   validateProviderRuns(value.providerRuns);
   invariant(value.crossOriginIsolated === true, 'crossOriginIsolated must be true');
   invariant(value.thresholdFlips === 0, 'thresholdFlips must equal zero');
-  validatePrivacy(value.privacy);
+  validatePrivacy(value.privacy, value.deploymentUrl);
   validateCache(value.cache);
   exactKeys(value.offline, ['completed', 'label', 'probability', 'provider', 'source'], 'offline evidence');
   invariant(value.offline.completed === true, 'offline inference must complete');
@@ -398,12 +408,10 @@ export function validateOnlineEvidence(value) {
   invariant(value.offline.provider === 'webgpu', 'offline inference must retain the WebGPU provider');
   finiteProbability(value.offline.probability, 'offline probability');
   invariant(value.offline.label === (value.offline.probability >= FROZEN_THRESHOLD ? 'AIGC' : 'Real'), 'offline label is inconsistent');
-  exactKeys(value.console, ['errors', 'pageErrors', 'warnings'], 'console evidence');
-  for (const name of ['errors', 'pageErrors', 'warnings']) {
-    invariant(Array.isArray(value.console[name]) && value.console[name].length <= 20, `console.${name} must be a bounded array`);
-    invariant(value.console[name].every((entry) => typeof entry === 'string' && entry.length <= 500), `console.${name} entries must be bounded strings`);
-  }
-  invariant(value.console.errors.length === 0 && value.console.pageErrors.length === 0, 'browser console/page errors must be empty');
+  exactKeys(value.console, ['errorCount', 'pageErrorCount', 'warningCount'], 'console evidence');
+  nonNegativeInteger(value.console.warningCount, 'console.warningCount');
+  invariant(value.console.warningCount <= 100, 'console.warningCount must be bounded');
+  invariant(value.console.errorCount === 0 && value.console.pageErrorCount === 0, 'browser console/page error counts must equal zero');
   return value;
 }
 
@@ -563,63 +571,105 @@ async function discoverEdge() {
   throw new Error(`Installed Microsoft Edge was not found (checked: ${candidates.join(', ')})`);
 }
 
-function createNetworkAudit() {
+export function createPrivacyAudit() {
   return {
     requestCount: 0,
     requests: new Map(),
     externalOrigins: new Set(),
     disallowedMethods: new Set(),
     imageRequests: 0,
+    webSocketRequests: 0,
     modelRequests: 0,
-    errors: [],
-    warnings: [],
-    pageErrors: [],
+    inferenceWindowActive: false,
+    consoleErrorCount: 0,
+    consoleWarningCount: 0,
+    pageErrorCount: 0,
   };
 }
 
-function recordRequest(audit, method, kind, pathname) {
+export function beginImageInferenceWindow(audit) {
+  invariant(isRecord(audit), 'Privacy audit must be an object');
+  invariant(audit.inferenceWindowActive === false, 'Image inference privacy window is already active');
+  audit.inferenceWindowActive = true;
+}
+
+export function endImageInferenceWindow(audit) {
+  invariant(isRecord(audit), 'Privacy audit must be an object');
+  invariant(audit.inferenceWindowActive === true, 'Image inference privacy window is not active');
+  audit.inferenceWindowActive = false;
+}
+
+function recordRequest(audit, method, kind, origin, pathname) {
   audit.requestCount += 1;
-  const key = `${method}\u0000${kind}\u0000${pathname}`;
-  const current = audit.requests.get(key) ?? { method, kind, path: pathname, count: 0 };
+  const key = `http\u0000${method}\u0000${kind}\u0000${origin}\u0000${pathname}`;
+  const current = audit.requests.get(key) ?? {
+    type: 'http',
+    method,
+    kind,
+    origin,
+    path: pathname,
+    count: 0,
+  };
   current.count += 1;
   audit.requests.set(key, current);
   if (kind === 'model') audit.modelRequests += 1;
 }
 
+export function auditNetworkEvent(audit, event, deploymentUrl) {
+  invariant(isRecord(audit) && audit.requests instanceof Map, 'Privacy audit is invalid');
+  invariant(isRecord(event), 'Network event must be an object');
+  invariant(event.type === 'http' || event.type === 'websocket', 'Network event type is invalid');
+  const active = audit.inferenceWindowActive === true;
+  if (event.type === 'websocket') {
+    audit.webSocketRequests += 1;
+    if (active) audit.imageRequests += 1;
+    return { allow: false, code: active ? 'blocked-image-window-websocket' : 'blocked-websocket' };
+  }
+  invariant(typeof event.url === 'string', 'HTTP event URL is required');
+  if (event.url.startsWith('blob:') || event.url.startsWith('data:')) {
+    return { allow: true, code: 'non-network-url' };
+  }
+  const parsed = new URL(event.url);
+  invariant(parsed.protocol === 'http:' || parsed.protocol === 'https:', 'Only HTTP(S) events can be audited');
+  const method = String(event.method ?? '').toUpperCase();
+  const kind = classifyRequest(event.url, deploymentUrl);
+  const hasBody = event.hasBody === true;
+  if (!SAFE_METHODS.has(method) || hasBody) audit.disallowedMethods.add(method || 'UNKNOWN');
+  if (kind === 'external') audit.externalOrigins.add(parsed.origin);
+  recordRequest(audit, method, kind, parsed.origin, parsed.pathname);
+  if (active) {
+    audit.imageRequests += 1;
+    return { allow: false, code: 'blocked-image-window-http' };
+  }
+  if (kind === 'external') return { allow: false, code: 'blocked-external-http' };
+  if (!SAFE_METHODS.has(method) || hasBody) return { allow: false, code: 'blocked-method-or-body' };
+  return { allow: true, code: 'allowed-http' };
+}
+
 async function installRequestBoundary(context, deploymentUrl, audit) {
-  const allowedOrigin = new URL(deploymentUrl).origin;
   await context.route('**/*', async (route) => {
     const request = route.request();
     const requestUrl = request.url();
-    if (requestUrl.startsWith('blob:') || requestUrl.startsWith('data:')) {
-      await route.continue();
-      return;
-    }
-    const parsed = new URL(requestUrl);
-    const method = request.method().toUpperCase();
-    const kind = classifyRequest(requestUrl, deploymentUrl);
     const body = request.postDataBuffer();
-    if (!SAFE_METHODS.has(method)) audit.disallowedMethods.add(method);
-    if (body !== null && body.byteLength > 0) audit.imageRequests += 1;
-    if (kind === 'external') {
-      audit.externalOrigins.add(parsed.origin);
-      await route.abort('blockedbyclient');
-      return;
-    }
-    recordRequest(audit, method, kind, parsed.pathname);
-    if (!SAFE_METHODS.has(method) || (body !== null && body.byteLength > 0)) {
+    const decision = auditNetworkEvent(audit, {
+      type: 'http',
+      url: requestUrl,
+      method: request.method(),
+      hasBody: body !== null && body.byteLength > 0,
+    }, deploymentUrl);
+    if (!decision.allow) {
       await route.abort('blockedbyclient');
       return;
     }
     await route.continue();
   });
   await context.routeWebSocket('**/*', async (webSocketRoute) => {
-    const parsed = new URL(webSocketRoute.url());
-    if (parsed.origin === allowedOrigin.replace(/^https:/, 'wss:')) {
-      webSocketRoute.connectToServer();
-      return;
-    }
-    audit.externalOrigins.add(parsed.origin);
+    auditNetworkEvent(audit, {
+      type: 'websocket',
+      url: webSocketRoute.url(),
+      method: 'GET',
+      hasBody: false,
+    }, deploymentUrl);
     await webSocketRoute.close({ code: 1008, reason: 'Blocked by online acceptance boundary' });
   });
 }
@@ -666,8 +716,7 @@ async function waitForPhase(page, desired, timeout) {
   );
   const phase = await page.locator('.detector-stage').getAttribute('data-phase');
   if (phase === 'error' && desired !== 'error') {
-    const message = (await page.locator('[role="alert"]').first().textContent())?.replace(/\s+/g, ' ').trim() ?? '';
-    throw new Error(`Detector entered error while waiting for ${desired}: ${message}`);
+    throw new Error(`Detector entered an error state while waiting for ${desired}; page alert text was withheld`);
   }
   invariant(phase === desired, `Expected detector phase ${desired}; observed ${String(phase)}`);
 }
@@ -707,14 +756,20 @@ async function resetDetector(page) {
   await waitForPhase(page, 'ready', 10_000);
 }
 
-async function runPredictions(page, repositoryRoot, provider, references) {
+async function runPredictions(page, repositoryRoot, provider, references, audit) {
   const input = page.locator('input[type="file"]');
   invariant(await input.count() === 1, 'Detector must expose exactly one file input');
   const results = [];
   for (const [index, source] of DEMO_SOURCES.entries()) {
-    await input.setInputFiles(path.join(repositoryRoot, ...source.split('/')));
-    await waitForPhase(page, 'success', INFERENCE_TIMEOUT_MS);
-    const actual = await readDetectionResult(page);
+    let actual;
+    beginImageInferenceWindow(audit);
+    try {
+      await input.setInputFiles(path.join(repositoryRoot, ...source.split('/')));
+      await waitForPhase(page, 'success', INFERENCE_TIMEOUT_MS);
+      actual = await readDetectionResult(page);
+    } finally {
+      endImageInferenceWindow(audit);
+    }
     const referenceProbability = references.get(source);
     const comparison = compareOnlinePrediction(referenceProbability, actual.probability);
     invariant(actual.provider === provider, `${source} used ${actual.provider}; expected ${provider}`);
@@ -757,18 +812,19 @@ function observedResourcePaths(page) {
 async function runProviderCase(browser, deploymentUrl, repositoryRoot, references, mode) {
   const provider = mode;
   const context = await browser.newContext({ serviceWorkers: 'block' });
-  const audit = createNetworkAudit();
+  const audit = createPrivacyAudit();
   let operationError;
   let result;
   try {
     await installRequestBoundary(context, deploymentUrl, audit);
     const page = await context.newPage();
     await installProgressProbe(page);
-    page.on('pageerror', (error) => audit.pageErrors.push(error.message.slice(0, 500)));
+    page.on('pageerror', () => {
+      audit.pageErrorCount += 1;
+    });
     page.on('console', (message) => {
-      const text = message.text().replace(/https?:\/\/\S+/g, '[url]').slice(0, 500);
-      if (message.type() === 'error') audit.errors.push(text);
-      if (message.type() === 'warning') audit.warnings.push(text);
+      if (message.type() === 'error') audit.consoleErrorCount += 1;
+      if (message.type() === 'warning') audit.consoleWarningCount += 1;
     });
     const target = new URL(deploymentUrl);
     if (mode === 'wasm') target.searchParams.set('provider', 'wasm');
@@ -778,7 +834,7 @@ async function runProviderCase(browser, deploymentUrl, repositoryRoot, reference
     invariant(await page.evaluate(() => window.crossOriginIsolated), `${mode} page is not cross-origin isolated`);
     let progress = await page.evaluate(() => window.__lingshuOnlineProgress ?? []);
     progress = compactProgressSamples(progress, 128);
-    const predictions = await runPredictions(page, repositoryRoot, provider, references);
+    const predictions = await runPredictions(page, repositoryRoot, provider, references, audit);
     let cache;
     let offline;
     if (mode === 'webgpu') {
@@ -795,9 +851,15 @@ async function runProviderCase(browser, deploymentUrl, repositoryRoot, reference
       };
       await context.setOffline(true);
       const source = 'demo_images/r5.png';
-      await page.locator('input[type="file"]').setInputFiles(path.join(repositoryRoot, ...source.split('/')));
-      await waitForPhase(page, 'success', INFERENCE_TIMEOUT_MS);
-      const actual = await readDetectionResult(page);
+      let actual;
+      beginImageInferenceWindow(audit);
+      try {
+        await page.locator('input[type="file"]').setInputFiles(path.join(repositoryRoot, ...source.split('/')));
+        await waitForPhase(page, 'success', INFERENCE_TIMEOUT_MS);
+        actual = await readDetectionResult(page);
+      } finally {
+        endImageInferenceWindow(audit);
+      }
       const comparison = compareOnlinePrediction(references.get(source), actual.probability);
       invariant(actual.provider === 'webgpu' && comparison.withinTolerance && !comparison.thresholdFlip, 'Offline WebGPU inference parity failed');
       offline = { completed: true, source, provider: actual.provider, probability: actual.probability, label: actual.label };
@@ -821,26 +883,28 @@ async function runProviderCase(browser, deploymentUrl, repositoryRoot, reference
   }
   invariant(audit.externalOrigins.size === 0, `External origins observed: ${[...audit.externalOrigins].join(', ')}`);
   invariant(audit.disallowedMethods.size === 0, `Disallowed methods observed: ${[...audit.disallowedMethods].join(', ')}`);
-  invariant(audit.imageRequests === 0, 'An image-bearing network request was observed');
-  invariant(audit.errors.length === 0, `Browser console errors observed: ${audit.errors.join('; ')}`);
-  invariant(audit.pageErrors.length === 0, `Browser page errors observed: ${audit.pageErrors.join('; ')}`);
+  invariant(audit.imageRequests === 0, `Image inference window observed ${audit.imageRequests} network request(s)`);
+  invariant(audit.webSocketRequests === 0, `Browser session observed ${audit.webSocketRequests} WebSocket request(s)`);
+  invariant(audit.consoleErrorCount === 0, `Browser console error count was ${audit.consoleErrorCount}`);
+  invariant(audit.pageErrorCount === 0, `Browser page error count was ${audit.pageErrorCount}`);
   if (operationError !== undefined) throw operationError;
   invariant(result !== undefined, `${mode} provider flow produced no result`);
   return { ...result, audit };
 }
 
 function mergeAudits(audits) {
-  const aggregate = createNetworkAudit();
+  const aggregate = createPrivacyAudit();
   for (const audit of audits) {
     aggregate.requestCount += audit.requestCount;
     aggregate.imageRequests += audit.imageRequests;
+    aggregate.webSocketRequests += audit.webSocketRequests;
     for (const origin of audit.externalOrigins) aggregate.externalOrigins.add(origin);
     for (const method of audit.disallowedMethods) aggregate.disallowedMethods.add(method);
-    aggregate.errors.push(...audit.errors);
-    aggregate.warnings.push(...audit.warnings);
-    aggregate.pageErrors.push(...audit.pageErrors);
+    aggregate.consoleErrorCount += audit.consoleErrorCount;
+    aggregate.consoleWarningCount += audit.consoleWarningCount;
+    aggregate.pageErrorCount += audit.pageErrorCount;
     for (const request of audit.requests.values()) {
-      const key = `${request.method}\u0000${request.kind}\u0000${request.path}`;
+      const key = `${request.type}\u0000${request.method}\u0000${request.kind}\u0000${request.origin}\u0000${request.path}`;
       const current = aggregate.requests.get(key) ?? { ...request, count: 0 };
       current.count += request.count;
       aggregate.requests.set(key, current);
@@ -852,6 +916,7 @@ function mergeAudits(audits) {
     externalOrigins: [...aggregate.externalOrigins].sort(),
     disallowedMethods: [...aggregate.disallowedMethods].sort(),
     imageRequests: aggregate.imageRequests,
+    webSocketRequests: aggregate.webSocketRequests,
     requests: [...aggregate.requests.values()].sort((left, right) =>
       `${left.method}:${left.path}`.localeCompare(`${right.method}:${right.path}`)),
   };
@@ -933,9 +998,9 @@ async function executeDefaultChecks({ deploymentUrl, repositoryRoot }) {
     cache: webgpu.cache,
     offline: webgpu.offline,
     console: {
-      warnings: [...new Set([...webgpu.audit.warnings, ...wasm.audit.warnings])].slice(0, 20),
-      errors: [],
-      pageErrors: [],
+      warningCount: webgpu.audit.consoleWarningCount + wasm.audit.consoleWarningCount,
+      errorCount: webgpu.audit.consoleErrorCount + wasm.audit.consoleErrorCount,
+      pageErrorCount: webgpu.audit.pageErrorCount + wasm.audit.pageErrorCount,
     },
   };
 }
@@ -981,10 +1046,24 @@ async function main(arguments_ = process.argv.slice(2)) {
   process.stdout.write('Review the candidate before copying it to results/web_demo_online_acceptance/latest.json.\n');
 }
 
+export function sanitizeFailureMessage(value) {
+  return String(value)
+    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .replace(/\b(?:https?|wss?|data|blob|file):\S+/gi, '[url]')
+    .replace(/(?:^|\s)[A-Za-z]:[\\/][^\s]*/g, ' [local-path]')
+    .replace(/(?:^|\s)\\\\[^\s]*/g, ' [local-path]')
+    .replace(/\bbearer\s+\S+/gi, '[credential]')
+    .replace(/\b(?:authorization|cookie|credential|password|secret|session|token|api[_-]?key|access[_-]?key)\b\s*[:=]\s*\S+/gi, '[credential]')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 500);
+}
+
 const invokedPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : '';
 if (invokedPath === import.meta.url) {
   main().catch((error) => {
-    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    const detail = sanitizeFailureMessage(error instanceof Error ? error.message : String(error));
+    process.stderr.write(`Online acceptance failed: ${detail || 'diagnostic detail withheld'}\n`);
     process.exitCode = 1;
   });
 }
