@@ -1532,7 +1532,7 @@ async function readDetectionResult(page) {
 }
 
 async function resetAndAssert(page) {
-  await page.getByRole('button', { name: 'Reset detector' }).click();
+  await page.getByRole('button', { name: /back to detector home/i }).click();
   await waitForPhaseOutcome(page, 'ready', 10_000);
   invariant(await page.locator('.preview-figure').count() === 0, 'Reset must clear the preview');
   invariant(await page.locator('#confidence-progress').count() === 0, 'Reset must clear the result');

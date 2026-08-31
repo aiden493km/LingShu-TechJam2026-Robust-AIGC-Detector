@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -94,6 +94,70 @@ describe('READY output parsing', () => {
     parser.push('READY http://127.0.0.1:8765/\n');
 
     expect(() => parser.push('READY http://127.0.0.1:8766/\n')).toThrow(/multiple READY/i);
+  });
+});
+
+describe('detector workflow reset', () => {
+  it('returns from a completed analysis through the semantic home action', async () => {
+    const source = await readFile(
+      new URL('../../tools/run_browser_acceptance.mjs', import.meta.url),
+      'utf8',
+    );
+    const instrumentedSource = source
+      .replace(/^#!.*\r?\n/, '')
+      .replace(
+        "const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));",
+        "const SCRIPT_DIRECTORY = '.';",
+      )
+      .concat('\nexport { resetAndAssert as testResetAndAssert };\n');
+    const acceptance = await import(
+      `data:text/javascript;base64,${Buffer.from(instrumentedSource).toString('base64')}`
+    );
+
+    let phase = 'success';
+    const events = [];
+    const page = {
+      getByRole(role, options) {
+        expect(role).toBe('button');
+        expect(options.name).toBeInstanceOf(RegExp);
+        expect(options.name.test('Back to detector home')).toBe(true);
+        return {
+          async click() {
+            events.push('click semantic home action');
+            phase = 'ready';
+          },
+        };
+      },
+      async waitForFunction(_predicate, argument, options) {
+        events.push(`wait for ${argument.desiredPhase}`);
+        expect(argument).toEqual({ desiredPhase: 'ready' });
+        expect(options).toEqual({ timeout: 10_000 });
+        expect(phase).toBe('ready');
+      },
+      locator(selector) {
+        return {
+          async getAttribute(attribute) {
+            expect(selector).toBe('.detector-stage');
+            expect(attribute).toBe('data-phase');
+            return phase;
+          },
+          async count() {
+            if (selector === '.preview-figure' || selector === '#confidence-progress') {
+              return phase === 'ready' ? 0 : 1;
+            }
+            throw new Error(`Unexpected count selector: ${selector}`);
+          },
+          async isEnabled() {
+            expect(selector).toBe('input[type="file"]');
+            return phase === 'ready';
+          },
+        };
+      },
+    };
+
+    await acceptance.testResetAndAssert(page);
+
+    expect(events).toEqual(['click semantic home action', 'wait for ready']);
   });
 });
 
