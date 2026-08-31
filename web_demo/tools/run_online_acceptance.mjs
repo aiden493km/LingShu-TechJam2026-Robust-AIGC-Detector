@@ -12,6 +12,7 @@ export const EXPECTED_MODEL_SHA256 =
 export const EXPECTED_MODEL_PATH = '/models/baseline2_njr_fp32.onnx';
 export const FROZEN_THRESHOLD = 0.55657113;
 export const MAX_PROBABILITY_ERROR = 0.01;
+export const RESULT_RETURN_CONTROL_NAME = 'Back to detector home';
 
 const EXPECTED_CSP =
   "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; worker-src 'self' blob:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'";
@@ -818,7 +819,7 @@ async function readDetectionResult(page) {
 }
 
 async function resetDetector(page) {
-  await page.getByRole('button', { name: 'Reset detector' }).click();
+  await page.getByRole('button', { name: RESULT_RETURN_CONTROL_NAME }).click();
   await waitForPhase(page, 'ready', 10_000);
 }
 

@@ -212,6 +212,13 @@ describe('Vercel Preview protection bypass', () => {
   });
 });
 
+describe('online result reset control', () => {
+  it('uses the current accessible return-to-home button name', async () => {
+    const module = await import('../../tools/run_online_acceptance.mjs');
+    assert.equal(module.RESULT_RETURN_CONTROL_NAME, 'Back to detector home');
+  });
+});
+
 describe('request classification', () => {
   it('distinguishes the exact model route, other same-origin requests, and external origins', () => {
     assert.equal(classifyRequest(`${DEPLOYMENT_URL.slice(0, -1)}${EXPECTED_MODEL_PATH}`, DEPLOYMENT_URL), 'model');

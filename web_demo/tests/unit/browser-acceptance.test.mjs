@@ -26,6 +26,13 @@ import {
 const MODEL_SHA256 =
   'e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69';
 
+describe('browser result reset control', () => {
+  it('uses the current accessible return-to-home button name', async () => {
+    const module = await import('../../tools/run_browser_acceptance.mjs');
+    expect(module.RESULT_RETURN_CONTROL_NAME).toBe('Back to detector home');
+  });
+});
+
 function parityManifest() {
   return {
     schema_version: 1,

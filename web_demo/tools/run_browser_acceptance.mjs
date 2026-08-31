@@ -50,6 +50,7 @@ const MODEL_TIMEOUT_MS = 180_000;
 const INFERENCE_TIMEOUT_MS = 180_000;
 const PROCESS_OUTPUT_LIMIT = 1024 * 1024;
 const FRESH_COPY_NAME = 'LingShu 评委 本地复现';
+export const RESULT_RETURN_CONTROL_NAME = 'Back to detector home';
 
 const DEMO_SOURCES = [
   'demo_images/f1.png',
@@ -1532,7 +1533,7 @@ async function readDetectionResult(page) {
 }
 
 async function resetAndAssert(page) {
-  await page.getByRole('button', { name: 'Reset detector' }).click();
+  await page.getByRole('button', { name: RESULT_RETURN_CONTROL_NAME }).click();
   await waitForPhaseOutcome(page, 'ready', 10_000);
   invariant(await page.locator('.preview-figure').count() === 0, 'Reset must clear the preview');
   invariant(await page.locator('#confidence-progress').count() === 0, 'Reset must clear the result');
