@@ -8,11 +8,11 @@ committed WebDemo distribution.
 
 ## Project-specific code license
 
-The repository does not currently contain a project-wide root `LICENSE` for the
-team's original code. This third-party inventory does not supply that missing
-license or grant rights in project-specific material. The team must make and
-document its own licensing decision before claiming that the repository as a
-whole is licensed for reuse or redistribution.
+The root [`LICENSE`](LICENSE) licenses original LingShu Intelligence project code
+and original documentation under the MIT License, unless an individual file states
+otherwise. It does not apply to or relicense third-party code, model components,
+datasets, codecs, browser dependencies, bundled runtimes, or other third-party
+assets, which remain subject to their respective licenses and terms.
 
 ## Community Forensics
 
@@ -72,13 +72,19 @@ conditions. A dataset-level metadata label therefore cannot, by itself, settle
 every underlying right or whether trained weights are treated as an adaptation in
 the relevant jurisdiction.
 
-**Release gate:** public redistribution of either the `.pt` checkpoint or the ONNX
-export remains unapproved until the team identifies the actual dataset releases
-and subsets used, records and reviews their complete applicable terms and source
-attribution, and determines how those terms apply to the trained weights. The
-upstream model's MIT metadata and the candidate dataset metadata above do not
-resolve that separate question. Nothing in the browser-runtime inventory below
-clears the model weights for public redistribution.
+### Known unresolved redistribution risk and team release decision
+
+The historical dataset releases, subsets, and complete applicable terms used for
+training remain unproven. The upstream model's MIT metadata and the candidate
+dataset metadata above do not resolve how all underlying terms apply to the trained
+`.pt` checkpoint or its ONNX export.
+
+As of 2026-08-31, the team explicitly chose to proceed with v1.2.0 public
+redistribution while preserving this unresolved-risk disclosure. That decision is
+not a legal-compliance certification, does not establish legal clearance, and does
+not relicense any underlying model, dataset, image, or other third-party asset.
+Nothing in the browser-runtime inventory below resolves this model-weight and
+dataset provenance risk.
 
 ## Bundled judge Python runtimes
 
@@ -197,10 +203,13 @@ are included in all copies or substantial portions. They provide the software
 
 ## Redistribution follow-up
 
-**Release gate:** before public distribution, vendor the complete applicable
-license/notice texts alongside the browser assets, including ONNX Runtime 1.29.0's
-MIT license and pinned `ThirdPartyNotices.txt`, React/React DOM/Scheduler MIT
-licenses, jSquash Apache-2.0 licenses, and the original codec/resize notices. Audit
-the locked production graph above against the actual bundle after every dependency
-or build change. This repository-level summary does not replace that release review
-and does not resolve the separate model-weight/dataset gate above.
+### v1.2.0 packaging verification
+
+The published v1.2.0 packages include the complete applicable license and notice texts
+alongside the browser assets, including ONNX Runtime 1.29.0's MIT license and pinned
+`ThirdPartyNotices.txt`, React/React DOM/Scheduler MIT licenses, jSquash Apache-2.0
+licenses, and the original codec/resize notices. Their presence and completeness were
+verified against the final package contents before upload. Audit the locked production
+graph above against the actual bundle after every dependency or build change. This
+repository-level summary does not replace that packaging verification and does not
+resolve the separate model-weight and dataset provenance risk above.

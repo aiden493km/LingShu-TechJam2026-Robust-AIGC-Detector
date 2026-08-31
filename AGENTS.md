@@ -111,8 +111,13 @@ new accuracy evaluation.
   the implemented Semantic Signal detector experience. The committed site now
   includes Detector, Technology, Results, Error Analysis, and About views,
   in-session recent detections, and the reference-locked title/particle motion.
-  Team member names and individual biographies remain pending confirmation; do
-  not replace those bounded placeholders with invented profiles.
+- The About roster's four names, roles, contribution copy, order, and GitHub URLs
+  are confirmed in
+  `docs/superpowers/specs/2026-08-31-team-roster-design.md`. The four approved
+  local portraits, their exact hashes, and their member mapping are confirmed in
+  `docs/superpowers/specs/2026-08-31-team-portraits-design.md`. Do not replace,
+  retouch, or invent portraits, biographies, titles, contact details, or
+  additional contribution claims beyond those approved sources.
 
 ## Change discipline
 

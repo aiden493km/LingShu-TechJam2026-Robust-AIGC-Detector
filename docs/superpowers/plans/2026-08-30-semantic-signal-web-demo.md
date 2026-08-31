@@ -6,7 +6,8 @@ Completed on 2026-08-30. The reference-locked homepage revision subsequently
 refined this direction, and the resulting implementation is recorded in the
 current `web_demo/src/`, committed `web_demo/dist/`, `PRODUCT.md`, and `DESIGN.md`.
 The unchecked steps below preserve the original execution plan and are not an
-active backlog.
+active backlog. Its pending-profile step was superseded by the implemented
+[2026-08-31 team roster plan](2026-08-31-team-roster.md).
 
 > **Historical execution instructions:** the original work used the Impeccable
 > design workflow and TDD. Do not treat the steps below as current branch or

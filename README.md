@@ -1,13 +1,49 @@
-# Robust AIGC Image Detector under Real-World Transformations
+<div align="center">
 
-**TikTok TechJam 2026 — Track 5**<br>
-**Team: LingShu Intelligence**
+# Robust AIGC Image Detector
 
-A robustness-aware image-level detector for distinguishing authentic images from AI-generated images under common real-world image transformations.
+**LingShu Intelligence · TikTok TechJam 2026 · Track 5**
+
+Evidence-bounded, local-first detection of AI-generated images under real-world transformations.
+
+[![Release v1.2.0](https://img.shields.io/badge/release-v1.2.0-7c3aed?style=flat-square)](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.2.0)
+[![Portable CI](https://img.shields.io/badge/portable-CI-2088ff?style=flat-square&logo=githubactions&logoColor=white)](.github/workflows/web-demo-portable.yml)
+[![Project code MIT](https://img.shields.io/badge/project_code-MIT-22c55e?style=flat-square)](LICENSE)
+[![tested | Python 3.12.8](https://img.shields.io/badge/tested_%7C_Python-3.12.8-3776ab?style=flat-square&logo=python&logoColor=white)](requirements.txt)
+[![tested | PyTorch 2.10.0](https://img.shields.io/badge/tested_%7C_PyTorch-2.10.0-ee4c2c?style=flat-square&logo=pytorch&logoColor=white)](requirements.txt)
+[![React 19](https://img.shields.io/badge/React-19-149eca?style=flat-square&logo=react&logoColor=white)](web_demo/package.json)
+[![Vite 8](https://img.shields.io/badge/Vite-8-646cff?style=flat-square&logo=vite&logoColor=white)](web_demo/package.json)
+[![ONNX Runtime Web 1.29](https://img.shields.io/badge/ONNX_Runtime_Web-1.29-005ced?style=flat-square&logo=onnx&logoColor=white)](web_demo/package.json)
+[![WebGPU](https://img.shields.io/badge/WebGPU-first-f59e0b?style=flat-square)](web_demo/README.md)
+[![WASM](https://img.shields.io/badge/WASM-fallback-654ff0?style=flat-square&logo=webassembly&logoColor=white)](web_demo/README.md)
+[![Offline](https://img.shields.io/badge/inference-offline-16a34a?style=flat-square)](web_demo/README.md)
+[![Windows x64](https://img.shields.io/badge/Windows-x64-0078d4?style=flat-square&logo=windows11&logoColor=white)](.github/workflows/web-demo-portable.yml)
+[![macOS Apple Silicon](https://img.shields.io/badge/macOS-Apple_Silicon-111827?style=flat-square&logo=apple&logoColor=white)](.github/workflows/web-demo-portable.yml)
+[![TechJam 2026](https://img.shields.io/badge/TikTok_TechJam-2026-ff0050?style=flat-square&logo=tiktok&logoColor=white)](#tiktok-techjam-2026)
+
+[**Download / Release v1.2.0**](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.2.0) · [**Frozen Checkpoint v1.0.0**](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/download/v1.0.0/baseline2_njr_best.pt) · [**WebDemo Guide**](web_demo/README.md) · [**Results**](results/) · [**数据与鲁棒性管线说明**](docs/Track5_数据处理与鲁棒性评测管线说明.docx) · Demo Video *(in progress)*
+
+<table>
+  <caption>Frozen evaluation highlights: the first two metrics are from the held-out robustness test; ROC-AUC is from the separate external demonstration benchmark.</caption>
+  <tr>
+    <th scope="col">Held-out Mean Robust Accuracy</th>
+    <th scope="col">Held-out Worst-case Robust Accuracy</th>
+    <th scope="col">External Demonstration ROC-AUC</th>
+  </tr>
+  <tr>
+    <td><strong>0.973977</strong></td>
+    <td><strong>0.927090</strong></td>
+    <td><strong>0.993124</strong></td>
+  </tr>
+</table>
 
 **Final model: B2-NJR = Gaussian Noise + JPEG Compression + Resize**
 
-[Final Checkpoint Release](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.0.0) · [Direct Model Download](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/download/v1.0.0/baseline2_njr_best.pt) · [Local WebDemo](web_demo/README.md) · [Data & Robustness Pipeline (Chinese DOCX)](docs/Track5_数据处理与鲁棒性评测管线说明.docx) · Demo Video *(in progress)*
+</div>
+
+---
+
+**Contents:** [At a Glance](#at-a-glance) · [Problem and Method](#problem-and-method) · [Data Sources and Evaluation Protocol](#data-sources-and-evaluation-protocol) · [Robustness Ablation](#robustness-ablation) · [Final Held-Out Test](#final-held-out-test) · [External Demonstration Benchmark](#external-demonstration-benchmark) · [Data Integrity and Leakage Audit](#data-integrity-and-leakage-audit) · [Error Analysis](#error-analysis) · [Deployment and Web Demo](#deployment-and-web-demo) · [Quick Start](#quick-start) · [Reproducing Final Evaluation](#reproducing-the-final-evaluation) · [Limitations and Future Work](#limitations-and-future-work) · [Team Contributions](#team-contributions) · [Repository Structure](#repository-structure) · [Third-Party Attribution](#third-party-attribution) · [License](#license)
 
 ---
 
@@ -197,6 +233,10 @@ and normal use is offline after the repository is obtained. This portable slice 
 packaged for Windows x86-64 and Apple Silicon macOS; Intel macOS is not packaged in
 this slice.
 
+Use the [v1.2.0 release page](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.2.0)
+for portable local-release downloads and release notes. The frozen Python checkpoint
+remains on the separate v1.0.0 release linked below.
+
 The demo uses exactly `baseline2_njr_fp32.onnx` at the frozen threshold
 `0.55657113`. The first launch verifies and extracts the platform runtime to
 `web_demo/.runtime-cache/`; later launches reuse that cache. The local server is
@@ -237,7 +277,7 @@ above. See the [WebDemo guide](web_demo/README.md) for interaction details.
 | Workflow | Artifact | Distribution | SHA-256 |
 |---|---|---|---|
 | Python CLI / evaluation | `baseline2_njr_best.pt` | [Release `v1.0.0`](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.0.0) | `9348c210f1612b4c78d74dde5e717b69e90274cbbf6fa60c4b893946409658ba` |
-| Local browser WebDemo | `baseline2_njr_fp32.onnx` | Ordinary Git under `web_demo/models/` | `e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69` |
+| Local browser WebDemo | `baseline2_njr_fp32.onnx` | [Portable Release `v1.2.0`](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.2.0); source model remains ordinary Git under `web_demo/models/` | `e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69` |
 
 For the Python CLI, place the downloaded checkpoint at:
 
@@ -251,7 +291,8 @@ checkpoints/baseline2_njr_best.pt
 
 ### Install
 
-Python 3.11+ is recommended.
+The recorded training and evaluation environment used Python 3.12.8 and PyTorch
+2.10.0. The command below installs the repository requirements for a local setup.
 
 ```bash
 pip install -r requirements.txt
@@ -339,14 +380,17 @@ Dataset files are not redistributed in this repository. Obtain the datasets from
 
 ## Team Contributions
 
-> **TODO before final submission:** replace the placeholders below with the four team members' actual names and verified contributions.
+| Team member | Role | Contribution | GitHub |
+|---|---|---|---|
+| Jingxuan Qian | Model Training & Analysis | Led model training, fine-tuning, checkpoint selection, and the B2-NJR error-analysis report. | [@aiden493km](https://github.com/aiden493km) |
+| Tianshi Bu | Dataset & Preprocessing | Prepared the Track5Data training and evaluation sets, 384 px preprocessing, and clean, robust, and ablation data support. | [@Tianshi-Bu](https://github.com/Tianshi-Bu) |
+| Zhiyi Li | Full-Stack Web Delivery | Built the end-to-end WebDemo and dual delivery stack: FP32 model conversion, WebGPU/WASM inference, product UI, offline packaging, Vercel deployment preparation, model-delivery integrity verification, and acceptance testing. | [@Awes0meE](https://github.com/Awes0meE) |
+| Mingxuan Chen | Video & Communications | Leads video editing, promotional storytelling, and submission media for the project. | [@CharlieC007](https://github.com/CharlieC007) |
 
-| Team member | Contribution |
-|---|---|
-| `<Member 1>` | `<Model / training / robustness experiments>` |
-| `<Member 2>` | `<Data / evaluation / experiment support>` |
-| `<Member 3>` | `<Deployment / web demo / repository engineering>` |
-| `<Member 4>` | `<Video / documentation / presentation / additional experiments>` |
+The About-page roster uses the four approved, user-supplied portraits stored
+locally under `web_demo/public/team/`. The exact member-to-image mapping is fixed
+by `docs/superpowers/specs/2026-08-31-team-portraits-design.md`; no stock,
+generated, retouched, or inferred replacement portraits are used.
 
 ---
 
@@ -355,6 +399,7 @@ Dataset files are not redistributed in this repository. Obtain the datasets from
 ```text
 .
 ├── AGENTS.md
+├── LICENSE
 ├── README.md
 ├── requirements.txt
 ├── requirements-web-experiment.txt
@@ -405,8 +450,9 @@ This work builds on **Community Forensics** and the `OwensLab/commfor-model-384`
 See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and [`third_party/Community-Forensics-LICENSE`](third_party/Community-Forensics-LICENSE) for attribution and licensing information.
 
 `THIRD_PARTY_NOTICES.md` is an evidence inventory, not a legal certification. Its
-model/dataset provenance and complete runtime-notice items remain public-release
-review gates and must not be described as cleared without additional evidence.
+model/dataset provenance remains an explicitly accepted, unresolved redistribution
+risk. The complete runtime notices were verified in the published v1.2.0 packages;
+that packaging verification does not make the unresolved provenance legally cleared.
 
 ---
 
@@ -414,3 +460,11 @@ review gates and must not be described as cleared without additional evidence.
 
 **Track 5 — Robust Detection of AI-Generated Images Under Real-World Transformations**<br>
 **Team — LingShu Intelligence**
+
+---
+
+## License
+
+Original LingShu Intelligence project code and original documentation are licensed under [MIT License](LICENSE), unless an individual file states otherwise.
+
+Third-party code, model components, datasets, codecs, browser dependencies, and bundled runtimes remain under their respective licenses and terms; root MIT does not relicense them. Preserve [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md), [Community Forensics license](third_party/Community-Forensics-LICENSE), and applicable dependency/runtime notices when redistributing.

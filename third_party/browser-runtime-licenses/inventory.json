@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "packages": {
+    "@jsquash/jpeg": {
+      "version": "1.6.0",
+      "source": "web_demo/node_modules/@jsquash/jpeg/",
+      "notices": [
+        {"path": "jsquash-jpeg/LICENSE", "sha256": "8c3690b09c168f196446cf5904332023bbc15eb92b6a7cee470ac829e6a65d20"},
+        {"path": "jsquash-jpeg/codec/LICENSE.codec.md", "sha256": "8213556ea36ce3a0f2883db06238463e2452fdad68e3d2e2e4ace2189477a37e"}
+      ]
+    },
+    "@jsquash/png": {
+      "version": "3.1.1",
+      "source": "web_demo/node_modules/@jsquash/png/",
+      "notices": [
+        {"path": "jsquash-png/LICENSE", "sha256": "8c3690b09c168f196446cf5904332023bbc15eb92b6a7cee470ac829e6a65d20"},
+        {"path": "jsquash-png/codec/LICENSE.codec.md", "sha256": "e293d1dddc9785200b1f58a4f5293543cf8566d9e0b8a3c02fad955035b19f42"}
+      ]
+    },
+    "@jsquash/resize": {
+      "version": "2.1.1",
+      "source": "web_demo/node_modules/@jsquash/resize/",
+      "notices": [
+        {"path": "jsquash-resize/LICENSE", "sha256": "8c3690b09c168f196446cf5904332023bbc15eb92b6a7cee470ac829e6a65d20"},
+        {"path": "jsquash-resize/lib/hqx/LICENSE.codec.md", "sha256": "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1"},
+        {"path": "jsquash-resize/lib/magic-kernel/LICENSE.codec.md", "sha256": "21e492c2fb8be34abe00c1b5c4b15139e061ddfaa236adc4c0d4ff70ccd329b2"},
+        {"path": "jsquash-resize/lib/resize/LICENSE.codec.md", "sha256": "373fec335329f8e4c9c8839871606e6ed5bfaa513a4dea2ebee4b7a418853320"}
+      ]
+    },
+    "@jsquash/webp": {
+      "version": "1.5.0",
+      "source": "web_demo/node_modules/@jsquash/webp/",
+      "notices": [
+        {"path": "jsquash-webp/LICENSE", "sha256": "8c3690b09c168f196446cf5904332023bbc15eb92b6a7cee470ac829e6a65d20"},
+        {"path": "jsquash-webp/codec/LICENSE.codec.md", "sha256": "e293d1dddc9785200b1f58a4f5293543cf8566d9e0b8a3c02fad955035b19f42"}
+      ]
+    },
+    "@protobufjs/aspromise": {
+      "version": "1.1.2",
+      "source": "web_demo/node_modules/@protobufjs/aspromise/",
+      "notices": [{"path": "protobufjs-aspromise/LICENSE", "sha256": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794"}]
+    },
+    "@protobufjs/base64": {
+      "version": "1.1.2",
+      "source": "web_demo/node_modules/@protobufjs/base64/",
+      "notices": [{"path": "protobufjs-base64/LICENSE", "sha256": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794"}]
+    },
+    "@protobufjs/codegen": {
+      "version": "2.0.5",
+      "source": "web_demo/node_modules/@protobufjs/codegen/",
+      "notices": [{"path": "protobufjs-codegen/LICENSE", "sha256": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794"}]
+    },
+    "@protobufjs/eventemitter": {
+      "version": "1.1.1",
+      "source": "web_demo/node_modules/@protobufjs/eventemitter/",
+      "notices": [{"path": "protobufjs-eventemitter/LICENSE", "sha256": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794"}]
+    },
+    "@protobufjs/fetch": {
+      "version": "1.1.1",
+      "source": "web_demo/node_modules/@protobufjs/fetch/",
+      "notices": [{"path": "protobufjs-fetch/LICENSE", "sha256": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794"}]
+    },
+    "@protobufjs/float": {
+      "version": "1.0.2",
+      "source": "web_demo/node_modules/@protobufjs/float/",
+      "notices": [{"path": "protobufjs-float/LICENSE", "sha256": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794"}]
+    },
+    "@protobufjs/path": {
+      "version": "1.1.2",
+      "source": "web_demo/node_modules/@protobufjs/path/",
+      "notices": [{"path": "protobufjs-path/LICENSE", "sha256": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794"}]
+    },
+    "@protobufjs/pool": {
+      "version": "1.1.0",
+      "source": "web_demo/node_modules/@protobufjs/pool/",
+      "notices": [{"path": "protobufjs-pool/LICENSE", "sha256": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794"}]
+    },
+    "@protobufjs/utf8": {
+      "version": "1.1.2",
+      "source": "web_demo/node_modules/@protobufjs/utf8/",
+      "notices": [{"path": "protobufjs-utf8/LICENSE", "sha256": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794"}]
+    },
+    "@types/node": {
+      "version": "26.4.0",
+      "source": "web_demo/node_modules/@types/node/",
+      "notices": [{"path": "types-node/LICENSE", "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"}]
+    },
+    "flatbuffers": {
+      "version": "25.9.23",
+      "source": "web_demo/node_modules/flatbuffers/",
+      "notices": [{"path": "flatbuffers/LICENSE", "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"}]
+    },
+    "guid-typescript": {
+      "version": "1.0.9",
+      "source": "web_demo/node_modules/guid-typescript/ (published package has no standalone license file; verbatim package.json records ISC)",
+      "notices": [{"path": "guid-typescript/package.json", "sha256": "ed86856ee95fe87eadd8552b6803a85b7fb4f6cce08603bf9c8385972b5badb6"}]
+    },
+    "long": {
+      "version": "5.3.2",
+      "source": "web_demo/node_modules/long/",
+      "notices": [{"path": "long/LICENSE", "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"}]
+    },
+    "onnxruntime-common": {
+      "version": "1.29.0",
+      "source": "https://github.com/microsoft/onnxruntime/tree/v1.29.0 (same upstream and version as onnxruntime-web@1.29.0)",
+      "notices": [
+        {"path": "onnxruntime/LICENSE", "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"},
+        {"path": "onnxruntime/ThirdPartyNotices.txt", "sha256": "53d3fa5821ac016ac24dd35775c996efec86e2ae0841e9a3a5e146c0ae916845"}
+      ]
+    },
+    "onnxruntime-web": {
+      "version": "1.29.0",
+      "source": "https://github.com/microsoft/onnxruntime/tree/v1.29.0",
+      "notices": [
+        {"path": "onnxruntime/LICENSE", "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"},
+        {"path": "onnxruntime/ThirdPartyNotices.txt", "sha256": "53d3fa5821ac016ac24dd35775c996efec86e2ae0841e9a3a5e146c0ae916845"}
+      ]
+    },
+    "platform": {
+      "version": "1.3.6",
+      "source": "web_demo/node_modules/platform/",
+      "notices": [{"path": "platform/LICENSE", "sha256": "4a161ebed4f1ef933e16ccfa00d86c718703f5d015a9987ea7ce1bb72a43cd22"}]
+    },
+    "protobufjs": {
+      "version": "7.6.6",
+      "source": "web_demo/node_modules/protobufjs/",
+      "notices": [
+        {"path": "protobufjs/LICENSE", "sha256": "49d6a1c9a623784c61c6cb70f773f3457faceb1914a13c8560a9823b7631950c"},
+        {"path": "protobufjs/google/LICENSE", "sha256": "4ab87e6e3c0c0b78e47c77d49ec10c048f8a519fb8062e6e3217e3e6e9b0c6e9"}
+      ]
+    },
+    "react": {
+      "version": "19.2.8",
+      "source": "web_demo/node_modules/react/",
+      "notices": [{"path": "react/LICENSE", "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"}]
+    },
+    "react-dom": {
+      "version": "19.2.8",
+      "source": "web_demo/node_modules/react-dom/",
+      "notices": [{"path": "react-dom/LICENSE", "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"}]
+    },
+    "scheduler": {
+      "version": "0.27.0",
+      "source": "web_demo/node_modules/scheduler/",
+      "notices": [{"path": "scheduler/LICENSE", "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"}]
+    },
+    "undici-types": {
+      "version": "8.3.0",
+      "source": "web_demo/node_modules/undici-types/",
+      "notices": [{"path": "undici-types/LICENSE", "sha256": "a6db8096b2707bc0102d256917d4d33f298ba36d8c3f25de067a2b5bb379db27"}]
+    },
+    "wasm-feature-detect": {
+      "version": "1.9.0",
+      "source": "web_demo/node_modules/wasm-feature-detect/",
+      "notices": [{"path": "wasm-feature-detect/LICENSE", "sha256": "bcf29b4fd3ec2cb5f9d40a0866da446f6da62170d2ccedf4aeca9cf9406dd20c"}]
+    }
+  }
+}

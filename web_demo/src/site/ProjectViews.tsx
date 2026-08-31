@@ -9,6 +9,7 @@ import errorB1B2Transition from '../../../assets/figures/error_b1_b2_transition.
 import errorFailureCases from '../../../assets/figures/error_failure_cases.png';
 
 import { SignalField } from './SignalField';
+import { TeamRoster } from './TeamRoster';
 import type { SiteRoute } from './routes';
 
 type ProjectRoute = Exclude<SiteRoute, 'detector'>;
@@ -80,12 +81,14 @@ export function ProjectImageLightbox({
 function ProjectHeader({
   title,
   summary,
+  className,
 }: {
   readonly title: string;
   readonly summary: string;
+  readonly className?: string;
 }) {
   return (
-    <header className="project-header">
+    <header className={`project-header${className ? ` ${className}` : ''}`}>
       <SignalField />
       <p className="project-kicker">LINGSHU / {title}</p>
       <h1>{title}</h1>
@@ -385,18 +388,12 @@ function ErrorsView({ onExpand }: { readonly onExpand: OpenProjectImage }) {
 }
 
 function AboutView() {
-  const domains = [
-    ['ROBUST MODEL', 'Training design, checkpoint selection, and frozen-threshold evaluation.'],
-    ['EVIDENCE', 'Held-out reporting, external demonstration, and error-analysis boundaries.'],
-    ['BROWSER RUNTIME', 'FP32 conversion, WebGPU/WASM execution, preprocessing parity, and offline packaging.'],
-    ['JUDGE EXPERIENCE', 'Single-image workflow, technical narrative, visual system, and demonstration handoff.'],
-  ] as const;
-
   return (
     <>
       <ProjectHeader
         title="ABOUT"
         summary="Why LingShu Intelligence built a local, inspectable AIGC detector for TikTok TechJam 2026."
+        className="about-header"
       />
       <section className="project-section about-origin">
         <h2>WHY WE BUILT IT</h2>
@@ -410,18 +407,11 @@ function AboutView() {
           OFFICIAL EVENT PAGE →
         </a>
       </section>
-      <section className="project-section team-intro">
-        <h2>TEAM — LINGSHU INTELLIGENCE</h2>
-        <p className="team-pending">Profiles pending team confirmation</p>
-        <p>
-          The contribution map records verified work areas without assigning unconfirmed names,
-          biographies, portraits, or individual roles.
-        </p>
-      </section>
-      <section className="project-section contribution-grid" aria-label="Team contribution areas">
-        {domains.map(([title, detail]) => (
-          <article key={title}><h2>{title}</h2><p>{detail}</p></article>
-        ))}
+      <section className="project-section team-section">
+        <header className="team-intro">
+          <h2>TEAM — LINGSHU INTELLIGENCE</h2>
+        </header>
+        <TeamRoster />
       </section>
       <section className="project-section about-thanks">
         <h2>THANKS</h2>

@@ -5,6 +5,12 @@
 **Scope:** Detector homepage and its in-session analysis transition
 **Visual authority:** User-supplied 1584 × 1024 reference; its durable implementation contract is captured in this specification.
 
+> [!NOTE]
+> The pending-member boundary in section 7 was superseded on 2026-08-31 by the
+> [confirmed team roster design](2026-08-31-team-roster-design.md). The four
+> approved profiles are now implemented; portrait frames remain intentionally
+> empty, and the original no-invention rule still applies beyond that roster.
+
 ## 1. Design contract
 
 The supplied 1584 × 1024 reference image is the visual source of truth. The implementation must reproduce its white background, thin grey rules, two-row grid, proportions, typography scale, particle graphics, control placement, and restrained black/grey palette. Existing visual ideas must not override the reference.
