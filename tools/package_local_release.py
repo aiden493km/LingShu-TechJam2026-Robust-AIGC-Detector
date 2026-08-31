@@ -526,18 +526,16 @@ def _reservation_identity(descriptor: int) -> tuple[int, int]:
 
 
 def _cleanup_owned_reservations(reservations: list[_ReservedOutput]) -> None:
+    """Close reservation handles without unlinking any final output path.
+
+    A path can be replaced immediately after any identity check, so failure
+    cleanup deliberately leaves owned reservations or partial archives behind.
+    """
     for reservation in reservations:
         try:
             os.close(reservation.descriptor)
         except OSError:
             pass
-    for reservation in reservations:
-        try:
-            path_stat = reservation.path.stat(follow_symlinks=False)
-            if (path_stat.st_dev, path_stat.st_ino) == reservation.identity:
-                reservation.path.unlink()
-        except OSError:
-            continue
 
 
 def _require_owned_output(reservation: _ReservedOutput) -> None:
@@ -592,7 +590,14 @@ def build_release_archives(
     version: str,
     source_date_epoch: int | None = None,
 ) -> tuple[BuiltArchive, BuiltArchive]:
-    """Build the two portable ZIPs from raw blobs at a captured, clean HEAD."""
+    """Build the two portable ZIPs from raw blobs at a captured, clean HEAD.
+
+    If a failure happens after output reservation, every successfully reserved
+    final path remains as a reservation or partial archive. When both names were
+    reserved, both remain; if the second reservation fails, the first remains
+    and the pre-existing second path is untouched. This intentional fail-closed
+    behavior prevents cleanup from deleting concurrently replaced content.
+    """
 
     _validate_version(version)
     requested_repository_root = Path(repository_root)

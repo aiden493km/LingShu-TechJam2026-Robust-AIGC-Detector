@@ -672,9 +672,11 @@ class DeterministicReleaseBuilderTests(unittest.TestCase):
                     )
 
             self.assertEqual(b"racer-owned", windows_output.read_bytes())
-            self.assertFalse((output_dir / MACOS_ASSET).exists())
+            macos_output = output_dir / MACOS_ASSET
+            self.assertTrue(macos_output.exists(), "macOS reservation was unlinked")
+            self.assertEqual(b"", macos_output.read_bytes())
 
-    def test_cleanup_errors_do_not_mask_build_failure_or_stop_other_cleanup(self) -> None:
+    def test_failure_preserves_original_error_and_leaves_both_reservations(self) -> None:
         module = _load_builder(self)
         with tempfile.TemporaryDirectory() as temporary_directory:
             temporary_root = Path(temporary_directory)
@@ -683,16 +685,9 @@ class DeterministicReleaseBuilderTests(unittest.TestCase):
             windows_output = output_dir / WINDOWS_ASSET
             _write_minimal_release_sources(repository_root)
             _commit_fixture_repository(repository_root)
-            original_stat = module.Path.stat
-
-            def cleanup_stat_failure(path, *arguments, **keywords):
-                if Path(path) == windows_output:
-                    raise PermissionError("simulated cleanup stat failure")
-                return original_stat(path, *arguments, **keywords)
-
             with mock.patch.object(
                 module, "_write_archive", side_effect=RuntimeError("original build failure")
-            ), mock.patch.object(module.Path, "stat", new=cleanup_stat_failure):
+            ):
                 try:
                     module.build_release_archives(
                         repository_root, output_dir, "1.2.0", STABLE_EPOCH
@@ -704,8 +699,42 @@ class DeterministicReleaseBuilderTests(unittest.TestCase):
                 else:
                     self.fail("expected the original build failure")
 
-            self.assertTrue(windows_output.exists())
-            self.assertFalse((output_dir / MACOS_ASSET).exists())
+            macos_output = output_dir / MACOS_ASSET
+            self.assertTrue(windows_output.exists(), "Windows reservation was unlinked")
+            self.assertTrue(macos_output.exists(), "macOS reservation was unlinked")
+            self.assertEqual(b"", windows_output.read_bytes())
+            self.assertEqual(b"", macos_output.read_bytes())
+
+    def test_cleanup_never_unlinks_racer_replaced_after_identity_check(self) -> None:
+        module = _load_builder(self)
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            output_dir = Path(temporary_directory) / "output"
+            output_paths = (
+                output_dir / WINDOWS_ASSET,
+                output_dir / MACOS_ASSET,
+            )
+            reservations = module._reserve_output_paths(output_paths)
+            original_stat = module.Path.stat
+            racer = b"racer-owned-after-identity-check"
+            replaced = False
+
+            def replace_after_stat(path, *arguments, **keywords):
+                nonlocal replaced
+                result = original_stat(path, *arguments, **keywords)
+                if Path(path) == output_paths[0] and not replaced:
+                    output_paths[0].unlink()
+                    output_paths[0].write_bytes(racer)
+                    replaced = True
+                return result
+
+            with mock.patch.object(module.Path, "stat", new=replace_after_stat):
+                module._cleanup_owned_reservations(reservations)
+
+            if not replaced:
+                output_paths[0].unlink()
+                output_paths[0].write_bytes(racer)
+            self.assertTrue(output_paths[0].exists(), "cleanup deleted racer content")
+            self.assertEqual(racer, output_paths[0].read_bytes())
 
     def test_archives_have_one_safe_root_sorted_members_and_strict_allowlist(self) -> None:
         platform_contracts = {
