@@ -31,6 +31,11 @@ describe('browser result reset control', () => {
     const module = await import('../../tools/run_browser_acceptance.mjs');
     expect(module.RESULT_RETURN_CONTROL_NAME).toBe('Back to detector home');
   });
+
+  it('uses the workflow-error reset button name outside the result view', async () => {
+    const module = await import('../../tools/run_browser_acceptance.mjs');
+    expect(module.ERROR_RESET_CONTROL_NAME).toBe('Reset detector');
+  });
 });
 
 function parityManifest() {

@@ -51,6 +51,7 @@ const INFERENCE_TIMEOUT_MS = 180_000;
 const PROCESS_OUTPUT_LIMIT = 1024 * 1024;
 const FRESH_COPY_NAME = 'LingShu 评委 本地复现';
 export const RESULT_RETURN_CONTROL_NAME = 'Back to detector home';
+export const ERROR_RESET_CONTROL_NAME = 'Reset detector';
 
 const DEMO_SOURCES = [
   'demo_images/f1.png',
@@ -1532,8 +1533,8 @@ async function readDetectionResult(page) {
   return { probability, label, provider, elapsedMs, dimensions };
 }
 
-async function resetAndAssert(page) {
-  await page.getByRole('button', { name: RESULT_RETURN_CONTROL_NAME }).click();
+async function resetAndAssert(page, controlName = RESULT_RETURN_CONTROL_NAME) {
+  await page.getByRole('button', { name: controlName }).click();
   await waitForPhaseOutcome(page, 'ready', 10_000);
   invariant(await page.locator('.preview-figure').count() === 0, 'Reset must clear the preview');
   invariant(await page.locator('#confidence-progress').count() === 0, 'Reset must clear the result');
@@ -1550,7 +1551,7 @@ async function runInvalidAndOversizedChecks(page) {
   await waitForPhaseOutcome(page, 'error', 10_000);
   invariant((await alertText(page)).includes('Choose a valid JPEG, PNG, or WebP image.'), 'Invalid-image error was not actionable');
   invariant(await page.locator('.preview-figure').count() === 0, 'Invalid image must not retain a preview');
-  await resetAndAssert(page);
+  await resetAndAssert(page, ERROR_RESET_CONTROL_NAME);
 
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'lingshu-oversize-'));
   const oversizedPath = path.join(temporaryDirectory, 'oversized.png');
@@ -1565,7 +1566,7 @@ async function runInvalidAndOversizedChecks(page) {
     await waitForPhaseOutcome(page, 'error', 10_000);
     invariant((await alertText(page)).includes('exceeds the 25 MiB limit'), 'Oversized-image error was not actionable');
     invariant(await page.locator('.preview-figure').count() === 0, 'Oversized image must not retain a preview');
-    await resetAndAssert(page);
+    await resetAndAssert(page, ERROR_RESET_CONTROL_NAME);
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
