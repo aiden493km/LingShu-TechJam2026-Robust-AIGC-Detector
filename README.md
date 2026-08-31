@@ -276,7 +276,7 @@ above. See the [WebDemo guide](web_demo/README.md) for interaction details.
 | Workflow | Artifact | Distribution | SHA-256 |
 |---|---|---|---|
 | Python CLI / evaluation | `baseline2_njr_best.pt` | [Release `v1.0.0`](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.0.0) | `9348c210f1612b4c78d74dde5e717b69e90274cbbf6fa60c4b893946409658ba` |
-| Local browser WebDemo | `baseline2_njr_fp32.onnx` | Ordinary Git under `web_demo/models/` | `e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69` |
+| Local browser WebDemo | `baseline2_njr_fp32.onnx` | [Portable Release `v1.2.0`](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.2.0); source model remains ordinary Git under `web_demo/models/` | `e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69` |
 
 For the Python CLI, place the downloaded checkpoint at:
 
