@@ -104,16 +104,16 @@
       "version": "1.29.0",
       "source": "https://github.com/microsoft/onnxruntime/tree/v1.29.0 (same upstream and version as onnxruntime-web@1.29.0)",
       "notices": [
-        {"path": "onnxruntime/LICENSE", "sha256": "c250d6278f0b47a6439fb7592b08b58a55eb9f535aa49a1db63211c3f982b674"},
-        {"path": "onnxruntime/ThirdPartyNotices.txt", "sha256": "4c5b864d8974c94b37461f38163facef79a1bb5dea461667ee9e5be6a8e73f83"}
+        {"path": "onnxruntime/LICENSE", "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"},
+        {"path": "onnxruntime/ThirdPartyNotices.txt", "sha256": "53d3fa5821ac016ac24dd35775c996efec86e2ae0841e9a3a5e146c0ae916845"}
       ]
     },
     "onnxruntime-web": {
       "version": "1.29.0",
       "source": "https://github.com/microsoft/onnxruntime/tree/v1.29.0",
       "notices": [
-        {"path": "onnxruntime/LICENSE", "sha256": "c250d6278f0b47a6439fb7592b08b58a55eb9f535aa49a1db63211c3f982b674"},
-        {"path": "onnxruntime/ThirdPartyNotices.txt", "sha256": "4c5b864d8974c94b37461f38163facef79a1bb5dea461667ee9e5be6a8e73f83"}
+        {"path": "onnxruntime/LICENSE", "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"},
+        {"path": "onnxruntime/ThirdPartyNotices.txt", "sha256": "53d3fa5821ac016ac24dd35775c996efec86e2ae0841e9a3a5e146c0ae916845"}
       ]
     },
     "platform": {

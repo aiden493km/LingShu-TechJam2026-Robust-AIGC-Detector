@@ -37,8 +37,8 @@ RUNTIME_IDENTITIES = {
 }
 LICENSE_HASHES = {
     "README.md": "__README_TEXT__",
-    "onnxruntime/LICENSE": "c250d6278f0b47a6439fb7592b08b58a55eb9f535aa49a1db63211c3f982b674",
-    "onnxruntime/ThirdPartyNotices.txt": "4c5b864d8974c94b37461f38163facef79a1bb5dea461667ee9e5be6a8e73f83",
+    "onnxruntime/LICENSE": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c",
+    "onnxruntime/ThirdPartyNotices.txt": "53d3fa5821ac016ac24dd35775c996efec86e2ae0841e9a3a5e146c0ae916845",
     "react/LICENSE": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93",
     "react-dom/LICENSE": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93",
     "scheduler/LICENSE": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93",
@@ -245,7 +245,7 @@ class BrowserRuntimeLicenseBundleTests(unittest.TestCase):
         self.assertTrue(readme.is_file(), readme)
         content = readme.read_text(encoding="utf-8")
         for package, version, source in (
-            ("ONNX Runtime", "1.29.0", ".venv/Lib/site-packages/onnxruntime/"),
+            ("ONNX Runtime", "1.29.0", "github.com/microsoft/onnxruntime/tree/v1.29.0"),
             ("React", "19.2.8", "web_demo/node_modules/react/"),
             ("react-dom", "19.2.8", "web_demo/node_modules/react-dom/"),
             ("scheduler", "0.27.0", "web_demo/node_modules/scheduler/"),

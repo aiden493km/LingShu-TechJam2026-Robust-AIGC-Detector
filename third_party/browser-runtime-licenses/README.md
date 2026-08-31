@@ -8,7 +8,7 @@ source, notice path, and SHA-256.
 
 | Package | Version | Source path | Vendored files |
 | --- | --- | --- | --- |
-| ONNX Runtime | 1.29.0 | `microsoft/onnxruntime` tag `v1.29.0`; bytes cross-checked against `.venv/Lib/site-packages/onnxruntime/` at the same pinned version | `onnxruntime/LICENSE`, `onnxruntime/ThirdPartyNotices.txt` |
+| ONNX Runtime | 1.29.0 | [`microsoft/onnxruntime` tag `v1.29.0`](https://github.com/microsoft/onnxruntime/tree/v1.29.0), matching `onnxruntime-web@1.29.0` | `onnxruntime/LICENSE`, `onnxruntime/ThirdPartyNotices.txt` |
 | React | 19.2.8 | `web_demo/node_modules/react/` | `react/LICENSE` |
 | react-dom | 19.2.8 | `web_demo/node_modules/react-dom/` | `react-dom/LICENSE` |
 | scheduler | 0.27.0 | `web_demo/node_modules/scheduler/` | `scheduler/LICENSE` |
