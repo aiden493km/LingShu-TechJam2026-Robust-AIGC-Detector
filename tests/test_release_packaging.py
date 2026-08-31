@@ -6,6 +6,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -67,6 +68,27 @@ def _load_builder(test_case: unittest.TestCase):
 
 def _sha256_bytes(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
+
+
+def _create_directory_link(
+    test_case: unittest.TestCase, target: Path, link: Path
+) -> None:
+    try:
+        os.symlink(target, link, target_is_directory=True)
+        return
+    except OSError as symlink_error:
+        junction = subprocess.run(
+            ["cmd.exe", "/d", "/c", "mklink", "/J", str(link), str(target)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        if junction.returncode != 0:
+            test_case.skipTest(
+                f"This Windows account cannot create symlinks or junctions: {symlink_error}"
+            )
 
 
 class ReleasePackagingTests(unittest.TestCase):
@@ -449,37 +471,77 @@ class DeterministicReleaseBuilderTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary_directory:
             fake_root = Path(temporary_directory)
             (fake_root / "web_demo").mkdir()
-            try:
-                os.symlink(
-                    REPOSITORY_ROOT / "web_demo" / "dist",
-                    fake_root / "web_demo" / "dist",
-                    target_is_directory=True,
-                )
-            except OSError as error:
-                junction = subprocess.run(
-                    [
-                        "cmd.exe",
-                        "/d",
-                        "/c",
-                        "mklink",
-                        "/J",
-                        str(fake_root / "web_demo" / "dist"),
-                        str(REPOSITORY_ROOT / "web_demo" / "dist"),
-                    ],
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    check=False,
-                )
-                if junction.returncode != 0:
-                    self.skipTest(
-                        f"This Windows account cannot create symlinks or junctions: {error}"
-                    )
+            _create_directory_link(
+                self,
+                REPOSITORY_ROOT / "web_demo" / "dist",
+                fake_root / "web_demo" / "dist",
+            )
             with self.assertRaisesRegex(ValueError, r"(?i)symlink"):
                 module.build_release_archives(
                     fake_root, fake_root / "out", "1.2.0", STABLE_EPOCH
                 )
+
+    def test_linked_ancestor_of_required_file_is_rejected_by_builder_and_cli(self) -> None:
+        module = _load_builder(self)
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            fake_root = temporary_root / "repository"
+            external_models = temporary_root / "external-models"
+            external_models.mkdir(parents=True)
+            for filename in ("baseline2_njr_fp32.onnx", "manifest.json"):
+                (external_models / filename).write_bytes(b"external")
+
+            for relative_path in (
+                "web_demo/dist/index.html",
+                "third_party/browser-runtime-licenses/README.md",
+                "web_demo/tools/serve_demo.py",
+                "web_demo/tools/verify_distribution.py",
+                "LICENSE",
+                "THIRD_PARTY_NOTICES.md",
+                "third_party/Community-Forensics-LICENSE",
+                "web_demo/start-demo.bat",
+                "web_demo/tools/bootstrap_windows.ps1",
+                "web_demo/runtimes/windows-x86_64-python.zip",
+                "web_demo/start-demo.command",
+                "web_demo/tools/bootstrap_macos.sh",
+                "web_demo/runtimes/macos-arm64-python.tar.gz",
+            ):
+                path = fake_root / relative_path
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"fixture")
+            _create_directory_link(
+                self, external_models, fake_root / "web_demo" / "models"
+            )
+
+            with self.assertRaisesRegex(ValueError, r"(?i)(?:link|junction)"):
+                module.build_release_archives(
+                    fake_root,
+                    temporary_root / "builder-output",
+                    "1.2.0",
+                    STABLE_EPOCH,
+                )
+
+            cli = subprocess.run(
+                [
+                    sys.executable,
+                    str(BUILDER_PATH),
+                    "--repository-root",
+                    str(fake_root),
+                    "--output-dir",
+                    str(temporary_root / "cli-output"),
+                    "--version",
+                    "1.2.0",
+                    "--source-date-epoch",
+                    str(STABLE_EPOCH),
+                ],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+            )
+            self.assertNotEqual(0, cli.returncode)
+            self.assertRegex(cli.stdout + cli.stderr, r"(?i)(?:link|junction)")
 
 
 if __name__ == "__main__":

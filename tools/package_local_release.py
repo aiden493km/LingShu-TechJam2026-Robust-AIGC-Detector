@@ -75,25 +75,50 @@ def _is_link(path: Path) -> bool:
     return path.is_symlink() or (is_junction is not None and is_junction())
 
 
-def _require_regular_file(path: Path) -> Path:
-    if _is_link(path):
-        raise ValueError(f"symlink source is not allowed: {path}")
+def _resolved_source_path(repository_root: Path, path: Path) -> Path:
     try:
-        source_stat = path.stat()
+        lexical_relative = path.relative_to(repository_root)
+    except ValueError:
+        raise ValueError(f"release source escapes repository root: {path}") from None
+    if any(part in ("", ".", "..") for part in lexical_relative.parts):
+        raise ValueError(f"release source escapes repository root: {path}")
+
+    component = repository_root
+    for part in lexical_relative.parts:
+        component = component / part
+        if _is_link(component):
+            raise ValueError(
+                f"symlink or junction source component is not allowed: {component}"
+            )
+
+    try:
+        resolved = path.resolve(strict=True)
     except FileNotFoundError:
         raise FileNotFoundError(f"required release source is missing: {path}") from None
+    try:
+        resolved.relative_to(repository_root)
+    except ValueError:
+        raise ValueError(f"resolved release source escapes repository root: {path}") from None
+    return resolved
+
+
+def _require_regular_file(repository_root: Path, path: Path) -> Path:
+    resolved = _resolved_source_path(repository_root, path)
+    source_stat = resolved.stat()
     if not stat.S_ISREG(source_stat.st_mode):
         raise ValueError(f"release source must be a regular file: {path}")
-    return path
+    return resolved
 
 
-def _walk_regular_files(root: Path) -> list[Path]:
-    if _is_link(root):
-        raise ValueError(f"symlink source tree is not allowed: {root}")
-    if not root.exists():
-        raise FileNotFoundError(f"required release source tree is missing: {root}")
-    if not root.is_dir():
-        raise ValueError(f"release source tree must be a directory: {root}")
+def _require_directory(repository_root: Path, path: Path) -> Path:
+    resolved = _resolved_source_path(repository_root, path)
+    if not resolved.is_dir():
+        raise ValueError(f"release source tree must be a directory: {path}")
+    return resolved
+
+
+def _walk_regular_files(repository_root: Path, root: Path) -> list[Path]:
+    root = _require_directory(repository_root, root)
 
     files: list[Path] = []
     for current, directories, filenames in os.walk(root, topdown=True, followlinks=False):
@@ -102,25 +127,27 @@ def _walk_regular_files(root: Path) -> list[Path]:
         filenames.sort()
         for directory in directories:
             directory_path = current_path / directory
-            if _is_link(directory_path):
-                raise ValueError(f"symlink source is not allowed: {directory_path}")
-            if not directory_path.is_dir():
-                raise ValueError(f"release source must be a directory: {directory_path}")
+            _require_directory(repository_root, directory_path)
         for filename in filenames:
-            files.append(_require_regular_file(current_path / filename))
+            files.append(
+                _require_regular_file(repository_root, current_path / filename)
+            )
     return files
 
 
 def _source_entry(repository_root: Path, relative_name: str) -> _Entry:
     _validate_relative_name(relative_name)
-    return _Entry(relative_name, source=_require_regular_file(repository_root / relative_name))
+    return _Entry(
+        relative_name,
+        source=_require_regular_file(repository_root, repository_root / relative_name),
+    )
 
 
 def _tree_entries(repository_root: Path, relative_root: str) -> list[_Entry]:
     _validate_relative_name(relative_root)
     tree_root = repository_root / relative_root
     entries = []
-    for path in _walk_regular_files(tree_root):
+    for path in _walk_regular_files(repository_root, tree_root):
         relative_name = path.relative_to(repository_root).as_posix()
         _validate_relative_name(relative_name)
         entries.append(_Entry(relative_name, source=path))
@@ -304,12 +331,19 @@ def build_release_archives(
     """Build the Windows x64 and Apple Silicon macOS release ZIPs."""
 
     _validate_version(version)
-    repository_root = Path(repository_root)
-    if _is_link(repository_root):
-        raise ValueError(f"repository root must not be a symlink: {repository_root}")
+    requested_repository_root = Path(repository_root)
+    if _is_link(requested_repository_root):
+        raise ValueError(
+            f"repository root must not be a symlink or junction: {requested_repository_root}"
+        )
+    try:
+        repository_root = requested_repository_root.resolve(strict=True)
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            f"repository root is missing: {requested_repository_root}"
+        ) from None
     if not repository_root.is_dir():
-        raise FileNotFoundError(f"repository root is missing: {repository_root}")
-    repository_root = repository_root.resolve()
+        raise ValueError(f"repository root must be a directory: {requested_repository_root}")
     output_dir = Path(output_dir).resolve()
     epoch = _git_head_epoch(repository_root) if source_date_epoch is None else source_date_epoch
     timestamp = _zip_timestamp(epoch)
