@@ -13,6 +13,7 @@ import unittest
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest import mock
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 BUILDER_PATH = REPOSITORY_ROOT / "tools" / "package_local_release.py"
@@ -117,6 +118,24 @@ def _create_directory_link(
             )
 
 
+def _create_file_symlink(
+    test_case: unittest.TestCase, target: Path, link: Path
+) -> bool:
+    try:
+        os.symlink(target, link, target_is_directory=False)
+        return True
+    except OSError:
+        symlink = subprocess.run(
+            ["cmd.exe", "/d", "/c", "mklink", str(link), str(target)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        return symlink.returncode == 0
+
+
 def _write_minimal_release_sources(repository_root: Path) -> None:
     for relative_path in (
         "web_demo/dist/index.html",
@@ -145,6 +164,7 @@ def _commit_fixture_repository(repository_root: Path) -> None:
         ("init", "--quiet"),
         ("config", "user.name", "Release Test"),
         ("config", "user.email", "release-test@example.invalid"),
+        ("config", "core.autocrlf", "false"),
         ("add", "--all"),
         ("commit", "--quiet", "-m", "test fixture"),
     )
@@ -429,6 +449,119 @@ class DeterministicReleaseBuilderTests(unittest.TestCase):
                 {archive.path.name: archive.path.read_bytes() for archive in first},
             )
 
+    def test_dangling_output_symlink_is_not_replaced(self) -> None:
+        module = _load_builder(self)
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            repository_root = temporary_root / "repository"
+            output_dir = temporary_root / "output"
+            _write_minimal_release_sources(repository_root)
+            _commit_fixture_repository(repository_root)
+            output_dir.mkdir()
+            dangling_target = temporary_root / "missing-target.zip"
+            windows_output = output_dir / WINDOWS_ASSET
+            if not _create_file_symlink(self, dangling_target, windows_output):
+                dangling_target.mkdir()
+                _create_directory_link(self, dangling_target, windows_output)
+                dangling_target.rmdir()
+
+            try:
+                module.build_release_archives(
+                    repository_root, output_dir, "1.2.0", STABLE_EPOCH
+                )
+            except FileExistsError:
+                pass
+            except OSError as error:
+                self.fail(f"expected atomic FileExistsError, got {error!r}")
+            else:
+                self.fail("dangling output link was overwritten")
+
+            self.assertTrue(module._is_link(windows_output))
+            self.assertFalse((output_dir / MACOS_ASSET).exists())
+
+    def test_output_created_after_validation_is_not_overwritten(self) -> None:
+        module = _load_builder(self)
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            repository_root = temporary_root / "repository"
+            output_dir = temporary_root / "output"
+            windows_output = output_dir / WINDOWS_ASSET
+            _write_minimal_release_sources(repository_root)
+            _commit_fixture_repository(repository_root)
+            original_prevalidate = module._prevalidate_release_sources
+
+            def create_racing_output(root: Path) -> None:
+                original_prevalidate(root)
+                output_dir.mkdir(parents=True, exist_ok=True)
+                windows_output.write_bytes(b"racer-owned")
+
+            with mock.patch.object(
+                module,
+                "_prevalidate_release_sources",
+                side_effect=create_racing_output,
+            ):
+                with self.assertRaises(FileExistsError):
+                    module.build_release_archives(
+                        repository_root, output_dir, "1.2.0", STABLE_EPOCH
+                    )
+
+            self.assertEqual(b"racer-owned", windows_output.read_bytes())
+            self.assertFalse((output_dir / MACOS_ASSET).exists())
+
+    def test_archives_stream_raw_head_blobs_despite_autocrlf_worktree_bytes(self) -> None:
+        module = _load_builder(self)
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            repository_root = temporary_root / "repository"
+            source = repository_root / "web_demo" / "dist" / "index.html"
+            _write_minimal_release_sources(repository_root)
+            source.write_bytes(b"first\nsecond\n")
+            _commit_fixture_repository(repository_root)
+
+            baseline = module.build_release_archives(
+                repository_root,
+                temporary_root / "output-lf",
+                "1.2.0",
+                STABLE_EPOCH,
+            )
+            subprocess.run(
+                ["git", "config", "core.autocrlf", "true"],
+                cwd=repository_root,
+                check=True,
+            )
+            source.write_bytes(b"first\r\nsecond\r\n")
+            raw_head = subprocess.run(
+                ["git", "show", "HEAD:web_demo/dist/index.html"],
+                cwd=repository_root,
+                capture_output=True,
+                check=True,
+            ).stdout
+            clean = subprocess.run(
+                ["git", "diff", "--quiet", "HEAD", "--", "web_demo/dist/index.html"],
+                cwd=repository_root,
+                check=False,
+            )
+            self.assertEqual(0, clean.returncode)
+            self.assertEqual(b"first\nsecond\n", raw_head)
+            self.assertNotEqual(raw_head, source.read_bytes())
+
+            converted = module.build_release_archives(
+                repository_root,
+                temporary_root / "output-crlf",
+                "1.2.0",
+                STABLE_EPOCH,
+            )
+            self.assertEqual(
+                [(item.bytes, item.sha256) for item in baseline],
+                [(item.bytes, item.sha256) for item in converted],
+            )
+            for archive, root_name in zip(converted, (WINDOWS_ROOT, MACOS_ROOT)):
+                with zipfile.ZipFile(archive.path) as release_zip:
+                    self.assertEqual(
+                        raw_head,
+                        release_zip.read(f"{root_name}/web_demo/dist/index.html"),
+                    )
+
     def test_archives_have_one_safe_root_sorted_members_and_strict_allowlist(self) -> None:
         platform_contracts = {
             "windows-x64": (
@@ -650,16 +783,32 @@ class DeterministicReleaseBuilderTests(unittest.TestCase):
             "CLOCK$",
             "COM1.txt",
             "com9",
+            "COM\u00b9",
+            "com\u00b2.txt",
+            "LPT\u00b3.log",
             "LPT1.log",
             "lpt9",
             "file.",
             "file ",
             "x:y",
+            "x<y",
+            "x>y",
+            'x"y',
+            "x|y",
+            "x?y",
+            "x*y",
             "e\u0301.txt",
         ):
             with self.subTest(name=unsafe_name):
                 with self.assertRaises(ValueError):
                     module._validate_relative_name(f"web_demo/dist/{unsafe_name}")
+
+        for codepoint in range(1, 32):
+            with self.subTest(control=codepoint):
+                with self.assertRaises(ValueError):
+                    module._validate_relative_name(
+                        f"web_demo/dist/x{chr(codepoint)}y"
+                    )
 
         for first_name, second_name in (
             ("a", "a."),

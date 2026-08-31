@@ -1,13 +1,13 @@
 """Build the two deterministic, allowlisted LingShu local release archives."""
 
 import argparse
+import errno
 import hashlib
 import os
 import re
 import shutil
 import stat
 import subprocess
-import tempfile
 import unicodedata
 import zipfile
 from dataclasses import dataclass
@@ -63,6 +63,8 @@ _WINDOWS_RESERVED_NAMES = {
     *(f"COM{number}" for number in range(1, 10)),
     *(f"LPT{number}" for number in range(1, 10)),
 }
+_WINDOWS_FORBIDDEN_CHARS = frozenset('<>:"|?*')
+_WINDOWS_DEVICE_DIGIT_TRANSLATION = str.maketrans({"\u00b9": "1", "\u00b2": "2", "\u00b3": "3"})
 
 
 @dataclass(frozen=True)
@@ -78,6 +80,13 @@ class _Entry:
     name: str
     source: Path | None = None
     content: bytes | None = None
+
+
+@dataclass(frozen=True)
+class _ReservedOutput:
+    path: Path
+    descriptor: int
+    identity: tuple[int, int]
 
 
 class _Utf8ZipInfo(zipfile.ZipInfo):
@@ -105,9 +114,18 @@ def _validate_relative_name(name: str) -> None:
     for part in parts:
         if unicodedata.normalize("NFC", part) != part:
             raise ValueError(f"non-NFC archive member component: {part!r}")
-        if ":" in part or part.endswith((".", " ")):
+        if (
+            any(character in _WINDOWS_FORBIDDEN_CHARS for character in part)
+            or any(ord(character) < 32 for character in part)
+            or part.endswith((".", " "))
+        ):
             raise ValueError(f"Windows-unsafe archive member component: {part!r}")
-        reserved_base = part.split(".", 1)[0].rstrip(" .").upper()
+        reserved_base = (
+            part.split(".", 1)[0]
+            .rstrip(" .")
+            .translate(_WINDOWS_DEVICE_DIGIT_TRANSLATION)
+            .upper()
+        )
         if reserved_base in _WINDOWS_RESERVED_NAMES:
             raise ValueError(f"Windows-reserved archive member component: {part!r}")
     name.encode("utf-8")
@@ -289,9 +307,24 @@ def _validated_entries(root_name: str, entries: list[_Entry]) -> tuple[list[str]
     return sorted_directories, sorted_entries
 
 
-def _git_head_epoch(repository_root: Path) -> int:
+def _git_head_oid(repository_root: Path) -> str:
     result = subprocess.run(
-        ["git", "-C", str(repository_root), "log", "-1", "--format=%ct", "HEAD"],
+        ["git", "-C", str(repository_root), "rev-parse", "--verify", "HEAD^{commit}"],
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    oid = result.stdout.strip().lower()
+    if result.returncode != 0 or not re.fullmatch(r"[0-9a-f]{40,64}", oid):
+        detail = result.stderr.strip() or result.stdout.strip() or "no object returned"
+        raise RuntimeError(f"could not resolve git HEAD commit: {detail}")
+    return oid
+
+
+def _git_head_epoch(repository_root: Path, head_oid: str) -> int:
+    result = subprocess.run(
+        ["git", "-C", str(repository_root), "log", "-1", "--format=%ct", head_oid],
         check=False,
         capture_output=True,
         text=True,
@@ -333,7 +366,9 @@ def _prevalidate_release_sources(repository_root: Path) -> None:
         _require_regular_file(repository_root, repository_root / relative_name)
 
 
-def _require_tracked_clean_entries(repository_root: Path, entries: list[_Entry]) -> None:
+def _require_tracked_clean_entries(
+    repository_root: Path, head_oid: str, entries: list[_Entry]
+) -> None:
     source_names = tuple(
         sorted({entry.name for entry in entries if entry.source is not None})
     )
@@ -344,7 +379,7 @@ def _require_tracked_clean_entries(repository_root: Path, entries: list[_Entry])
             "release source is not tracked by Git: " + ", ".join(missing_from_index)
         )
     result = subprocess.run(
-        ["git", "-C", str(repository_root), "diff", "--quiet", "HEAD", "--", *source_names],
+        ["git", "-C", str(repository_root), "diff", "--quiet", head_oid, "--", *source_names],
         check=False,
     )
     if result.returncode == 1:
@@ -374,22 +409,57 @@ def _zip_info(name: str, timestamp: tuple[int, int, int, int, int, int], directo
     return info
 
 
+def _copy_head_blob(
+    repository_root: Path,
+    head_oid: str,
+    relative_name: str,
+    destination,
+) -> None:
+    process = subprocess.Popen(
+        [
+            "git",
+            "-C",
+            str(repository_root),
+            "cat-file",
+            "blob",
+            f"{head_oid}:{relative_name}",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    assert process.stdout is not None
+    assert process.stderr is not None
+    try:
+        shutil.copyfileobj(process.stdout, destination, length=1024 * 1024)
+        process.stdout.close()
+        detail = process.stderr.read().decode("utf-8", errors="replace").strip()
+        returncode = process.wait()
+    except BaseException:
+        process.kill()
+        process.wait()
+        raise
+    finally:
+        process.stdout.close()
+        process.stderr.close()
+    if returncode != 0:
+        raise RuntimeError(
+            f"could not read release source from git HEAD: {relative_name}: {detail}"
+        )
+
+
 def _write_archive(
-    output_path: Path,
+    descriptor: int,
+    repository_root: Path,
+    head_oid: str,
     root_name: str,
     directories: list[str],
     entries: list[_Entry],
     timestamp: tuple[int, int, int, int, int, int],
 ) -> None:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = tempfile.NamedTemporaryFile(
-        prefix=f".{output_path.name}.", suffix=".tmp", dir=output_path.parent, delete=False
-    )
-    temporary_path = Path(temporary.name)
-    temporary.close()
-    try:
+    os.lseek(descriptor, 0, os.SEEK_SET)
+    with os.fdopen(os.dup(descriptor), "w+b") as artifact:
         with zipfile.ZipFile(
-            temporary_path,
+            artifact,
             "w",
             compression=zipfile.ZIP_DEFLATED,
             compresslevel=9,
@@ -407,21 +477,67 @@ def _write_archive(
                 if entry.content is not None:
                     archive.writestr(info, entry.content)
                 else:
-                    with entry.source.open("rb") as source, archive.open(
-                        info, "w", force_zip64=True
-                    ) as destination:
-                        shutil.copyfileobj(source, destination, length=1024 * 1024)
-        os.replace(temporary_path, output_path)
+                    with archive.open(info, "w", force_zip64=True) as destination:
+                        _copy_head_blob(
+                            repository_root,
+                            head_oid,
+                            entry.name,
+                            destination,
+                        )
+        artifact.flush()
+        os.fsync(artifact.fileno())
+
+
+def _reservation_identity(descriptor: int) -> tuple[int, int]:
+    descriptor_stat = os.fstat(descriptor)
+    return descriptor_stat.st_dev, descriptor_stat.st_ino
+
+
+def _cleanup_owned_reservations(reservations: list[_ReservedOutput]) -> None:
+    for reservation in reservations:
+        try:
+            os.close(reservation.descriptor)
+        except OSError:
+            pass
+    for reservation in reservations:
+        try:
+            path_stat = reservation.path.stat(follow_symlinks=False)
+        except FileNotFoundError:
+            continue
+        if (path_stat.st_dev, path_stat.st_ino) == reservation.identity:
+            reservation.path.unlink()
+
+
+def _reserve_output_paths(output_paths: tuple[Path, Path]) -> list[_ReservedOutput]:
+    output_paths[0].parent.mkdir(parents=True, exist_ok=True)
+    reservations: list[_ReservedOutput] = []
+    flags = os.O_CREAT | os.O_EXCL | os.O_RDWR | getattr(os, "O_BINARY", 0)
+    try:
+        for path in output_paths:
+            try:
+                descriptor = os.open(path, flags, 0o600)
+            except PermissionError as error:
+                try:
+                    path.stat(follow_symlinks=False)
+                except FileNotFoundError:
+                    raise error
+                raise FileExistsError(
+                    errno.EEXIST, os.strerror(errno.EEXIST), str(path)
+                ) from error
+            reservations.append(
+                _ReservedOutput(path, descriptor, _reservation_identity(descriptor))
+            )
     except BaseException:
-        temporary_path.unlink(missing_ok=True)
+        _cleanup_owned_reservations(reservations)
         raise
+    return reservations
 
 
-def _sha256(path: Path) -> str:
+def _descriptor_sha256(descriptor: int) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as artifact:
-        for chunk in iter(lambda: artifact.read(1024 * 1024), b""):
-            digest.update(chunk)
+    os.lseek(descriptor, 0, os.SEEK_SET)
+    while chunk := os.read(descriptor, 1024 * 1024):
+        digest.update(chunk)
     return digest.hexdigest()
 
 
@@ -431,11 +547,7 @@ def build_release_archives(
     version: str,
     source_date_epoch: int | None = None,
 ) -> tuple[BuiltArchive, BuiltArchive]:
-    """Build the two portable ZIPs from clean, tracked HEAD inputs.
-
-    Callers must prevent concurrent repository writes: validation and file reads
-    are separate operations, so this function is not a filesystem snapshot.
-    """
+    """Build the two portable ZIPs from raw blobs at a captured, clean HEAD."""
 
     _validate_version(version)
     requested_repository_root = Path(repository_root)
@@ -452,20 +564,19 @@ def build_release_archives(
     if not repository_root.is_dir():
         raise ValueError(f"repository root must be a directory: {requested_repository_root}")
     output_dir = Path(output_dir).resolve()
-    epoch = _git_head_epoch(repository_root) if source_date_epoch is None else source_date_epoch
+    _prevalidate_release_sources(repository_root)
+    head_oid = _git_head_oid(repository_root)
+    epoch = (
+        _git_head_epoch(repository_root, head_oid)
+        if source_date_epoch is None
+        else source_date_epoch
+    )
     timestamp = _zip_timestamp(epoch)
 
     output_paths = (
         output_dir / f"{_WINDOWS_ROOT}-v{version}.zip",
         output_dir / f"{_MACOS_ROOT}-v{version}.zip",
     )
-    existing_outputs = [path for path in output_paths if path.exists()]
-    if existing_outputs:
-        raise FileExistsError(
-            "release output already exists: " + ", ".join(str(path) for path in existing_outputs)
-        )
-
-    _prevalidate_release_sources(repository_root)
     common_entries = _common_entries(repository_root)
     prepared = []
     for platform in ("windows-x64", "macos-apple-silicon"):
@@ -475,21 +586,38 @@ def build_release_archives(
 
     _require_tracked_clean_entries(
         repository_root,
+        head_oid,
         [entry for _, _, _, _, entries in prepared for entry in entries],
     )
 
-    built = []
-    for platform, root_name, asset_stem, directories, entries in prepared:
-        output_path = output_dir / f"{asset_stem}-v{version}.zip"
-        _write_archive(output_path, root_name, directories, entries, timestamp)
-        built.append(
-            BuiltArchive(
-                platform=platform,
-                path=output_path,
-                bytes=output_path.stat().st_size,
-                sha256=_sha256(output_path),
+    reservations = _reserve_output_paths(output_paths)
+    try:
+        built = []
+        for reservation, (platform, root_name, _, directories, entries) in zip(
+            reservations, prepared
+        ):
+            _write_archive(
+                reservation.descriptor,
+                repository_root,
+                head_oid,
+                root_name,
+                directories,
+                entries,
+                timestamp,
             )
-        )
+            built.append(
+                BuiltArchive(
+                    platform=platform,
+                    path=reservation.path,
+                    bytes=os.fstat(reservation.descriptor).st_size,
+                    sha256=_descriptor_sha256(reservation.descriptor),
+                )
+            )
+    except BaseException:
+        _cleanup_owned_reservations(reservations)
+        raise
+    for reservation in reservations:
+        os.close(reservation.descriptor)
     return built[0], built[1]
 
 
