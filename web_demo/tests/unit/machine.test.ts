@@ -398,6 +398,7 @@ function controllerDependencies(
 ): DetectorDependencies {
   return {
     loadModel: vi.fn().mockResolvedValue(loadedModel()),
+    prepareImageRuntime: vi.fn().mockResolvedValue(undefined),
     collectEnvironment: vi.fn().mockReturnValue(environmentSnapshot),
     inspectEnvironment: vi.fn().mockReturnValue(environmentInspection),
     readAndValidate: vi.fn().mockResolvedValue({
@@ -419,6 +420,41 @@ function controllerDependencies(
 }
 
 describe('DetectorController', () => {
+  it('does not publish MODEL READY until the image runtime is prepared', async () => {
+    const model = loadedModel();
+    const runtimeReady = deferred<void>();
+    const dependencies = controllerDependencies({
+      loadModel: vi.fn().mockResolvedValue(model),
+      prepareImageRuntime: vi.fn(() => runtimeReady.promise),
+    });
+    const controller = new DetectorController(dependencies);
+
+    const loading = controller.start();
+    await vi.waitFor(() => expect(dependencies.prepareImageRuntime).toHaveBeenCalledTimes(1));
+    expect(controller.getSnapshot().phase).toBe('booting');
+
+    runtimeReady.resolve(undefined);
+    await loading;
+    expect(controller.getSnapshot()).toEqual({ phase: 'ready', model });
+  });
+
+  it('releases the loaded model when image runtime preparation fails', async () => {
+    const model = loadedModel();
+    const dependencies = controllerDependencies({
+      loadModel: vi.fn().mockResolvedValue(model),
+      prepareImageRuntime: vi.fn().mockRejectedValue(new Error('decoder runtime failed')),
+    });
+    const controller = new DetectorController(dependencies);
+
+    await controller.start();
+
+    expect(model.session.release).toHaveBeenCalledTimes(1);
+    expect(controller.getSnapshot()).toMatchObject({
+      phase: 'error',
+      kind: 'model',
+    });
+  });
+
   it('loads one cached session, reports progress, and reuses it for repeated images', async () => {
     const model = loadedModel();
     const bytes = new ArrayBuffer(16);

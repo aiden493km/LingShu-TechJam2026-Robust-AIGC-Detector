@@ -22,6 +22,7 @@ import {
   type ProviderDiagnostic,
 } from '../runtime/model-session';
 import {
+  prepareImageRuntime,
   preprocessValidatedImage,
   type PreprocessedImage,
 } from '../runtime/preprocess';
@@ -144,6 +145,7 @@ export async function prepareSelectedImage(
 
 export interface DetectorDependencies {
   readonly loadModel: (options: LoadModelSessionOptions) => Promise<LoadedModelSession>;
+  readonly prepareImageRuntime: () => Promise<void>;
   readonly collectEnvironment: () =>
     | RuntimeEnvironmentSnapshot
     | Promise<RuntimeEnvironmentSnapshot>;
@@ -166,6 +168,7 @@ export interface DetectorDependencies {
 function browserDependencies(): DetectorDependencies {
   return {
     loadModel: loadModelSession,
+    prepareImageRuntime,
     collectEnvironment: collectRuntimeEnvironment,
     inspectEnvironment: inspectRuntimeEnvironment,
     readAndValidate: readAndValidateImageFile,
@@ -291,8 +294,9 @@ export class DetectorController {
 
   private async performModelLoad(modelCache?: RequestCache): Promise<void> {
     const operation = this.gate.begin();
+    let model: LoadedModelSession | undefined;
     try {
-      const model = await this.dependencies.loadModel({
+      model = await this.dependencies.loadModel({
         signal: operation.signal,
         ...(modelCache === undefined ? {} : { modelCache }),
         onProgress: (progress) => {
@@ -301,6 +305,7 @@ export class DetectorController {
           }
         },
       });
+      await this.dependencies.prepareImageRuntime();
       if (!this.gate.isCurrent(operation) || this.disposed) {
         await releaseModel(model);
         return;
@@ -308,6 +313,9 @@ export class DetectorController {
       this.model = model;
       this.publish({ type: 'model-ready', model });
     } catch (error) {
+      if (model !== undefined) {
+        await releaseModel(model);
+      }
       if (!this.gate.isCurrent(operation) || this.disposed) {
         return;
       }

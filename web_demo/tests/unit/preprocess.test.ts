@@ -1,7 +1,7 @@
-import decodeJpeg from '@jsquash/jpeg/decode.js';
-import decodePng from '@jsquash/png/decode.js';
-import resize from '@jsquash/resize';
-import decodeWebp from '@jsquash/webp/decode.js';
+import decodeJpeg, { init as initJpeg } from '@jsquash/jpeg/decode.js';
+import decodePng, { init as initPng } from '@jsquash/png/decode.js';
+import resize, { initResize } from '@jsquash/resize';
+import decodeWebp, { init as initWebp } from '@jsquash/webp/decode.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -11,10 +11,10 @@ import {
 } from '../../src/runtime/preprocess';
 import { readAndValidateImageFile } from '../../src/runtime/upload';
 
-vi.mock('@jsquash/jpeg/decode.js', () => ({ default: vi.fn() }));
-vi.mock('@jsquash/png/decode.js', () => ({ default: vi.fn() }));
-vi.mock('@jsquash/webp/decode.js', () => ({ default: vi.fn() }));
-vi.mock('@jsquash/resize', () => ({ default: vi.fn() }));
+vi.mock('@jsquash/jpeg/decode.js', () => ({ default: vi.fn(), init: vi.fn() }));
+vi.mock('@jsquash/png/decode.js', () => ({ default: vi.fn(), init: vi.fn() }));
+vi.mock('@jsquash/webp/decode.js', () => ({ default: vi.fn(), init: vi.fn() }));
+vi.mock('@jsquash/resize', () => ({ default: vi.fn(), initResize: vi.fn() }));
 
 class ImageDataShim {
   readonly colorSpace = 'srgb' as const;
@@ -198,6 +198,20 @@ describe('imageDataToNormalizedChw', () => {
 });
 
 describe('preprocessImage', () => {
+  it('warms every supported decoder and the resize runtime before image selection', async () => {
+    vi.mocked(decodeJpeg).mockRejectedValue(new Error('Decoding error'));
+    vi.mocked(decodeWebp).mockRejectedValue(new Error('Decoding error'));
+    const module = await import('../../src/runtime/preprocess');
+    expect(typeof module.prepareImageRuntime).toBe('function');
+
+    await module.prepareImageRuntime();
+
+    expect(initJpeg).toHaveBeenCalledTimes(1);
+    expect(initPng).toHaveBeenCalledTimes(1);
+    expect(initWebp).toHaveBeenCalledTimes(1);
+    expect(initResize).toHaveBeenCalledTimes(1);
+  });
+
   it('reuses one validated byte buffer across the validation and preprocessing boundary', async () => {
     const fixture = fileWithBytes(pngBytes(), 'one-read.png');
     vi.mocked(decodePng).mockResolvedValue(solidImage(384, 384, [10, 20, 30, 255]));

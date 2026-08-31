@@ -1,7 +1,7 @@
-import decodeJpeg from '@jsquash/jpeg/decode.js';
-import decodePng from '@jsquash/png/decode.js';
-import resize from '@jsquash/resize';
-import decodeWebp from '@jsquash/webp/decode.js';
+import decodeJpeg, { init as initJpeg } from '@jsquash/jpeg/decode.js';
+import decodePng, { init as initPng } from '@jsquash/png/decode.js';
+import resize, { initResize } from '@jsquash/resize';
+import decodeWebp, { init as initWebp } from '@jsquash/webp/decode.js';
 
 import { applyExifOrientation, readJpegOrientation } from './exif';
 import {
@@ -27,6 +27,32 @@ const RESIZE_OPTIONS = {
   premultiply: false,
   linearRGB: false,
 } as const;
+
+let imageRuntimeReady: Promise<void> | undefined;
+
+async function initializeEmscriptenDecoder(
+  initialize: (options?: { print?: (...values: unknown[]) => void; printErr?: (...values: unknown[]) => void }) => Promise<void>,
+  decode: (buffer: ArrayBuffer) => Promise<ImageData>,
+): Promise<void> {
+  await initialize({ print: () => undefined, printErr: () => undefined });
+  try {
+    await decode(new ArrayBuffer(0));
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Decoding error') return;
+    throw error;
+  }
+  throw new Error('Image decoder accepted an invalid warm-up payload');
+}
+
+export function prepareImageRuntime(): Promise<void> {
+  imageRuntimeReady ??= Promise.all([
+    initializeEmscriptenDecoder(initJpeg, (buffer) => decodeJpeg(buffer, { preserveOrientation: false })),
+    Promise.resolve(initPng()).then(() => undefined),
+    initializeEmscriptenDecoder(initWebp, decodeWebp),
+    Promise.resolve(initResize()).then(() => undefined),
+  ]).then(() => undefined);
+  return imageRuntimeReady;
+}
 
 export interface PreprocessedImage {
   tensor: Float32Array;
