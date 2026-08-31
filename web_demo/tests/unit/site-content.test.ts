@@ -36,7 +36,9 @@ describe('project evidence views', () => {
     expect(source).toContain('error_b1_b2_transition.png');
     expect(source).toContain('error_failure_cases.png');
     expect(source).not.toContain('error_analysis_concept.png');
-    expect(source).toContain('Profiles pending team confirmation');
+    expect(source).toContain('<TeamRoster />');
+    expect(source).not.toContain('Profiles pending team confirmation');
+    expect(source).not.toContain('The contribution map records verified work areas');
     expect(source).toContain('BROWSER RUNTIME');
     expect(source).toContain('DATASET & EVALUATION PREPARATION');
     expect(source).toContain('NJR');
