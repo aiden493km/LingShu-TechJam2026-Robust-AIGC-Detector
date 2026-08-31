@@ -203,13 +203,13 @@ are included in all copies or substantial portions. They provide the software
 
 ## Redistribution follow-up
 
-### Required v1.2.0 packaging action
+### v1.2.0 packaging verification
 
-The v1.2.0 packages must include the complete applicable license and notice texts
+The published v1.2.0 packages include the complete applicable license and notice texts
 alongside the browser assets, including ONNX Runtime 1.29.0's MIT license and pinned
 `ThirdPartyNotices.txt`, React/React DOM/Scheduler MIT licenses, jSquash Apache-2.0
-licenses, and the original codec/resize notices. Their presence and completeness
-must be verified against the final package contents before upload. Audit the locked
-production graph above against the actual bundle after every dependency or build
-change. This repository-level summary does not replace that packaging verification
-and does not resolve the separate model-weight and dataset provenance risk above.
+licenses, and the original codec/resize notices. Their presence and completeness were
+verified against the final package contents before upload. Audit the locked production
+graph above against the actual bundle after every dependency or build change. This
+repository-level summary does not replace that packaging verification and does not
+resolve the separate model-weight and dataset provenance risk above.

@@ -451,8 +451,8 @@ See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and [`third_party/Communi
 
 `THIRD_PARTY_NOTICES.md` is an evidence inventory, not a legal certification. Its
 model/dataset provenance remains an explicitly accepted, unresolved redistribution
-risk, and complete runtime notices remain a required v1.2.0 packaging action that
-must be verified before upload; neither may be described as legally cleared.
+risk. The complete runtime notices were verified in the published v1.2.0 packages;
+that packaging verification does not make the unresolved provenance legally cleared.
 
 ---
 
