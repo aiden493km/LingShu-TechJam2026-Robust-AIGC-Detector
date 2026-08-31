@@ -298,6 +298,8 @@ class PortableDocumentationAndWorkflowTests(unittest.TestCase):
         "web_demo/start-demo.sh text eol=lf",
         "web_demo/start-demo.command text eol=lf",
         "web_demo/tools/bootstrap_macos.sh text eol=lf",
+        "third_party/browser-runtime-licenses/** -text -diff",
+        "third_party/browser-runtime-licenses/README.md text eol=lf diff",
     )
 
     @classmethod

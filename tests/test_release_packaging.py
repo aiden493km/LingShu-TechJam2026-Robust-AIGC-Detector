@@ -1,8 +1,72 @@
+import contextlib
+import hashlib
+import importlib.util
+import io
 import json
+import os
+import re
+import subprocess
+import tarfile
+import tempfile
 import unittest
+import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+BUILDER_PATH = REPOSITORY_ROOT / "tools" / "package_local_release.py"
+STABLE_EPOCH = 1_700_000_000
+WINDOWS_ASSET = "LingShu-WebDemo-Windows-x64-v1.2.0.zip"
+MACOS_ASSET = "LingShu-WebDemo-macOS-Apple-Silicon-v1.2.0.zip"
+WINDOWS_ROOT = "LingShu-WebDemo-Windows-x64"
+MACOS_ROOT = "LingShu-WebDemo-macOS-Apple-Silicon"
+MODEL_BYTES = 88_123_029
+MODEL_SHA256 = "e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69"
+RUNTIME_IDENTITIES = {
+    "windows-x86_64-python.zip": (
+        11_133_606,
+        "4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3",
+    ),
+    "macos-arm64-python.tar.gz": (
+        24_970_238,
+        "8b0f1fa71eab7ca644e482c631807a1116fa848491051cd1c8d9429491de63a6",
+    ),
+}
+LICENSE_HASHES = {
+    "README.md": "__README_TEXT__",
+    "onnxruntime/LICENSE": "c250d6278f0b47a6439fb7592b08b58a55eb9f535aa49a1db63211c3f982b674",
+    "onnxruntime/ThirdPartyNotices.txt": "4c5b864d8974c94b37461f38163facef79a1bb5dea461667ee9e5be6a8e73f83",
+    "react/LICENSE": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93",
+    "react-dom/LICENSE": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93",
+    "scheduler/LICENSE": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93",
+    "jsquash-jpeg/LICENSE": "8c3690b09c168f196446cf5904332023bbc15eb92b6a7cee470ac829e6a65d20",
+    "jsquash-jpeg/codec/LICENSE.codec.md": "8213556ea36ce3a0f2883db06238463e2452fdad68e3d2e2e4ace2189477a37e",
+    "jsquash-png/LICENSE": "8c3690b09c168f196446cf5904332023bbc15eb92b6a7cee470ac829e6a65d20",
+    "jsquash-png/codec/LICENSE.codec.md": "e293d1dddc9785200b1f58a4f5293543cf8566d9e0b8a3c02fad955035b19f42",
+    "jsquash-webp/LICENSE": "8c3690b09c168f196446cf5904332023bbc15eb92b6a7cee470ac829e6a65d20",
+    "jsquash-webp/codec/LICENSE.codec.md": "e293d1dddc9785200b1f58a4f5293543cf8566d9e0b8a3c02fad955035b19f42",
+    "jsquash-resize/LICENSE": "8c3690b09c168f196446cf5904332023bbc15eb92b6a7cee470ac829e6a65d20",
+    "jsquash-resize/lib/hqx/LICENSE.codec.md": "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1",
+    "jsquash-resize/lib/magic-kernel/LICENSE.codec.md": "21e492c2fb8be34abe00c1b5c4b15139e061ddfaa236adc4c0d4ff70ccd329b2",
+    "jsquash-resize/lib/resize/LICENSE.codec.md": "373fec335329f8e4c9c8839871606e6ed5bfaa513a4dea2ebee4b7a418853320",
+}
+
+
+def _load_builder(test_case: unittest.TestCase):
+    test_case.assertTrue(
+        BUILDER_PATH.is_file(),
+        "Expected the deterministic release builder to exist",
+    )
+    spec = importlib.util.spec_from_file_location("package_local_release", BUILDER_PATH)
+    test_case.assertIsNotNone(spec)
+    test_case.assertIsNotNone(spec.loader)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _sha256_bytes(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
 
 
 class ReleasePackagingTests(unittest.TestCase):
@@ -47,6 +111,375 @@ class ReleasePackagingTests(unittest.TestCase):
 
         self.assertLess(centered_div_index, at_a_glance_index)
         self.assertGreater(license_index, third_party_index)
+
+
+class BrowserRuntimeLicenseBundleTests(unittest.TestCase):
+    def test_complete_vendored_license_bundle_exists_with_frozen_bytes(self) -> None:
+        bundle_root = REPOSITORY_ROOT / "third_party" / "browser-runtime-licenses"
+        actual = {
+            path.relative_to(bundle_root).as_posix()
+            for path in bundle_root.rglob("*")
+            if path.is_file()
+        } if bundle_root.is_dir() else set()
+
+        self.assertEqual(set(LICENSE_HASHES), actual)
+        for relative_path, expected_sha256 in LICENSE_HASHES.items():
+            if expected_sha256 == "__README_TEXT__":
+                continue
+            with self.subTest(path=relative_path):
+                self.assertEqual(
+                    expected_sha256,
+                    _sha256_bytes((bundle_root / relative_path).read_bytes()),
+                )
+
+    def test_vendored_license_bytes_are_exempt_from_git_text_conversion(self) -> None:
+        for relative_path in LICENSE_HASHES:
+            if relative_path == "README.md":
+                continue
+            repository_path = (
+                "third_party/browser-runtime-licenses/" + relative_path
+            )
+            result = subprocess.run(
+                ["git", "check-attr", "text", "diff", "--", repository_path],
+                cwd=REPOSITORY_ROOT,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
+            )
+            with self.subTest(path=relative_path):
+                self.assertEqual(0, result.returncode, result.stderr)
+                lines = result.stdout.splitlines()
+                self.assertEqual(2, len(lines), result.stdout)
+                self.assertTrue(lines[0].endswith(": text: unset"), result.stdout)
+                self.assertTrue(lines[1].endswith(": diff: unset"), result.stdout)
+
+    def test_license_inventory_names_exact_versions_sources_and_boundary(self) -> None:
+        readme = (
+            REPOSITORY_ROOT
+            / "third_party"
+            / "browser-runtime-licenses"
+            / "README.md"
+        )
+        self.assertTrue(readme.is_file(), readme)
+        content = readme.read_text(encoding="utf-8")
+        for package, version, source in (
+            ("ONNX Runtime", "1.29.0", ".venv/Lib/site-packages/onnxruntime/"),
+            ("React", "19.2.8", "web_demo/node_modules/react/"),
+            ("react-dom", "19.2.8", "web_demo/node_modules/react-dom/"),
+            ("scheduler", "0.27.0", "web_demo/node_modules/scheduler/"),
+            ("@jsquash/jpeg", "1.6.0", "web_demo/node_modules/@jsquash/jpeg/"),
+            ("@jsquash/png", "3.1.1", "web_demo/node_modules/@jsquash/png/"),
+            ("@jsquash/webp", "1.5.0", "web_demo/node_modules/@jsquash/webp/"),
+            ("@jsquash/resize", "2.1.1", "web_demo/node_modules/@jsquash/resize/"),
+        ):
+            with self.subTest(package=package):
+                self.assertIn(package, content)
+                self.assertIn(version, content)
+                self.assertIn(source, content)
+        self.assertIn("Windows", content)
+        self.assertIn("macOS", content)
+        self.assertRegex(content, r"(?i)internal license trees")
+        self.assertRegex(content, r"(?i)not a legal certification")
+
+
+class DeterministicReleaseBuilderTests(unittest.TestCase):
+    _temporary_directory = None
+    _module = None
+    _first = None
+    _second = None
+    _cli_output = None
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        if cls._temporary_directory is not None:
+            cls._temporary_directory.cleanup()
+
+    def _ensure_archives(self):
+        cls = type(self)
+        if cls._first is not None:
+            return cls._first, cls._second
+        cls._module = _load_builder(self)
+        cls._temporary_directory = tempfile.TemporaryDirectory()
+        temporary_root = Path(cls._temporary_directory.name)
+        cls._first = cls._module.build_release_archives(
+            REPOSITORY_ROOT,
+            temporary_root / "first",
+            "1.2.0",
+            source_date_epoch=STABLE_EPOCH,
+        )
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = cls._module.main(
+                [
+                    "--repository-root",
+                    str(REPOSITORY_ROOT),
+                    "--output-dir",
+                    str(temporary_root / "second"),
+                    "--version",
+                    "1.2.0",
+                    "--source-date-epoch",
+                    str(STABLE_EPOCH),
+                ]
+            )
+        self.assertEqual(0, exit_code)
+        cls._cli_output = output.getvalue()
+        cls._second = tuple(
+            cls._module.BuiltArchive(
+                platform=archive.platform,
+                path=temporary_root / "second" / archive.path.name,
+                bytes=(temporary_root / "second" / archive.path.name).stat().st_size,
+                sha256=_sha256_bytes(
+                    (temporary_root / "second" / archive.path.name).read_bytes()
+                ),
+            )
+            for archive in cls._first
+        )
+        return cls._first, cls._second
+
+    def _archive_for(self, platform: str):
+        first, _ = self._ensure_archives()
+        return next(archive for archive in first if archive.platform == platform)
+
+    @staticmethod
+    def _file_members(archive: zipfile.ZipFile) -> set[str]:
+        return {info.filename for info in archive.infolist() if not info.is_dir()}
+
+    @staticmethod
+    def _expected_common_files(root_name: str) -> set[str]:
+        result = {
+            f"{root_name}/LICENSE",
+            f"{root_name}/THIRD_PARTY_NOTICES.md",
+            f"{root_name}/third_party/Community-Forensics-LICENSE",
+            f"{root_name}/web_demo/models/baseline2_njr_fp32.onnx",
+            f"{root_name}/web_demo/models/manifest.json",
+            f"{root_name}/web_demo/tools/serve_demo.py",
+            f"{root_name}/web_demo/tools/verify_distribution.py",
+        }
+        for path in (REPOSITORY_ROOT / "web_demo" / "dist").rglob("*"):
+            if path.is_file():
+                result.add(f"{root_name}/{path.relative_to(REPOSITORY_ROOT).as_posix()}")
+        bundle = REPOSITORY_ROOT / "third_party" / "browser-runtime-licenses"
+        for path in bundle.rglob("*"):
+            if path.is_file():
+                result.add(f"{root_name}/{path.relative_to(REPOSITORY_ROOT).as_posix()}")
+        return result
+
+    def test_asset_names_cli_tsv_and_repeated_builds_are_identical(self) -> None:
+        first, second = self._ensure_archives()
+        self.assertEqual([WINDOWS_ASSET, MACOS_ASSET], [item.path.name for item in first])
+        self.assertEqual(
+            [(item.platform, item.bytes, item.sha256) for item in first],
+            [(item.platform, item.bytes, item.sha256) for item in second],
+        )
+        expected_lines = [
+            f"{item.path.name}\t{item.bytes}\t{item.sha256}" for item in first
+        ]
+        self.assertEqual(expected_lines, type(self)._cli_output.splitlines())
+        for item in first:
+            self.assertRegex(item.sha256, r"^[0-9a-f]{64}$")
+
+    def test_archives_have_one_safe_root_sorted_members_and_strict_allowlist(self) -> None:
+        platform_contracts = {
+            "windows-x64": (
+                WINDOWS_ROOT,
+                {
+                    f"{WINDOWS_ROOT}/START-HERE-WINDOWS.bat",
+                    f"{WINDOWS_ROOT}/web_demo/start-demo.bat",
+                    f"{WINDOWS_ROOT}/web_demo/tools/bootstrap_windows.ps1",
+                    f"{WINDOWS_ROOT}/web_demo/runtimes/windows-x86_64-python.zip",
+                },
+            ),
+            "macos-apple-silicon": (
+                MACOS_ROOT,
+                {
+                    f"{MACOS_ROOT}/START-HERE-MAC.command",
+                    f"{MACOS_ROOT}/web_demo/start-demo.command",
+                    f"{MACOS_ROOT}/web_demo/tools/bootstrap_macos.sh",
+                    f"{MACOS_ROOT}/web_demo/runtimes/macos-arm64-python.tar.gz",
+                },
+            ),
+        }
+        for platform, (root_name, platform_files) in platform_contracts.items():
+            with self.subTest(platform=platform):
+                built = self._archive_for(platform)
+                with zipfile.ZipFile(built.path) as archive:
+                    infos = archive.infolist()
+                    names = [info.filename for info in infos]
+                    files = self._file_members(archive)
+                self.assertEqual(sorted(names), names)
+                self.assertEqual(
+                    self._expected_common_files(root_name) | platform_files,
+                    files,
+                )
+                for portrait in (
+                    "jingxuan-qian.png",
+                    "mingxuan-chen.png",
+                    "tianshi-bu.png",
+                    "zhiyi-li.png",
+                ):
+                    self.assertIn(
+                        f"{root_name}/web_demo/dist/team/{portrait}", files
+                    )
+                roots = {name.rstrip("/").split("/", 1)[0] for name in names}
+                self.assertEqual({root_name}, roots)
+                self.assertEqual(len(names), len({name.casefold() for name in names}))
+                for name in names:
+                    clean_name = name.rstrip("/")
+                    self.assertNotIn("\\", name)
+                    self.assertNotIn("\x00", name)
+                    self.assertFalse(clean_name.startswith("/"))
+                    self.assertIsNone(re.match(r"^[A-Za-z]:", clean_name))
+                    self.assertNotIn("..", clean_name.split("/"))
+                    clean_name.encode("utf-8")
+                    lowered_parts = {part.casefold() for part in clean_name.split("/")}
+                    self.assertTrue(lowered_parts.isdisjoint({
+                        ".git", "node_modules", ".runtime-cache", "runtime-cache",
+                        "generated-tests", ".env", "env",
+                    }))
+                    self.assertFalse(clean_name.casefold().endswith(".map"))
+
+    def test_launchers_platform_files_timestamps_and_unix_modes_are_exact(self) -> None:
+        expected_windows = (
+            b"@echo off\r\n"
+            b'call "%~dp0web_demo\\start-demo.bat" %*\r\n'
+            b"exit /b %ERRORLEVEL%\r\n"
+        )
+        expected_macos = (
+            b"#!/bin/sh\n"
+            b'SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1\n'
+            b'exec "$SCRIPT_DIR/web_demo/start-demo.command" "$@"\n'
+        )
+        expected_timestamp = datetime.fromtimestamp(
+            STABLE_EPOCH, tz=timezone.utc
+        ).timetuple()[:6]
+        for platform, root_name, launcher_name, launcher_bytes in (
+            ("windows-x64", WINDOWS_ROOT, "START-HERE-WINDOWS.bat", expected_windows),
+            ("macos-apple-silicon", MACOS_ROOT, "START-HERE-MAC.command", expected_macos),
+        ):
+            with self.subTest(platform=platform):
+                built = self._archive_for(platform)
+                with zipfile.ZipFile(built.path) as archive:
+                    self.assertEqual(
+                        launcher_bytes,
+                        archive.read(f"{root_name}/{launcher_name}"),
+                    )
+                    for info in archive.infolist():
+                        self.assertEqual(3, info.create_system)
+                        self.assertEqual(expected_timestamp, info.date_time)
+                        mode = (info.external_attr >> 16) & 0o777
+                        if info.is_dir() or info.filename.endswith((".command", ".sh")):
+                            self.assertEqual(0o755, mode, info.filename)
+                        else:
+                            self.assertEqual(0o644, mode, info.filename)
+                    if platform == "macos-apple-silicon":
+                        for name in (
+                            f"{root_name}/START-HERE-MAC.command",
+                            f"{root_name}/web_demo/start-demo.command",
+                            f"{root_name}/web_demo/tools/bootstrap_macos.sh",
+                        ):
+                            content = archive.read(name)
+                            self.assertNotIn(b"\r", content)
+                            self.assertTrue(content.endswith(b"\n"))
+
+    def test_model_runtime_and_internal_runtime_licenses_are_frozen(self) -> None:
+        for platform, root_name, runtime_name in (
+            ("windows-x64", WINDOWS_ROOT, "windows-x86_64-python.zip"),
+            ("macos-apple-silicon", MACOS_ROOT, "macos-arm64-python.tar.gz"),
+        ):
+            with self.subTest(platform=platform):
+                built = self._archive_for(platform)
+                with zipfile.ZipFile(built.path) as archive:
+                    model = archive.read(
+                        f"{root_name}/web_demo/models/baseline2_njr_fp32.onnx"
+                    )
+                    runtime = archive.read(
+                        f"{root_name}/web_demo/runtimes/{runtime_name}"
+                    )
+                self.assertEqual(MODEL_BYTES, len(model))
+                self.assertEqual(MODEL_SHA256, _sha256_bytes(model))
+                expected_bytes, expected_sha256 = RUNTIME_IDENTITIES[runtime_name]
+                self.assertEqual(expected_bytes, len(runtime))
+                self.assertEqual(expected_sha256, _sha256_bytes(runtime))
+                archive_path = Path(type(self)._temporary_directory.name) / runtime_name
+                archive_path.write_bytes(runtime)
+                if runtime_name.endswith(".zip"):
+                    with zipfile.ZipFile(archive_path) as runtime_archive:
+                        self.assertIn("LICENSE.txt", runtime_archive.namelist())
+                else:
+                    with tarfile.open(archive_path, "r:gz") as runtime_archive:
+                        names = runtime_archive.getnames()
+                    self.assertIn("python/lib/python3.12/LICENSE.txt", names)
+                    self.assertTrue(any(
+                        name.startswith("python/lib/python3.12/site-packages/pip-")
+                        and "/licenses/src/pip/_vendor/" in name
+                        for name in names
+                    ))
+
+    def test_each_archive_contains_every_vendored_notice(self) -> None:
+        for platform, root_name in (
+            ("windows-x64", WINDOWS_ROOT),
+            ("macos-apple-silicon", MACOS_ROOT),
+        ):
+            with self.subTest(platform=platform):
+                built = self._archive_for(platform)
+                with zipfile.ZipFile(built.path) as archive:
+                    files = self._file_members(archive)
+                for relative_path in LICENSE_HASHES:
+                    self.assertIn(
+                        f"{root_name}/third_party/browser-runtime-licenses/{relative_path}",
+                        files,
+                    )
+
+    def test_invalid_versions_and_missing_sources_are_rejected(self) -> None:
+        module = _load_builder(self)
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temp = Path(temporary_directory)
+            for version in ("v1.2.0", "1.2", "1.02.0", "01.2.0", "1.2.0-rc1"):
+                with self.subTest(version=version):
+                    with self.assertRaises(ValueError):
+                        module.build_release_archives(
+                            REPOSITORY_ROOT, temp / "out", version, STABLE_EPOCH
+                        )
+            with self.assertRaises(FileNotFoundError):
+                module.build_release_archives(temp / "empty", temp / "out", "1.2.0", STABLE_EPOCH)
+
+    def test_symlinked_source_tree_is_rejected(self) -> None:
+        module = _load_builder(self)
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            fake_root = Path(temporary_directory)
+            (fake_root / "web_demo").mkdir()
+            try:
+                os.symlink(
+                    REPOSITORY_ROOT / "web_demo" / "dist",
+                    fake_root / "web_demo" / "dist",
+                    target_is_directory=True,
+                )
+            except OSError as error:
+                junction = subprocess.run(
+                    [
+                        "cmd.exe",
+                        "/d",
+                        "/c",
+                        "mklink",
+                        "/J",
+                        str(fake_root / "web_demo" / "dist"),
+                        str(REPOSITORY_ROOT / "web_demo" / "dist"),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    check=False,
+                )
+                if junction.returncode != 0:
+                    self.skipTest(
+                        f"This Windows account cannot create symlinks or junctions: {error}"
+                    )
+            with self.assertRaisesRegex(ValueError, r"(?i)symlink"):
+                module.build_release_archives(
+                    fake_root, fake_root / "out", "1.2.0", STABLE_EPOCH
+                )
 
 
 if __name__ == "__main__":

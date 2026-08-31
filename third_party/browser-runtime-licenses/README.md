@@ -1,0 +1,22 @@
+# Browser Runtime License Bundle
+
+This directory vendors the license and notice files shipped with the exact
+browser-runtime packages used to build the committed offline WebDemo. The files
+are copied byte-for-byte from the pinned local installations listed below.
+
+| Package | Version | Source path | Vendored files |
+| --- | --- | --- | --- |
+| ONNX Runtime | 1.29.0 | `.venv/Lib/site-packages/onnxruntime/` | `onnxruntime/LICENSE`, `onnxruntime/ThirdPartyNotices.txt` |
+| React | 19.2.8 | `web_demo/node_modules/react/` | `react/LICENSE` |
+| react-dom | 19.2.8 | `web_demo/node_modules/react-dom/` | `react-dom/LICENSE` |
+| scheduler | 0.27.0 | `web_demo/node_modules/scheduler/` | `scheduler/LICENSE` |
+| @jsquash/jpeg | 1.6.0 | `web_demo/node_modules/@jsquash/jpeg/` | `jsquash-jpeg/LICENSE`, `jsquash-jpeg/codec/LICENSE.codec.md` |
+| @jsquash/png | 3.1.1 | `web_demo/node_modules/@jsquash/png/` | `jsquash-png/LICENSE`, `jsquash-png/codec/LICENSE.codec.md` |
+| @jsquash/webp | 1.5.0 | `web_demo/node_modules/@jsquash/webp/` | `jsquash-webp/LICENSE`, `jsquash-webp/codec/LICENSE.codec.md` |
+| @jsquash/resize | 2.1.1 | `web_demo/node_modules/@jsquash/resize/` | `jsquash-resize/LICENSE`, `jsquash-resize/lib/hqx/LICENSE.codec.md`, `jsquash-resize/lib/magic-kernel/LICENSE.codec.md`, `jsquash-resize/lib/resize/LICENSE.codec.md` |
+
+The bundled Windows and macOS Python runtime archives retain their internal license trees.
+In particular, the Windows archive retains `LICENSE.txt`, and
+the macOS archive retains the Python license and pip's vendored license tree.
+
+This inventory records the bundled source notices; it is not a legal certification.
