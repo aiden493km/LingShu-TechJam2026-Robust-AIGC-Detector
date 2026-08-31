@@ -105,8 +105,13 @@ describe('Semantic Signal visual system', () => {
     expect(css).toMatch(/\.team-section\s*\{[^}]*--team-signal-red:\s*#b5122b/s);
     expect(css).toMatch(/\.team-roster-grid\s*\{[^}]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/s);
     expect(css).toMatch(/\.team-portrait-frame\s*\{[^}]*aspect-ratio:\s*1\s*\/\s*1[^}]*border:\s*1px solid var\(--ink\)/s);
+    expect(css).toMatch(/\.team-portrait-frame\s*\{[^}]*overflow:\s*hidden/s);
+    expect(css).toMatch(/\.team-portrait-image\s*\{[^}]*display:\s*block[^}]*width:\s*100%[^}]*height:\s*100%[^}]*object-fit:\s*cover/s);
+    expect(css).toMatch(/\.team-portrait-frame::before,\s*\.team-portrait-frame::after\s*\{[^}]*z-index:\s*1/s);
     expect(css).toMatch(/\.team-portrait-frame::before[\s\S]*border-top:\s*2px solid var\(--team-signal-red\)/s);
     expect(css).toMatch(/\.team-portrait-frame::after[\s\S]*border-bottom:\s*2px solid var\(--team-signal-red\)/s);
+    expect(css).toMatch(/\.about-header > p:last-child\s*\{[^}]*max-width:\s*64rem/s);
+    expect(css).toMatch(/\.about-origin p\s*\{[^}]*max-width:\s*72rem/s);
     expect(tabletCss).toMatch(/\.team-roster-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/s);
     expect(mobileCss).toMatch(/\.team-roster-grid\s*\{[^}]*grid-template-columns:\s*1fr/s);
     expect(profileRule).not.toContain('border-radius');

@@ -81,12 +81,14 @@ export function ProjectImageLightbox({
 function ProjectHeader({
   title,
   summary,
+  className,
 }: {
   readonly title: string;
   readonly summary: string;
+  readonly className?: string;
 }) {
   return (
-    <header className="project-header">
+    <header className={`project-header${className ? ` ${className}` : ''}`}>
       <SignalField />
       <p className="project-kicker">LINGSHU / {title}</p>
       <h1>{title}</h1>
@@ -391,6 +393,7 @@ function AboutView() {
       <ProjectHeader
         title="ABOUT"
         summary="Why LingShu Intelligence built a local, inspectable AIGC detector for TikTok TechJam 2026."
+        className="about-header"
       />
       <section className="project-section about-origin">
         <h2>WHY WE BUILT IT</h2>

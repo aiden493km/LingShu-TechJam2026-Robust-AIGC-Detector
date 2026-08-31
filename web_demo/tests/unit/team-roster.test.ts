@@ -39,6 +39,13 @@ const members = [
   },
 ] as const;
 
+const portraits = [
+  { name: 'Jingxuan Qian', src: '/team/jingxuan-qian.png' },
+  { name: 'Tianshi Bu', src: '/team/tianshi-bu.png' },
+  { name: 'Zhiyi Li', src: '/team/zhiyi-li.png' },
+  { name: 'Mingxuan Chen', src: '/team/mingxuan-chen.png' },
+] as const;
+
 describe('LingShu Intelligence team roster', () => {
   it('renders four confirmed members in the approved order', () => {
     const html = renderToStaticMarkup(createElement(ProjectView, { route: 'about' }));
@@ -67,12 +74,30 @@ describe('LingShu Intelligence team roster', () => {
     expect(html.match(/rel="noreferrer"/g) ?? []).toHaveLength(5);
   });
 
-  it('keeps all four portrait frames empty and decorative', () => {
+  it('maps the four approved portraits to the correct members', () => {
     const html = renderToStaticMarkup(createElement(ProjectView, { route: 'about' }));
+    const imagePositions = portraits.map(({ src }) => html.indexOf(`src="${src}"`));
 
     expect(html.match(/class="team-portrait-frame"/g) ?? []).toHaveLength(4);
-    expect(html.match(/class="team-portrait-frame" aria-hidden="true"/g) ?? []).toHaveLength(4);
-    expect(html).not.toContain('<img');
-    expect(html).not.toContain('coming soon');
+    expect(html.match(/class="team-portrait-image"/g) ?? []).toHaveLength(4);
+    expect(imagePositions.every((position) => position >= 0)).toBe(true);
+    expect(imagePositions).toEqual([...imagePositions].sort((left, right) => left - right));
+
+    for (const portrait of portraits) {
+      expect(html).toContain(`src="${portrait.src}"`);
+      expect(html).toContain(`alt="${portrait.name} portrait"`);
+    }
+
+    expect(html.match(/width="1254"/g) ?? []).toHaveLength(4);
+    expect(html.match(/height="1254"/g) ?? []).toHaveLength(4);
+    expect(html.match(/loading="lazy"/g) ?? []).toHaveLength(4);
+    expect(html.match(/decoding="async"/g) ?? []).toHaveLength(4);
+    expect(html).not.toContain('class="team-portrait-frame" aria-hidden="true"');
+  });
+
+  it('gives the About header its local wide-summary class', () => {
+    const html = renderToStaticMarkup(createElement(ProjectView, { route: 'about' }));
+
+    expect(html).toContain('class="project-header about-header"');
   });
 });

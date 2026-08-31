@@ -811,6 +811,7 @@ button:disabled { cursor: not-allowed; }
 }
 
 .project-header > p:last-child { position: relative; z-index: 2; max-width: 39rem; margin: 1.8rem 0 0; font-size: clamp(0.85rem, 1.1vw, 1rem); }
+.about-header > p:last-child { max-width: 64rem; }
 .project-section { padding: clamp(2.5rem, 5vw, 5.5rem); border-bottom: var(--hairline); }
 
 .technology-layout, .error-layout { display: grid; grid-template-columns: minmax(16rem, 0.72fr) minmax(0, 1.28fr); gap: clamp(2.5rem, 7vw, 8rem); }
@@ -958,12 +959,21 @@ button:disabled { cursor: not-allowed; }
   width: min(100%, 12.5rem);
   aspect-ratio: 1 / 1;
   margin: 0 auto 1.6rem;
+  overflow: hidden;
   border: 1px solid var(--ink);
   background: var(--paper);
+}
+.team-portrait-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 .team-portrait-frame::before,
 .team-portrait-frame::after {
   position: absolute;
+  z-index: 1;
   width: 1.1rem;
   height: 1.1rem;
   content: '';
@@ -1025,6 +1035,7 @@ button:disabled { cursor: not-allowed; }
 .technical-notes-detail article { min-height: 15rem; padding: clamp(1.5rem, 3vw, 3.2rem); border-right: var(--hairline); border-bottom: var(--hairline); }
 .technical-notes-detail article:nth-child(2n) { border-right: 0; }
 .technical-notes-detail p, .about-origin p, .about-thanks p { max-width: 58rem; margin: 0; color: var(--mid); font-size: 0.9rem; line-height: 1.7; }
+.about-origin p { max-width: 72rem; }
 .about-origin a { display: inline-block; margin-top: 1.6rem; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-underline-offset: 0.3em; }
 .about-thanks { border-bottom: 0; }
 
