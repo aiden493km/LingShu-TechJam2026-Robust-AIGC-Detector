@@ -5,17 +5,22 @@ import {
   EXPECTED_MODEL_BYTES,
   EXPECTED_MODEL_PATH,
   EXPECTED_MODEL_SHA256,
+  PRIVACY_QUIET_GRACE_MS,
   auditNetworkEvent,
   beginImageInferenceWindow,
+  beginReloadWindow,
   classifyRequest,
   compactProgressSamples,
   compareOnlinePrediction,
   createPrivacyAudit,
   endImageInferenceWindow,
+  endReloadWindow,
+  markModelReady,
   parseCliArguments,
   parseOnlineUrl,
   runOnlineAcceptance,
   sanitizeFailureMessage,
+  waitForPrivacyQuietGrace,
   validateOnlineEvidence,
   validateProgressSamples,
   validateResponseHeaders,
@@ -137,6 +142,7 @@ function validEvidence() {
       externalOrigins: [],
       disallowedMethods: [],
       imageRequests: 0,
+      postReadyBlockedRequests: 0,
       webSocketRequests: 0,
       requests: [
         { method: 'GET', kind: 'same-origin', origin: 'https://lingshu-preview.vercel.app', path: '/', type: 'http', count: 4 },
@@ -235,6 +241,7 @@ describe('image inference privacy window', () => {
     ];
     for (const event of cases) {
       const audit = createPrivacyAudit();
+      markModelReady(audit);
       beginImageInferenceWindow(audit);
       const decision = auditNetworkEvent(audit, event, DEPLOYMENT_URL);
       endImageInferenceWindow(audit);
@@ -256,6 +263,78 @@ describe('image inference privacy window', () => {
     assert.equal(audit.webSocketRequests, 1);
     assert.equal(audit.imageRequests, 0);
     assert.equal(JSON.stringify(audit).includes('credential=hidden'), false);
+  });
+
+  it('locks down delayed and unknown requests after ready, including after success/reset', () => {
+    const audit = createPrivacyAudit();
+    auditNetworkEvent(audit, {
+      type: 'http', url: `${DEPLOYMENT_URL}assets/app.js`, method: 'GET', hasBody: false,
+    }, DEPLOYMENT_URL);
+    markModelReady(audit);
+
+    const delayedOutside = auditNetworkEvent(audit, {
+      type: 'http', url: `${DEPLOYMENT_URL}collect?probability=0.99`, method: 'GET', hasBody: false,
+    }, DEPLOYMENT_URL);
+    const unknownOutside = auditNetworkEvent(audit, {
+      type: 'http', url: `${DEPLOYMENT_URL}unknown-runtime.js`, method: 'GET', hasBody: false,
+    }, DEPLOYMENT_URL);
+    beginImageInferenceWindow(audit);
+    endImageInferenceWindow(audit);
+    const delayedAfterReset = auditNetworkEvent(audit, {
+      type: 'http', url: `${DEPLOYMENT_URL}collect?probability=0.01`, method: 'GET', hasBody: false,
+    }, DEPLOYMENT_URL);
+
+    assert.equal(delayedOutside.allow, false);
+    assert.equal(unknownOutside.allow, false);
+    assert.equal(delayedAfterReset.allow, false);
+    assert.equal(audit.postReadyBlockedRequests, 3);
+    assert.equal(JSON.stringify([...audit.requests.values()]).includes('probability='), false);
+  });
+
+  it('allows only clean frozen baseline paths during one explicit reload window', () => {
+    const audit = createPrivacyAudit();
+    auditNetworkEvent(audit, {
+      type: 'http', url: `${DEPLOYMENT_URL}assets/app.js`, method: 'GET', hasBody: false,
+    }, DEPLOYMENT_URL);
+    auditNetworkEvent(audit, {
+      type: 'http', url: `${DEPLOYMENT_URL.slice(0, -1)}${EXPECTED_MODEL_PATH}`, method: 'GET', hasBody: false,
+    }, DEPLOYMENT_URL);
+    markModelReady(audit);
+
+    assert.equal(auditNetworkEvent(audit, {
+      type: 'http', url: `${DEPLOYMENT_URL}assets/app.js`, method: 'GET', hasBody: false,
+    }, DEPLOYMENT_URL).allow, false);
+    beginReloadWindow(audit);
+    assert.equal(auditNetworkEvent(audit, {
+      type: 'http', url: `${DEPLOYMENT_URL}assets/app.js`, method: 'GET', hasBody: false,
+    }, DEPLOYMENT_URL).allow, true);
+    assert.equal(auditNetworkEvent(audit, {
+      type: 'http', url: `${DEPLOYMENT_URL}assets/app.js?late=1`, method: 'GET', hasBody: false,
+    }, DEPLOYMENT_URL).allow, false);
+    assert.equal(auditNetworkEvent(audit, {
+      type: 'http', url: `${DEPLOYMENT_URL}assets/new.js`, method: 'GET', hasBody: false,
+    }, DEPLOYMENT_URL).allow, false);
+    endReloadWindow(audit);
+    assert.equal(auditNetworkEvent(audit, {
+      type: 'http', url: `${DEPLOYMENT_URL}assets/app.js`, method: 'GET', hasBody: false,
+    }, DEPLOYMENT_URL).allow, false);
+  });
+
+  it('keeps the continuous inference window active through a testable quiet grace', async () => {
+    const audit = createPrivacyAudit();
+    markModelReady(audit);
+    beginImageInferenceWindow(audit);
+    let waited;
+    const grace = await waitForPrivacyQuietGrace(audit, async (milliseconds) => {
+      waited = milliseconds;
+      auditNetworkEvent(audit, {
+        type: 'http', url: `${DEPLOYMENT_URL}collect?delayed=1`, method: 'GET', hasBody: false,
+      }, DEPLOYMENT_URL);
+    });
+    assert.equal(waited, PRIVACY_QUIET_GRACE_MS);
+    assert.deepEqual(grace, { milliseconds: PRIVACY_QUIET_GRACE_MS, blockedDuringGrace: 1 });
+    assert.equal(audit.imageRequests, 1);
+    endImageInferenceWindow(audit);
   });
 });
 
@@ -339,12 +418,13 @@ describe('bounded online evidence schema', () => {
       (value) => { value.providers = ['wasm']; },
       (value) => { value.thresholdFlips = 1; },
       (value) => { value.privacy.imageRequests = 1; },
+      (value) => { value.privacy.postReadyBlockedRequests = 1; },
       (value) => { value.crossOriginIsolated = false; },
     ];
     for (const mutate of cases) {
       const value = validEvidence();
       mutate(value);
-      assert.throws(() => validateOnlineEvidence(value), /model|provider|flip|image|isolated|88123029|sha/i);
+      assert.throws(() => validateOnlineEvidence(value), /model|provider|flip|image|privacy|blocked|isolated|88123029|sha/i);
     }
   });
 
@@ -396,12 +476,32 @@ describe('bounded online evidence schema', () => {
   });
 
   it('redacts secrets, query URLs, data URLs, and local paths from failure output', () => {
-    const raw = 'Authorization: Bearer judge-secret-123 at https://example.test/fail?token=judge-query-456 using data:image/png;base64,private C:\\Users\\Judge\\private.png';
+    const raw = 'Authorization: Bearer judge-secret-123 at https://example.test/fail?token=judge-query-456 using data:image/png;base64,private C:\\Users\\John Doe\\secret.txt';
     const sanitized = sanitizeFailureMessage(raw);
-    for (const fragment of ['judge-secret-123', 'judge-query-456', 'base64,private', 'Users\\Judge']) {
+    for (const fragment of ['judge-secret-123', 'judge-query-456', 'base64,private', 'John Doe', 'Doe\\secret.txt']) {
       assert.equal(sanitized.includes(fragment), false);
     }
     assert.match(sanitized, /\[credential\]|\[url\]|\[local-path\]/);
+  });
+
+  it('redacts credentialed/query URLs and JSON-style credential assignments without echoing values', () => {
+    const values = [
+      'https://judge:password@example.test/private',
+      'https://example.test/path?token=judge-query-secret#fragment',
+      '{"token":"judge-json-secret-abc"}',
+      "{'cookie' : 'judge-cookie-secret-xyz'}",
+      '\\\\Judge PC\\Private Share\\secret file.txt',
+    ];
+    for (const value of values) {
+      const sanitized = sanitizeFailureMessage(`Failure detail ${value}`);
+      assert.equal(sanitized.includes(value), false);
+      assert.equal(/judge-(?:json|cookie|query)-secret/i.test(sanitized), false);
+    }
+  });
+
+  it('preserves a safe public URL as normalized origin plus path', () => {
+    const publicUrl = 'https://example.public.blob.vercel-storage.com/models/model.onnx';
+    assert.equal(sanitizeFailureMessage(`Model host ${publicUrl}`), `Model host ${publicUrl}`);
   });
 
   it('requires exactly ten bounded parity rows per provider and valid header evidence', () => {

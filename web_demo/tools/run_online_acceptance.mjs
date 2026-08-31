@@ -321,12 +321,13 @@ function validateProviderRuns(value) {
 }
 
 function validatePrivacy(value, deploymentUrl) {
-  exactKeys(value, ['disallowedMethods', 'externalOrigins', 'imageRequests', 'requestCount', 'requests', 'webSocketRequests'], 'privacy evidence');
+  exactKeys(value, ['disallowedMethods', 'externalOrigins', 'imageRequests', 'postReadyBlockedRequests', 'requestCount', 'requests', 'webSocketRequests'], 'privacy evidence');
   nonNegativeInteger(value.requestCount, 'privacy.requestCount');
   invariant(value.requestCount <= 1_000, 'privacy.requestCount must be bounded at 1000');
   invariant(Array.isArray(value.externalOrigins) && value.externalOrigins.length === 0, 'privacy external origins must be empty');
   invariant(Array.isArray(value.disallowedMethods) && value.disallowedMethods.length === 0, 'privacy disallowed methods must be empty');
   invariant(value.imageRequests === 0, 'privacy imageRequests must equal zero');
+  invariant(value.postReadyBlockedRequests === 0, 'privacy postReadyBlockedRequests must equal zero');
   invariant(value.webSocketRequests === 0, 'privacy webSocketRequests must equal zero');
   invariant(Array.isArray(value.requests) && value.requests.length <= 100, 'privacy requests must be bounded at 100 entries');
   let counted = 0;
@@ -578,9 +579,11 @@ export function createPrivacyAudit() {
     externalOrigins: new Set(),
     disallowedMethods: new Set(),
     imageRequests: 0,
+    postReadyBlockedRequests: 0,
     webSocketRequests: 0,
     modelRequests: 0,
-    inferenceWindowActive: false,
+    phase: 'loading',
+    baselinePaths: new Set(),
     consoleErrorCount: 0,
     consoleWarningCount: 0,
     pageErrorCount: 0,
@@ -589,14 +592,42 @@ export function createPrivacyAudit() {
 
 export function beginImageInferenceWindow(audit) {
   invariant(isRecord(audit), 'Privacy audit must be an object');
-  invariant(audit.inferenceWindowActive === false, 'Image inference privacy window is already active');
-  audit.inferenceWindowActive = true;
+  invariant(audit.phase === 'lockdown', 'Image inference privacy window requires post-ready lockdown');
+  audit.phase = 'inference';
 }
 
 export function endImageInferenceWindow(audit) {
   invariant(isRecord(audit), 'Privacy audit must be an object');
-  invariant(audit.inferenceWindowActive === true, 'Image inference privacy window is not active');
-  audit.inferenceWindowActive = false;
+  invariant(audit.phase === 'inference', 'Image inference privacy window is not active');
+  audit.phase = 'lockdown';
+}
+
+export function markModelReady(audit) {
+  invariant(isRecord(audit) && audit.baselinePaths instanceof Set, 'Privacy audit is invalid');
+  invariant(audit.phase === 'loading', 'Initial MODEL READY can only freeze the loading baseline once');
+  audit.phase = 'lockdown';
+}
+
+export function beginReloadWindow(audit) {
+  invariant(isRecord(audit), 'Privacy audit must be an object');
+  invariant(audit.phase === 'lockdown', 'Reload window requires post-ready lockdown');
+  audit.phase = 'reload';
+}
+
+export function endReloadWindow(audit) {
+  invariant(isRecord(audit), 'Privacy audit must be an object');
+  invariant(audit.phase === 'reload', 'Reload window is not active');
+  audit.phase = 'lockdown';
+}
+
+function beginOfflineWindow(audit) {
+  invariant(audit.phase === 'lockdown', 'Offline inference requires post-ready lockdown');
+  audit.phase = 'offline';
+}
+
+function closePrivacyAudit(audit) {
+  invariant(['lockdown', 'offline'].includes(audit.phase), 'Privacy audit closed from an invalid phase');
+  audit.phase = 'closed';
 }
 
 function recordRequest(audit, method, kind, origin, pathname) {
@@ -619,11 +650,13 @@ export function auditNetworkEvent(audit, event, deploymentUrl) {
   invariant(isRecord(audit) && audit.requests instanceof Map, 'Privacy audit is invalid');
   invariant(isRecord(event), 'Network event must be an object');
   invariant(event.type === 'http' || event.type === 'websocket', 'Network event type is invalid');
-  const active = audit.inferenceWindowActive === true;
+  const postReady = audit.phase !== 'loading';
+  const imageWindow = audit.phase === 'inference' || audit.phase === 'offline';
   if (event.type === 'websocket') {
     audit.webSocketRequests += 1;
-    if (active) audit.imageRequests += 1;
-    return { allow: false, code: active ? 'blocked-image-window-websocket' : 'blocked-websocket' };
+    if (postReady) audit.postReadyBlockedRequests += 1;
+    if (imageWindow) audit.imageRequests += 1;
+    return { allow: false, code: imageWindow ? 'blocked-image-window-websocket' : 'blocked-websocket' };
   }
   invariant(typeof event.url === 'string', 'HTTP event URL is required');
   if (event.url.startsWith('blob:') || event.url.startsWith('data:')) {
@@ -634,16 +667,41 @@ export function auditNetworkEvent(audit, event, deploymentUrl) {
   const method = String(event.method ?? '').toUpperCase();
   const kind = classifyRequest(event.url, deploymentUrl);
   const hasBody = event.hasBody === true;
+  const cleanUrl =
+    parsed.username === '' &&
+    parsed.password === '' &&
+    parsed.search === '' &&
+    parsed.hash === '';
+  const safeRequest = SAFE_METHODS.has(method) && !hasBody;
   if (!SAFE_METHODS.has(method) || hasBody) audit.disallowedMethods.add(method || 'UNKNOWN');
   if (kind === 'external') audit.externalOrigins.add(parsed.origin);
   recordRequest(audit, method, kind, parsed.origin, parsed.pathname);
-  if (active) {
+  if (audit.phase === 'loading') {
+    if (kind === 'external') return { allow: false, code: 'blocked-external-http' };
+    if (!safeRequest || parsed.username !== '' || parsed.password !== '' || parsed.hash !== '') {
+      return { allow: false, code: 'blocked-method-or-body' };
+    }
+    if (cleanUrl) audit.baselinePaths.add(parsed.pathname);
+    return { allow: true, code: 'allowed-http' };
+  }
+  if (audit.phase === 'reload') {
+    if (
+      kind !== 'external' &&
+      cleanUrl &&
+      safeRequest &&
+      audit.baselinePaths.has(parsed.pathname)
+    ) {
+      return { allow: true, code: 'allowed-reload-baseline' };
+    }
+    audit.postReadyBlockedRequests += 1;
+    return { allow: false, code: 'blocked-reload-request' };
+  }
+  audit.postReadyBlockedRequests += 1;
+  if (imageWindow) {
     audit.imageRequests += 1;
     return { allow: false, code: 'blocked-image-window-http' };
   }
-  if (kind === 'external') return { allow: false, code: 'blocked-external-http' };
-  if (!SAFE_METHODS.has(method) || hasBody) return { allow: false, code: 'blocked-method-or-body' };
-  return { allow: true, code: 'allowed-http' };
+  return { allow: false, code: 'blocked-post-ready-http' };
 }
 
 async function installRequestBoundary(context, deploymentUrl, audit) {
@@ -756,20 +814,14 @@ async function resetDetector(page) {
   await waitForPhase(page, 'ready', 10_000);
 }
 
-async function runPredictions(page, repositoryRoot, provider, references, audit) {
+async function runPredictions(page, repositoryRoot, provider, references) {
   const input = page.locator('input[type="file"]');
   invariant(await input.count() === 1, 'Detector must expose exactly one file input');
   const results = [];
   for (const [index, source] of DEMO_SOURCES.entries()) {
-    let actual;
-    beginImageInferenceWindow(audit);
-    try {
-      await input.setInputFiles(path.join(repositoryRoot, ...source.split('/')));
-      await waitForPhase(page, 'success', INFERENCE_TIMEOUT_MS);
-      actual = await readDetectionResult(page);
-    } finally {
-      endImageInferenceWindow(audit);
-    }
+    await input.setInputFiles(path.join(repositoryRoot, ...source.split('/')));
+    await waitForPhase(page, 'success', INFERENCE_TIMEOUT_MS);
+    const actual = await readDetectionResult(page);
     const referenceProbability = references.get(source);
     const comparison = compareOnlinePrediction(referenceProbability, actual.probability);
     invariant(actual.provider === provider, `${source} used ${actual.provider}; expected ${provider}`);
@@ -789,6 +841,22 @@ async function runPredictions(page, repositoryRoot, provider, references, audit)
     await resetDetector(page);
   }
   return results;
+}
+
+export const PRIVACY_QUIET_GRACE_MS = 300;
+
+export async function waitForPrivacyQuietGrace(
+  audit,
+  waitImplementation = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
+) {
+  invariant(audit.phase === 'inference', 'Privacy quiet grace requires an active inference window');
+  invariant(typeof waitImplementation === 'function', 'Privacy quiet grace wait implementation is required');
+  const before = audit.postReadyBlockedRequests;
+  await waitImplementation(PRIVACY_QUIET_GRACE_MS);
+  return {
+    milliseconds: PRIVACY_QUIET_GRACE_MS,
+    blockedDuringGrace: audit.postReadyBlockedRequests - before,
+  };
 }
 
 function resourceTimings(page) {
@@ -831,17 +899,30 @@ async function runProviderCase(browser, deploymentUrl, repositoryRoot, reference
     const response = await page.goto(target.href, { waitUntil: 'domcontentloaded', timeout: 60_000 });
     invariant(response !== null && response.status() === 200, `${mode} navigation failed`);
     await waitForModelReady(page);
+    markModelReady(audit);
     invariant(await page.evaluate(() => window.crossOriginIsolated), `${mode} page is not cross-origin isolated`);
     let progress = await page.evaluate(() => window.__lingshuOnlineProgress ?? []);
     progress = compactProgressSamples(progress, 128);
-    const predictions = await runPredictions(page, repositoryRoot, provider, references, audit);
+    let predictions;
+    beginImageInferenceWindow(audit);
+    try {
+      predictions = await runPredictions(page, repositoryRoot, provider, references);
+    } finally {
+      await waitForPrivacyQuietGrace(audit);
+      endImageInferenceWindow(audit);
+    }
     let cache;
     let offline;
     if (mode === 'webgpu') {
       await page.evaluate(() => performance.clearResourceTimings());
       const beforeReload = audit.modelRequests;
-      await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 });
-      await waitForModelReady(page);
+      beginReloadWindow(audit);
+      try {
+        await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 });
+        await waitForModelReady(page);
+      } finally {
+        if (audit.phase === 'reload') endReloadWindow(audit);
+      }
       invariant(await page.evaluate(() => window.crossOriginIsolated), 'Reloaded page is not cross-origin isolated');
       const observations = await resourceTimings(page);
       cache = {
@@ -851,15 +932,10 @@ async function runProviderCase(browser, deploymentUrl, repositoryRoot, reference
       };
       await context.setOffline(true);
       const source = 'demo_images/r5.png';
-      let actual;
-      beginImageInferenceWindow(audit);
-      try {
-        await page.locator('input[type="file"]').setInputFiles(path.join(repositoryRoot, ...source.split('/')));
-        await waitForPhase(page, 'success', INFERENCE_TIMEOUT_MS);
-        actual = await readDetectionResult(page);
-      } finally {
-        endImageInferenceWindow(audit);
-      }
+      beginOfflineWindow(audit);
+      await page.locator('input[type="file"]').setInputFiles(path.join(repositoryRoot, ...source.split('/')));
+      await waitForPhase(page, 'success', INFERENCE_TIMEOUT_MS);
+      const actual = await readDetectionResult(page);
       const comparison = compareOnlinePrediction(references.get(source), actual.probability);
       invariant(actual.provider === 'webgpu' && comparison.withinTolerance && !comparison.thresholdFlip, 'Offline WebGPU inference parity failed');
       offline = { completed: true, source, provider: actual.provider, probability: actual.probability, label: actual.label };
@@ -877,6 +953,7 @@ async function runProviderCase(browser, deploymentUrl, repositoryRoot, reference
   }
   try {
     await context.close();
+    if (audit.phase === 'lockdown' || audit.phase === 'offline') closePrivacyAudit(audit);
   } catch (closeError) {
     if (operationError !== undefined) throw new AggregateError([operationError, closeError], `${mode} flow and context cleanup failed`);
     throw closeError;
@@ -884,6 +961,7 @@ async function runProviderCase(browser, deploymentUrl, repositoryRoot, reference
   invariant(audit.externalOrigins.size === 0, `External origins observed: ${[...audit.externalOrigins].join(', ')}`);
   invariant(audit.disallowedMethods.size === 0, `Disallowed methods observed: ${[...audit.disallowedMethods].join(', ')}`);
   invariant(audit.imageRequests === 0, `Image inference window observed ${audit.imageRequests} network request(s)`);
+  invariant(audit.postReadyBlockedRequests === 0, `Post-ready privacy lockdown blocked ${audit.postReadyBlockedRequests} request(s)`);
   invariant(audit.webSocketRequests === 0, `Browser session observed ${audit.webSocketRequests} WebSocket request(s)`);
   invariant(audit.consoleErrorCount === 0, `Browser console error count was ${audit.consoleErrorCount}`);
   invariant(audit.pageErrorCount === 0, `Browser page error count was ${audit.pageErrorCount}`);
@@ -897,6 +975,7 @@ function mergeAudits(audits) {
   for (const audit of audits) {
     aggregate.requestCount += audit.requestCount;
     aggregate.imageRequests += audit.imageRequests;
+    aggregate.postReadyBlockedRequests += audit.postReadyBlockedRequests;
     aggregate.webSocketRequests += audit.webSocketRequests;
     for (const origin of audit.externalOrigins) aggregate.externalOrigins.add(origin);
     for (const method of audit.disallowedMethods) aggregate.disallowedMethods.add(method);
@@ -916,6 +995,7 @@ function mergeAudits(audits) {
     externalOrigins: [...aggregate.externalOrigins].sort(),
     disallowedMethods: [...aggregate.disallowedMethods].sort(),
     imageRequests: aggregate.imageRequests,
+    postReadyBlockedRequests: aggregate.postReadyBlockedRequests,
     webSocketRequests: aggregate.webSocketRequests,
     requests: [...aggregate.requests.values()].sort((left, right) =>
       `${left.method}:${left.path}`.localeCompare(`${right.method}:${right.path}`)),
@@ -1047,13 +1127,36 @@ async function main(arguments_ = process.argv.slice(2)) {
 }
 
 export function sanitizeFailureMessage(value) {
+  const credentialName = '(?:authorization|cookie|credential|password|secret|session|token|api[_-]?key|access[_-]?key)';
   return String(value)
     .replace(/[\u0000-\u001f\u007f]+/g, ' ')
-    .replace(/\b(?:https?|wss?|data|blob|file):\S+/gi, '[url]')
-    .replace(/(?:^|\s)[A-Za-z]:[\\/][^\s]*/g, ' [local-path]')
-    .replace(/(?:^|\s)\\\\[^\s]*/g, ' [local-path]')
-    .replace(/\bbearer\s+\S+/gi, '[credential]')
-    .replace(/\b(?:authorization|cookie|credential|password|secret|session|token|api[_-]?key|access[_-]?key)\b\s*[:=]\s*\S+/gi, '[credential]')
+    .replace(/\b(?:https?|wss?|data|blob|file):[^\s]*/gi, (candidate) => {
+      const punctuation = candidate.match(/[),.;]+$/)?.[0] ?? '';
+      const rawUrl = punctuation === '' ? candidate : candidate.slice(0, -punctuation.length);
+      try {
+        const parsed = new URL(rawUrl);
+        if (
+          (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+          parsed.username === '' &&
+          parsed.password === '' &&
+          parsed.search === '' &&
+          parsed.hash === ''
+        ) {
+          return `${parsed.origin}${parsed.pathname}${punctuation}`;
+        }
+      } catch {
+        // Malformed URL-like diagnostics are safest to withhold in full.
+      }
+      return `[url]${punctuation}`;
+    })
+    .replace(/(^|[^A-Za-z0-9])[A-Za-z]:[\\/].*$/gm, (_match, prefix) => `${prefix}[local-path]`)
+    .replace(/(^|[\s=:(])\\\\.*$/gm, (_match, prefix) => `${prefix}[local-path]`)
+    .replace(/\bbearer\s+(?:"[^"]*"|'[^']*'|[^\s,}]+)/gi, '[credential]')
+    .replace(
+      new RegExp(`(["']?\\b${credentialName}\\b["']?\\s*[:=]\\s*)(?:"[^"]*"|'[^']*'|[^\\s,}]+)`, 'gi'),
+      '$1[credential]',
+    )
+    .replace(/\b[^\s,{}]*(?:authorization|cookie|credential|password|secret|session|token|api[_-]?key|access[_-]?key)[^\s,{}]*\b/gi, '[credential]')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 500);
