@@ -204,6 +204,12 @@ describe('Vercel Preview protection bypass', () => {
     assert.deepEqual(module.acceptanceProtectionHeaders({}), {});
     assert.equal(parseOnlineUrl(DEPLOYMENT_URL), DEPLOYMENT_URL);
   });
+
+  it('allows a slow first model transfer enough time to finish', async () => {
+    const module = await import('../../tools/run_online_acceptance.mjs');
+    assert.equal(module.HTTP_TIMEOUT_MS, 900_000);
+    assert.equal(module.MODEL_TIMEOUT_MS, 900_000);
+  });
 });
 
 describe('request classification', () => {
