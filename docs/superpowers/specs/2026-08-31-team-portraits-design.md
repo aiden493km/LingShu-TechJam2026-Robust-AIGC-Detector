@@ -4,7 +4,7 @@
 
 **Status:** User-approved design; implementation plan pending
 
-**Scope:** Add the four user-supplied portraits to the existing About-page Signal Roster without changing its member order, copy, links, or responsive structure
+**Scope:** Add the four user-supplied portraits to the existing About-page Signal Roster and widen the two About introduction text measures without changing member order, copy, links, or responsive structure
 
 ## 1. Goal
 
@@ -93,14 +93,30 @@ Implementation follows test-driven development:
    correct person-to-image mapping, undistorted portraits, visible corner ticks,
    stable card layout, and no horizontal overflow.
 
-## 7. Documentation updates
+## 7. About copy-width refinement
+
+The About header summary currently inherits the shared 39rem project-header text
+measure, which forces an awkward desktop break after “TikTok TechJam.” Give only
+the About header a local `about-header` class and increase its summary measure to
+64rem. Other route headers retain the shared 39rem rule.
+
+The `WHY WE BUILT IT` paragraph currently stops at 58rem. Increase only
+`.about-origin p` to a 72rem maximum measure so the event description uses the
+available desktop field more naturally. The change remains a maximum width, not a
+fixed width, so tablet and mobile layouts continue to wrap inside their available
+space without horizontal scrolling.
+
+Do not change either sentence, typography, font size, padding, section order, or
+the width of the `THANKS` paragraph.
+
+## 8. Documentation updates
 
 Update the live roster design, product/design contracts, repository agent guide,
 root README, and WebDemo runbook so they no longer describe the frames as empty or
 awaiting approved images. Preserve the rule that no additional portraits or
 biographical claims may be invented.
 
-## 8. Scope exclusions
+## 9. Scope exclusions
 
 This task does not:
 
