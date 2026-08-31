@@ -211,30 +211,32 @@ def _source_entry(repository_root: Path, relative_name: str) -> _Entry:
     )
 
 
-def _tree_entries(repository_root: Path, relative_root: str) -> list[_Entry]:
+def _tree_entries(
+    repository_root: Path, head_oid: str, relative_root: str
+) -> list[_Entry]:
     _validate_relative_name(relative_root)
     tree_root = repository_root / relative_root
     filesystem_names = {
         path.relative_to(repository_root).as_posix()
         for path in _walk_regular_files(repository_root, tree_root)
     }
-    tracked_names = set(_git_ls_files(repository_root, (relative_root,)))
-    untracked_names = sorted(filesystem_names - tracked_names)
+    head_names = set(_git_ls_tree(repository_root, head_oid, (relative_root,)))
+    untracked_names = sorted(filesystem_names - head_names)
     if untracked_names:
         raise ValueError(
             "untracked release source is not allowed: " + ", ".join(untracked_names)
         )
     entries = []
-    for relative_name in sorted(tracked_names):
+    for relative_name in sorted(head_names):
         _validate_relative_name(relative_name)
         entries.append(_source_entry(repository_root, relative_name))
     return entries
 
 
-def _common_entries(repository_root: Path) -> list[_Entry]:
+def _common_entries(repository_root: Path, head_oid: str) -> list[_Entry]:
     entries = []
     for relative_root in _RECURSIVE_SOURCE_ROOTS:
-        entries.extend(_tree_entries(repository_root, relative_root))
+        entries.extend(_tree_entries(repository_root, head_oid, relative_root))
     for relative_name in _COMMON_SOURCE_FILES:
         entries.append(_source_entry(repository_root, relative_name))
     return entries
@@ -353,6 +355,36 @@ def _git_ls_files(repository_root: Path, pathspecs: tuple[str, ...]) -> tuple[st
         )
     except UnicodeDecodeError as error:
         raise ValueError("tracked release input path is not valid UTF-8") from error
+
+
+def _git_ls_tree(
+    repository_root: Path, head_oid: str, pathspecs: tuple[str, ...]
+) -> tuple[str, ...]:
+    result = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repository_root),
+            "ls-tree",
+            "-r",
+            "-z",
+            "--name-only",
+            head_oid,
+            "--",
+            *pathspecs,
+        ],
+        check=False,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        detail = result.stderr.decode("utf-8", errors="replace").strip()
+        raise RuntimeError(f"could not enumerate git HEAD release inputs: {detail}")
+    try:
+        return tuple(
+            item.decode("utf-8") for item in result.stdout.split(b"\0") if item
+        )
+    except UnicodeDecodeError as error:
+        raise ValueError("git HEAD release input path is not valid UTF-8") from error
 
 
 def _prevalidate_release_sources(repository_root: Path) -> None:
@@ -502,10 +534,23 @@ def _cleanup_owned_reservations(reservations: list[_ReservedOutput]) -> None:
     for reservation in reservations:
         try:
             path_stat = reservation.path.stat(follow_symlinks=False)
-        except FileNotFoundError:
+            if (path_stat.st_dev, path_stat.st_ino) == reservation.identity:
+                reservation.path.unlink()
+        except OSError:
             continue
-        if (path_stat.st_dev, path_stat.st_ino) == reservation.identity:
-            reservation.path.unlink()
+
+
+def _require_owned_output(reservation: _ReservedOutput) -> None:
+    try:
+        path_stat = reservation.path.stat(follow_symlinks=False)
+    except OSError as error:
+        raise RuntimeError(
+            f"reserved output identity is no longer accessible: {reservation.path}"
+        ) from error
+    if (path_stat.st_dev, path_stat.st_ino) != reservation.identity:
+        raise RuntimeError(
+            f"reserved output identity changed during build: {reservation.path}"
+        )
 
 
 def _reserve_output_paths(output_paths: tuple[Path, Path]) -> list[_ReservedOutput]:
@@ -577,7 +622,7 @@ def build_release_archives(
         output_dir / f"{_WINDOWS_ROOT}-v{version}.zip",
         output_dir / f"{_MACOS_ROOT}-v{version}.zip",
     )
-    common_entries = _common_entries(repository_root)
+    common_entries = _common_entries(repository_root, head_oid)
     prepared = []
     for platform in ("windows-x64", "macos-apple-silicon"):
         root_name, asset_stem, platform_entries = _platform_entries(repository_root, platform)
@@ -605,6 +650,7 @@ def build_release_archives(
                 entries,
                 timestamp,
             )
+            _require_owned_output(reservation)
             built.append(
                 BuiltArchive(
                     platform=platform,
@@ -613,6 +659,8 @@ def build_release_archives(
                     sha256=_descriptor_sha256(reservation.descriptor),
                 )
             )
+        for reservation in reservations:
+            _require_owned_output(reservation)
     except BaseException:
         _cleanup_owned_reservations(reservations)
         raise

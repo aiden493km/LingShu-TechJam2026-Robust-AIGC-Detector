@@ -53,6 +53,24 @@ LICENSE_HASHES = {
     "jsquash-resize/lib/hqx/LICENSE.codec.md": "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1",
     "jsquash-resize/lib/magic-kernel/LICENSE.codec.md": "21e492c2fb8be34abe00c1b5c4b15139e061ddfaa236adc4c0d4ff70ccd329b2",
     "jsquash-resize/lib/resize/LICENSE.codec.md": "373fec335329f8e4c9c8839871606e6ed5bfaa513a4dea2ebee4b7a418853320",
+    "flatbuffers/LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "guid-typescript/package.json": "ed86856ee95fe87eadd8552b6803a85b7fb4f6cce08603bf9c8385972b5badb6",
+    "long/LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "platform/LICENSE": "4a161ebed4f1ef933e16ccfa00d86c718703f5d015a9987ea7ce1bb72a43cd22",
+    "protobufjs-aspromise/LICENSE": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794",
+    "protobufjs-base64/LICENSE": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794",
+    "protobufjs-codegen/LICENSE": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794",
+    "protobufjs-eventemitter/LICENSE": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794",
+    "protobufjs-fetch/LICENSE": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794",
+    "protobufjs-float/LICENSE": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794",
+    "protobufjs-path/LICENSE": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794",
+    "protobufjs-pool/LICENSE": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794",
+    "protobufjs-utf8/LICENSE": "a67b34a24a5daddcce46aea68c5004e4442bbfb63690329fa607bf4de4269794",
+    "protobufjs/LICENSE": "49d6a1c9a623784c61c6cb70f773f3457faceb1914a13c8560a9823b7631950c",
+    "protobufjs/google/LICENSE": "4ab87e6e3c0c0b78e47c77d49ec10c048f8a519fb8062e6e3217e3e6e9b0c6e9",
+    "types-node/LICENSE": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+    "undici-types/LICENSE": "a6db8096b2707bc0102d256917d4d33f298ba36d8c3f25de067a2b5bb379db27",
+    "wasm-feature-detect/LICENSE": "bcf29b4fd3ec2cb5f9d40a0866da446f6da62170d2ccedf4aeca9cf9406dd20c",
 }
 
 
@@ -273,6 +291,27 @@ class BrowserRuntimeLicenseBundleTests(unittest.TestCase):
             source = packages[package_name]["source"]
             self.assertIn("microsoft/onnxruntime", source.casefold())
             self.assertIn("v1.29.0", source)
+
+    def test_all_notice_files_have_independent_frozen_hashes(self) -> None:
+        inventory = _license_inventory(self)
+        notice_paths = {
+            notice["path"]
+            for package in inventory["packages"].values()
+            for notice in package["notices"]
+        }
+        frozen_hashes = {
+            path: sha256
+            for path, sha256 in LICENSE_HASHES.items()
+            if sha256 != "__README_TEXT__"
+        }
+        self.assertEqual(notice_paths, set(frozen_hashes))
+        self.assertEqual(33, len(frozen_hashes))
+        for relative_path, expected_sha256 in frozen_hashes.items():
+            with self.subTest(path=relative_path):
+                self.assertEqual(
+                    expected_sha256,
+                    _sha256_bytes((LICENSE_BUNDLE_ROOT / relative_path).read_bytes()),
+                )
 
     def test_vendored_license_bytes_are_exempt_from_git_text_conversion(self) -> None:
         inventory = _license_inventory(self)
@@ -561,6 +600,112 @@ class DeterministicReleaseBuilderTests(unittest.TestCase):
                         raw_head,
                         release_zip.read(f"{root_name}/web_demo/dist/index.html"),
                     )
+
+    def test_staged_deletion_cannot_omit_a_committed_recursive_member(self) -> None:
+        module = _load_builder(self)
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            repository_root = temporary_root / "repository"
+            committed_name = "web_demo/dist/committed.js"
+            _write_minimal_release_sources(repository_root)
+            committed = repository_root / committed_name
+            committed.write_bytes(b"committed-head-bytes")
+            _commit_fixture_repository(repository_root)
+
+            clean = module.build_release_archives(
+                repository_root,
+                temporary_root / "clean-output",
+                "1.2.0",
+                STABLE_EPOCH,
+            )
+            for archive, root_name in zip(clean, (WINDOWS_ROOT, MACOS_ROOT)):
+                with zipfile.ZipFile(archive.path) as release_zip:
+                    self.assertEqual(
+                        b"committed-head-bytes",
+                        release_zip.read(f"{root_name}/{committed_name}"),
+                    )
+
+            subprocess.run(
+                ["git", "rm", "--quiet", "--", committed_name],
+                cwd=repository_root,
+                check=True,
+            )
+            dirty_output = temporary_root / "dirty-output"
+            with self.assertRaises((FileNotFoundError, ValueError)):
+                module.build_release_archives(
+                    repository_root, dirty_output, "1.2.0", STABLE_EPOCH
+                )
+            self.assertFalse(dirty_output.exists())
+
+    def test_replaced_reserved_output_identity_fails_and_preserves_racer(self) -> None:
+        module = _load_builder(self)
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            repository_root = temporary_root / "repository"
+            output_dir = temporary_root / "output"
+            windows_output = output_dir / WINDOWS_ASSET
+            _write_minimal_release_sources(repository_root)
+            _commit_fixture_repository(repository_root)
+            original_write_archive = module._write_archive
+            original_stat = module.Path.stat
+            replaced = False
+
+            def replace_after_write(*arguments, **keywords) -> None:
+                nonlocal replaced
+                original_write_archive(*arguments, **keywords)
+                if not replaced:
+                    windows_output.write_bytes(b"racer-owned")
+                    replaced = True
+
+            def stat_with_replaced_identity(path, *arguments, **keywords):
+                result = original_stat(path, *arguments, **keywords)
+                if replaced and Path(path) == windows_output:
+                    return mock.Mock(st_dev=result.st_dev, st_ino=result.st_ino + 1)
+                return result
+
+            with mock.patch.object(
+                module, "_write_archive", side_effect=replace_after_write
+            ), mock.patch.object(module.Path, "stat", new=stat_with_replaced_identity):
+                with self.assertRaisesRegex(RuntimeError, r"(?i)identity"):
+                    module.build_release_archives(
+                        repository_root, output_dir, "1.2.0", STABLE_EPOCH
+                    )
+
+            self.assertEqual(b"racer-owned", windows_output.read_bytes())
+            self.assertFalse((output_dir / MACOS_ASSET).exists())
+
+    def test_cleanup_errors_do_not_mask_build_failure_or_stop_other_cleanup(self) -> None:
+        module = _load_builder(self)
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            repository_root = temporary_root / "repository"
+            output_dir = temporary_root / "output"
+            windows_output = output_dir / WINDOWS_ASSET
+            _write_minimal_release_sources(repository_root)
+            _commit_fixture_repository(repository_root)
+            original_stat = module.Path.stat
+
+            def cleanup_stat_failure(path, *arguments, **keywords):
+                if Path(path) == windows_output:
+                    raise PermissionError("simulated cleanup stat failure")
+                return original_stat(path, *arguments, **keywords)
+
+            with mock.patch.object(
+                module, "_write_archive", side_effect=RuntimeError("original build failure")
+            ), mock.patch.object(module.Path, "stat", new=cleanup_stat_failure):
+                try:
+                    module.build_release_archives(
+                        repository_root, output_dir, "1.2.0", STABLE_EPOCH
+                    )
+                except RuntimeError as error:
+                    self.assertEqual("original build failure", str(error))
+                except BaseException as error:
+                    self.fail(f"cleanup masked the original exception: {error!r}")
+                else:
+                    self.fail("expected the original build failure")
+
+            self.assertTrue(windows_output.exists())
+            self.assertFalse((output_dir / MACOS_ASSET).exists())
 
     def test_archives_have_one_safe_root_sorted_members_and_strict_allowlist(self) -> None:
         platform_contracts = {
