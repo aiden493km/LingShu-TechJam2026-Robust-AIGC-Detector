@@ -143,7 +143,7 @@ describe('static runtime build configuration', () => {
   it('excludes local builds, the model, runtimes, caches, and launchers from Vercel uploads', async () => {
     const ignoredPaths = (await readFile(new URL('../../.vercelignore', import.meta.url), 'utf8'))
       .trimEnd()
-      .split('\n');
+      .split(/\r?\n/);
 
     expect(ignoredPaths).toEqual([
       'dist/',
