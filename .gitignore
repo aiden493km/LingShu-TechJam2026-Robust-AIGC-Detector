@@ -47,6 +47,8 @@ web_demo/dist-online/
 
 # Secrets
 .env
+web_demo/.vercel/
+web_demo/.env.local
 
 # OS
 .DS_Store

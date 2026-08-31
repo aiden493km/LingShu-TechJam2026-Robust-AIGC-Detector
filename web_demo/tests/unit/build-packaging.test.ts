@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -107,10 +107,46 @@ describe('static runtime build configuration', () => {
     expect(gitignore).toContain('web_demo/dist-online/');
   });
 
-  it('excludes local and model-bearing content from Vercel uploads', async () => {
-    expect(await readFile(new URL('../../.vercelignore', import.meta.url), 'utf8')).toBe(
-      'dist/\ndist-online/\nmodels/*.onnx\n.generated-tests/\n.runtime-cache/\nruntimes/\nstart-demo.bat\nstart-demo.command\nstart-demo.sh\n',
-    );
+  it('ignores Vercel CLI metadata and the local Vercel environment from the repository root', async () => {
+    const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
+    const rootGitignore = await readFile(new URL('../../../.gitignore', import.meta.url), 'utf8');
+
+    expect(rootGitignore).toContain('web_demo/.vercel/');
+    expect(rootGitignore).toContain('web_demo/.env.local');
+    await expect(access(new URL('../../.gitignore', import.meta.url))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+
+    for (const relativePath of ['web_demo/.vercel/project.json', 'web_demo/.env.local']) {
+      const result = spawnSync(
+        'git',
+        ['check-ignore', '--verbose', '--no-index', relativePath],
+        { cwd: repositoryRoot, encoding: 'utf8' },
+      );
+
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout.replaceAll('\\', '/')).toMatch(
+        new RegExp(`^\\.gitignore:\\d+:[^\\t]+\\t${relativePath.replace('.', '\\.')}\\r?\\n?$`),
+      );
+    }
+  });
+
+  it('excludes local builds, the model, runtimes, caches, and launchers from Vercel uploads', async () => {
+    const ignoredPaths = (await readFile(new URL('../../.vercelignore', import.meta.url), 'utf8'))
+      .trimEnd()
+      .split('\n');
+
+    expect(ignoredPaths).toEqual([
+      'dist/',
+      'dist-online/',
+      'models/*.onnx',
+      '.generated-tests/',
+      '.runtime-cache/',
+      'runtimes/',
+      'start-demo.bat',
+      'start-demo.command',
+      'start-demo.sh',
+    ]);
   });
 
   it('pins Vite input text and copied public text assets to LF', async () => {
