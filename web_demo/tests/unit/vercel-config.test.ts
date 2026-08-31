@@ -238,7 +238,6 @@ describe('Vercel online delivery configuration', () => {
       'Vercel-CDN-Cache-Control': IMMUTABLE,
     });
     expect(headerMapFor(rules, MODEL_SOURCE)).toEqual({
-      'x-vercel-enable-rewrite-caching': '1',
       'Cache-Control': IMMUTABLE,
       'Vercel-CDN-Cache-Control': IMMUTABLE,
     });

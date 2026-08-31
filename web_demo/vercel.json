@@ -91,10 +91,6 @@
       "source": "/models/baseline2_njr_fp32.onnx",
       "headers": [
         {
-          "key": "x-vercel-enable-rewrite-caching",
-          "value": "1"
-        },
-        {
           "key": "Cache-Control",
           "value": "public, max-age=31536000, immutable"
         },
