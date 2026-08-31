@@ -21,7 +21,7 @@ Evidence-bounded, local-first detection of AI-generated images under real-world 
 [![macOS Apple Silicon](https://img.shields.io/badge/macOS-Apple_Silicon-111827?style=flat-square&logo=apple&logoColor=white)](.github/workflows/web-demo-portable.yml)
 [![TechJam 2026](https://img.shields.io/badge/TikTok_TechJam-2026-ff0050?style=flat-square&logo=tiktok&logoColor=white)](#tiktok-techjam-2026)
 
-[**Download / Release v1.2.0**](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.2.0) · [**Frozen Checkpoint v1.0.0**](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/download/v1.0.0/baseline2_njr_best.pt) · [**Online Web Demo**](https://lingshu-aigc-detector.vercel.app/) · [**Results**](results/) · [**Demo Video**](https://youtu.be/ZVW3aux8mRs)
+[**Download / Release v1.2.0**](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.2.0) · [**Frozen Checkpoint v1.0.0**](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/download/v1.0.0/baseline2_njr_best.pt) · [**Online Web Demo**](https://lingshu-aigc-detector.vercel.app/) · [**Results**](results/) · [**Demo Video**](https://youtu.be/2Uge-RyqQFE)
 
 <table>
   <caption>Frozen evaluation highlights: the first two metrics are from the held-out robustness test; ROC-AUC is from the separate external demonstration benchmark.</caption>
