@@ -32,14 +32,14 @@
       "sha256": "283d0f41496032bf285a9d5583b398d89ea94686642fef4d2e27cd970bfd8583"
     },
     {
-      "path": "assets/index-CWBvKFBS.js",
-      "bytes": 428980,
-      "sha256": "6c3f7856532991c33cdcb895554888bb6721e65939c3488a510c43d4a79ad8dc"
+      "path": "assets/index-BjWZNU_a.css",
+      "bytes": 36446,
+      "sha256": "c56901f46f87a6b31dbcca9fc8db6ea9a69b5312b6d212aa650582b486aaa7ce"
     },
     {
-      "path": "assets/index-DWIdsKWq.css",
-      "bytes": 36247,
-      "sha256": "6a3e56f6d895a503892bbaea12cd3a7a5d5a1a1fcca12c9e84cebc103f5af652"
+      "path": "assets/index-C9-mBZ1G.js",
+      "bytes": 429450,
+      "sha256": "e92826311256d43b59de9f036a5f034f4fda23ca75adbe08dffc7365679e1aca"
     },
     {
       "path": "assets/jsquash_magic_kernel_bg-Cq4C4bH5.wasm",
@@ -109,7 +109,27 @@
     {
       "path": "index.html",
       "bytes": 572,
-      "sha256": "cbb1ef7b1c3d61062e6fa8617149d9245ac30891055e6a19f5303f4a871abac4"
+      "sha256": "7b0375f906301ca104fb087ddf8e0745fbe449cc88c16fb0fa51dd44a1a37782"
+    },
+    {
+      "path": "team/jingxuan-qian.png",
+      "bytes": 2225789,
+      "sha256": "d1114ea9b8515b2e2a207dc8ce5955b7d772ed29e9e5c399e69f19e7a6448be6"
+    },
+    {
+      "path": "team/mingxuan-chen.png",
+      "bytes": 2522794,
+      "sha256": "356d31400fda527518259ac0e78d2a02f677a950ed4684dfc5b5c3bf1fde5d41"
+    },
+    {
+      "path": "team/tianshi-bu.png",
+      "bytes": 2435094,
+      "sha256": "69d16b54862ba518890dd728eef8d9dd0213cbbcca6283314c8c9a1f07cdd988"
+    },
+    {
+      "path": "team/zhiyi-li.png",
+      "bytes": 2207459,
+      "sha256": "a81f98a6436edb50bdb52369f1714600f6a0f9353eb4049d07419addc511b3c8"
     }
   ]
 }
