@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-31
 
-**Status:** Implemented in source on `feat/about-page-refresh`; final delivery verification pending
+**Status:** Implemented and verified on `feat/about-page-refresh` (`b733c84`, `d94db28`, `5e442c6`)
 
 **Scope:** Add the four user-supplied portraits to the existing About-page Signal Roster and widen the two About introduction text measures without changing member order, copy, links, or responsive structure
 

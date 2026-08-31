@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** Complete — source, documentation, distribution, and responsive browser acceptance verified on 2026-08-31.
+
 **Goal:** Add the four approved team portraits to the About roster and widen only the About header summary and `WHY WE BUILT IT` paragraph.
 
 **Architecture:** Extend the existing immutable roster records with local portrait metadata and render semantic lazy-loaded images inside the current square frames. Add one About-only header class so the two requested text measures can widen without changing any other project route, then regenerate the committed Vite distribution.
@@ -31,7 +33,7 @@
 - Modify: `web_demo/tests/unit/team-roster.test.ts`
 - Modify: `web_demo/src/site/TeamRoster.tsx`
 
-- [ ] **Step 1: Replace the empty-frame test with the failing portrait contract**
+- [x] **Step 1: Replace the empty-frame test with the failing portrait contract**
 
 Add this fixture beside the existing `members` fixture:
 
@@ -69,7 +71,7 @@ it('maps the four approved portraits to the correct members', () => {
 });
 ```
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run from `web_demo`:
 
@@ -79,7 +81,7 @@ npm.cmd test -- tests/unit/team-roster.test.ts
 
 Expected: FAIL because the current roster renders no `<img>` elements and still marks the frames decorative.
 
-- [ ] **Step 3: Copy the exact approved bytes into semantic public paths**
+- [x] **Step 3: Copy the exact approved bytes into semantic public paths**
 
 From the repository root:
 
@@ -93,7 +95,7 @@ Copy-Item -LiteralPath 'C:\Users\123\xwechat_files\wxid_wl7mgthvrted52_5705\temp
 
 Verify destination SHA-256 values match the design specification before changing markup.
 
-- [ ] **Step 4: Implement the minimal semantic portrait markup**
+- [x] **Step 4: Implement the minimal semantic portrait markup**
 
 Extend `TeamMember`:
 
@@ -118,7 +120,7 @@ Add the exact mapped values to the four roster records, then replace the decorat
 </div>
 ```
 
-- [ ] **Step 5: Run the focused test and verify GREEN**
+- [x] **Step 5: Run the focused test and verify GREEN**
 
 ```powershell
 npm.cmd test -- tests/unit/team-roster.test.ts
@@ -133,7 +135,7 @@ Expected: the roster test file passes with all four portraits in roster display 
 - Modify: `web_demo/src/site/ProjectViews.tsx`
 - Modify: `web_demo/src/app.css`
 
-- [ ] **Step 1: Write the failing style/layout assertions**
+- [x] **Step 1: Write the failing style/layout assertions**
 
 Extend the Signal Roster style test with:
 
@@ -151,7 +153,7 @@ Add this assertion to the existing About roster test:
 expect(html).toContain('class="project-header about-header"');
 ```
 
-- [ ] **Step 2: Run the focused tests and verify RED**
+- [x] **Step 2: Run the focused tests and verify RED**
 
 ```powershell
 npm.cmd test -- tests/unit/site-style.test.ts tests/unit/team-roster.test.ts
@@ -159,7 +161,7 @@ npm.cmd test -- tests/unit/site-style.test.ts tests/unit/team-roster.test.ts
 
 Expected: FAIL on missing portrait styles, About-only header class, and local width overrides.
 
-- [ ] **Step 3: Load the Impeccable craft floor, then implement the minimal UI change**
+- [x] **Step 3: Load the Impeccable craft floor, then implement the minimal UI change**
 
 Extend the existing `ProjectHeader` signature and render:
 
@@ -212,7 +214,7 @@ Update the frame and add the image rule:
 
 Keep the shared 39rem project-header rule, the shared 58rem About/Thanks rule, and all breakpoints unchanged.
 
-- [ ] **Step 4: Run focused and full source checks**
+- [x] **Step 4: Run focused and full source checks**
 
 ```powershell
 npm.cmd test -- tests/unit/site-style.test.ts tests/unit/team-roster.test.ts
@@ -222,7 +224,7 @@ npm.cmd run typecheck
 
 Expected: focused tests, all Vitest files, and TypeScript pass with no diagnostics.
 
-- [ ] **Step 5: Commit the source checkpoint**
+- [x] **Step 5: Commit the source checkpoint**
 
 ```powershell
 git add web_demo/public/team web_demo/src/site/TeamRoster.tsx web_demo/src/site/ProjectViews.tsx web_demo/src/app.css web_demo/tests/unit/team-roster.test.ts web_demo/tests/unit/site-style.test.ts
@@ -240,11 +242,11 @@ git commit -m "feat(about): add approved team portraits"
 - Modify: `docs/superpowers/specs/2026-08-31-team-roster-design.md`
 - Modify: `docs/superpowers/specs/2026-08-31-team-portraits-design.md`
 
-- [ ] **Step 1: Replace only the now-obsolete empty-frame boundary**
+- [x] **Step 1: Replace only the now-obsolete empty-frame boundary**
 
 Record that all four approved portraits are local square PNGs mapped by the portrait specification. Preserve the prohibition on invented replacements, retouching, extra biographies, and unapproved claims. Add the 64rem About-summary and 72rem origin-copy measures to `DESIGN.md`.
 
-- [ ] **Step 2: Check documentation consistency and commit**
+- [x] **Step 2: Check documentation consistency and commit**
 
 ```powershell
 rg -n "empty portrait|remain empty|awaiting approved|approved images are supplied|39rem|64rem|58rem|72rem" README.md web_demo\README.md PRODUCT.md DESIGN.md AGENTS.md docs\superpowers\specs
@@ -260,7 +262,7 @@ Expected: live documents describe supplied portraits and the two local width ove
 **Files:**
 - Modify generated: `web_demo/dist/**`
 
-- [ ] **Step 1: Build and verify the committed distribution**
+- [x] **Step 1: Build and verify the committed distribution**
 
 From `web_demo`:
 
@@ -276,7 +278,7 @@ npm.cmd run verify:dist
 
 Expected: Vite succeeds, all four portrait assets are copied unchanged, and `git diff --exit-code -- dist` passes against the staged artifact.
 
-- [ ] **Step 2: Run one bounded browser inspection pass**
+- [x] **Step 2: Run one bounded browser inspection pass**
 
 Inspect `http://127.0.0.1:4174/#/about` at approximately 1800 × 1125, 1000 × 900, and 390 × 844. Verify:
 
@@ -288,7 +290,7 @@ Inspect `http://127.0.0.1:4174/#/about` at approximately 1800 × 1125, 1000 × 9
 - tablet/mobile copy wraps within the viewport with no horizontal overflow; and
 - no console warning or failed portrait request appears.
 
-- [ ] **Step 3: Run Impeccable's one mechanical scan and final verification**
+- [x] **Step 3: Run Impeccable's one mechanical scan and final verification**
 
 ```powershell
 node C:\Users\123\.codex\skills\impeccable\scripts\detect.mjs --json web_demo\src\site\TeamRoster.tsx web_demo\src\site\ProjectViews.tsx web_demo\src\app.css
@@ -299,7 +301,7 @@ npm.cmd run verify:dist
 
 Expected: no unexplained in-scope detector findings; 0 failed tests; TypeScript and deterministic distribution verification pass.
 
-- [ ] **Step 4: Commit the synchronized distribution and verify branch state**
+- [x] **Step 4: Commit the synchronized distribution and verify branch state**
 
 ```powershell
 git add web_demo/dist
