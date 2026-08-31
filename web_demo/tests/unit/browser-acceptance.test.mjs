@@ -98,7 +98,7 @@ describe('READY output parsing', () => {
 });
 
 describe('detector workflow reset', () => {
-  it('returns from a completed analysis through the semantic home action', async () => {
+  async function loadPrivateResetAndAssert() {
     const source = await readFile(
       new URL('../../tools/run_browser_acceptance.mjs', import.meta.url),
       'utf8',
@@ -113,17 +113,20 @@ describe('detector workflow reset', () => {
     const acceptance = await import(
       `data:text/javascript;base64,${Buffer.from(instrumentedSource).toString('base64')}`
     );
+    return acceptance.testResetAndAssert;
+  }
 
-    let phase = 'success';
+  function resetPage(initialPhase, expectedAccessibleName) {
+    let phase = initialPhase;
     const events = [];
     const page = {
       getByRole(role, options) {
         expect(role).toBe('button');
         expect(options.name).toBeInstanceOf(RegExp);
-        expect(options.name.test('Back to detector home')).toBe(true);
+        expect(options.name.test(expectedAccessibleName)).toBe(true);
         return {
           async click() {
-            events.push('click semantic home action');
+            events.push(`click ${expectedAccessibleName}`);
             phase = 'ready';
           },
         };
@@ -154,10 +157,25 @@ describe('detector workflow reset', () => {
         };
       },
     };
+    return { page, events };
+  }
 
-    await acceptance.testResetAndAssert(page);
+  it('returns from a completed analysis through the semantic home action', async () => {
+    const resetAndAssert = await loadPrivateResetAndAssert();
+    const { page, events } = resetPage('success', 'Back to detector home');
 
-    expect(events).toEqual(['click semantic home action', 'wait for ready']);
+    await resetAndAssert(page);
+
+    expect(events).toEqual(['click Back to detector home', 'wait for ready']);
+  });
+
+  it('recovers from an invalid image through the semantic reset action', async () => {
+    const resetAndAssert = await loadPrivateResetAndAssert();
+    const { page, events } = resetPage('error', 'Reset detector');
+
+    await resetAndAssert(page);
+
+    expect(events).toEqual(['click Reset detector', 'wait for ready']);
   });
 });
 

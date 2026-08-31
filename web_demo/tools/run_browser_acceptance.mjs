@@ -1532,7 +1532,15 @@ async function readDetectionResult(page) {
 }
 
 async function resetAndAssert(page) {
-  await page.getByRole('button', { name: /back to detector home/i }).click();
+  const phase = await currentPhase(page);
+  invariant(
+    phase === 'Current phase: success' || phase === 'Current phase: error',
+    `Reset requires a completed or failed workflow, observed ${phase}`,
+  );
+  const actionName = phase === 'Current phase: error'
+    ? /reset detector/i
+    : /back to detector home/i;
+  await page.getByRole('button', { name: actionName }).click();
   await waitForPhaseOutcome(page, 'ready', 10_000);
   invariant(await page.locator('.preview-figure').count() === 0, 'Reset must clear the preview');
   invariant(await page.locator('#confidence-progress').count() === 0, 'Reset must clear the result');
