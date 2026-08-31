@@ -219,13 +219,23 @@ Selecting an image triggers one orchestrated title dissolve: the idle hero fades
 
 **The One Dissolve Rule.** Reserve the title-fracture and analysis reveal for the detector's idle-to-analysis transition; do not replay it on route changes or ordinary component states.
 
+### About Copy Measures
+
+The About header summary uses an About-only 64rem maximum measure so its short
+introductory sentence stays together on a wide desktop. Other project-header
+summaries retain the shared 39rem measure. The `WHY WE BUILT IT` paragraph uses an
+About-only 72rem maximum measure while other shared section copy retains 58rem.
+Both values remain maximum widths so tablet and mobile copy wraps inside the
+available viewport.
+
 ### Team Roster
 
 The About roster is an ordered, flat profile grid: four equal columns on wide
 screens, two at 1020px and below, and one at 760px and below. Every profile keeps
-the same square empty portrait frame, eyebrow, name, role, contribution, and
-GitHub-link hierarchy. The portrait frame uses a one-pixel Carbon Ink outline and
-two short Team Signal Red corner ticks. Cards remain square, shadowless, and
+the same square approved portrait, eyebrow, name, role, contribution, and
+GitHub-link hierarchy. Each user-supplied square image fills its one-pixel Carbon
+Ink frame proportionally with centered `object-fit: cover`; two short Team Signal
+Red corner ticks remain above the image. Cards remain square, shadowless, and
 motionless; the team lead is distinguished only by the approved eyebrow color.
 
 ## Do's and Don'ts

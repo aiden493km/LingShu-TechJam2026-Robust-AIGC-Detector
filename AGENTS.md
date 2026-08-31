@@ -113,9 +113,11 @@ new accuracy evaluation.
   in-session recent detections, and the reference-locked title/particle motion.
 - The About roster's four names, roles, contribution copy, order, and GitHub URLs
   are confirmed in
-  `docs/superpowers/specs/2026-08-31-team-roster-design.md`. Portrait frames are
-  intentionally empty. Do not invent or source portraits, biographies, titles,
-  contact details, or additional contribution claims beyond that approved roster.
+  `docs/superpowers/specs/2026-08-31-team-roster-design.md`. The four approved
+  local portraits, their exact hashes, and their member mapping are confirmed in
+  `docs/superpowers/specs/2026-08-31-team-portraits-design.md`. Do not replace,
+  retouch, or invent portraits, biographies, titles, contact details, or
+  additional contribution claims beyond those approved sources.
 
 ## Change discipline
 

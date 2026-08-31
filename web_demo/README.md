@@ -41,9 +41,9 @@ Technology, Results, Error Analysis, and About are directly addressable hash vie
 Opening them does not reload the model session. Images in those evidence views can
 be enlarged in a bounded lightbox and dismissed by selecting the dimmed area. About
 contains the four user-confirmed profiles for Jingxuan Qian, Tianshi Bu, Zhiyi Li,
-and Mingxuan Chen, with each card linked to the approved GitHub account. Portrait
-frames intentionally remain empty until the team supplies approved images; the
-site does not invent missing portraits or biographical details.
+and Mingxuan Chen, with each card linked to the approved GitHub account and paired
+with the approved user-supplied portrait stored locally under `public/team/`. The
+site does not replace or retouch those portraits or invent biographical details.
 
 ## Privacy, options, and shutdown
 

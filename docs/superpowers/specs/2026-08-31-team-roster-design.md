@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-31
 
-**Status:** Implemented and verified on `feat/about-page-refresh` (`7868e90`, `e106cb6`, `a585732`)
+**Status:** Implemented and verified on `feat/about-page-refresh`; portrait state superseded by `2026-08-31-team-portraits-design.md`
 
 **Scope:** Replace the placeholder team contribution map on `#/about` with four confirmed member profiles
 
@@ -20,7 +20,7 @@ Use the approved **Signal Roster** approach:
 
 - Four equal profile cards appear in one row on wide desktop layouts.
 - Every card contains, in order, a square portrait frame, a compact numbered eyebrow, the member's name, a role heading, a short contribution paragraph, and a visible GitHub handle link.
-- Portrait frames remain intentionally empty in this iteration. Each uses a thin black square outline with a short red corner tick at the upper-left and lower-right, but no initials, stock photography, generated portraits, or “coming soon” text.
+- Each frame contains the exact approved user-supplied portrait mapped in `2026-08-31-team-portraits-design.md`. A thin black square outline and short red corner ticks at the upper-left and lower-right preserve the original Signal Roster treatment; no stock, generated, retouched, or inferred replacement is allowed.
 - Jingxuan Qian's card is identified by the subtle eyebrow `01 / TEAM LEAD`. It is not enlarged, inverted, or otherwise promoted above the other members.
 - The other eyebrows are `02 / DATASET`, `03 / WEB DELIVERY`, and `04 / COMMUNICATIONS`.
 - The section retains the existing white paper background, black text, thin grey hairlines, square geometry, and small red signal accents.
@@ -74,11 +74,11 @@ Create a focused `TeamRoster` component in `web_demo/src/site/TeamRoster.tsx`. T
 - rendering of the ordered profile list; and
 - the profile-card markup.
 
-Each roster record contains only the fields required by the approved design: member number, eyebrow, name, role, contribution, GitHub label, and GitHub URL. No remote fetch, content-management layer, runtime state, or portrait source is added. The first member's approved eyebrow supplies the only team-lead distinction.
+Each roster record contains only the fields required by the approved design: member number, eyebrow, name, role, contribution, GitHub label, GitHub URL, and the approved local portrait source and alternative text. No remote fetch, content-management layer, or runtime state is added. The first member's approved eyebrow supplies the only team-lead distinction.
 
 `AboutView` in `web_demo/src/site/ProjectViews.tsx` keeps responsibility for the surrounding About-page sections. It removes the local `domains` array, pending-profile message, and abstract contribution map, then renders `TeamRoster` under the existing `TEAM — LINGSHU INTELLIGENCE` heading.
 
-The roster is an ordered semantic list so member order is explicit. Each member is one list item containing an article-like profile. The empty portrait frame is decorative and hidden from assistive technology. Future approved portraits can replace the frame contents without changing the roster data contract or grid structure.
+The roster is an ordered semantic list so member order is explicit. Each member is one list item containing an article-like profile. Every portrait is meaningful content and uses the approved `<member name> portrait` alternative text; its enclosing frame is not hidden from assistive technology.
 
 ## 5. Links and interaction
 
@@ -108,7 +108,7 @@ The square portrait frame preserves a `1 / 1` aspect ratio at every breakpoint. 
 
 - The section keeps the visible heading `TEAM — LINGSHU INTELLIGENCE`.
 - The ordered roster has an accessible label identifying it as the LingShu Intelligence team.
-- Empty portrait frames are `aria-hidden` because they contain no member information.
+- Every portrait exposes the approved member-specific alternative text and is not `aria-hidden`.
 - Names and roles remain text, not text embedded in images.
 - External links remain reachable and visibly focused by keyboard.
 - All public-facing roster copy remains English, matching the rest of the site.
@@ -146,7 +146,7 @@ Open `#/about` through the local site and inspect at representative desktop, tab
 
 - four, two, and one-column layouts at the intended widths;
 - no horizontal scrolling or clipped text;
-- square, visibly empty portrait frames with consistent proportions;
+- square, correctly mapped portraits with consistent proportions and visible red corner ticks;
 - readable hierarchy from eyebrow to name, role, contribution, and GitHub link;
 - restrained distinction for the team lead without a featured-card treatment;
 - visible mouse and keyboard link states;
@@ -157,7 +157,7 @@ Open `#/about` through the local site and inspect at representative desktop, tab
 
 This task does not:
 
-- add or generate member portraits;
+- generate, retouch, crop, recompress, or replace the approved member portraits;
 - change detector inference, model loading, preprocessing, or result handling;
 - add a backend, remote inference endpoint, database, analytics, or contact form;
 - merge or modify the separate Vercel online-deployment branch;
