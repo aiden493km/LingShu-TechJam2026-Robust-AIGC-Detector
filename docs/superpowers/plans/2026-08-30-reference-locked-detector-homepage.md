@@ -6,7 +6,8 @@ Completed and approved on 2026-08-30. The visual implementation was integrated o
 top of the portable-launcher `main` architecture and finalized at visual commit
 `ca6308b`. The unchecked steps below preserve the original TDD plan and are not an
 active backlog; use the current source, `PRODUCT.md`, and `DESIGN.md` as the live
-contract.
+contract. Its pending-member About step was superseded by the implemented
+[2026-08-31 team roster plan](2026-08-31-team-roster.md).
 
 > **Historical execution instructions:** the original implementation used the
 > Impeccable workflow and focused TDD. Do not reuse its temporary branch or

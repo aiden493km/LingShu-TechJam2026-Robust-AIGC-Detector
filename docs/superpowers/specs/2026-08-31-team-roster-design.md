@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-31
 
-**Status:** User-approved design; implementation plan pending
+**Status:** Implemented and verified on `feat/about-page-refresh` (`7868e90`, `e106cb6`, `a585732`)
 
 **Scope:** Replace the placeholder team contribution map on `#/about` with four confirmed member profiles
 

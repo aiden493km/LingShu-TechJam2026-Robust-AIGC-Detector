@@ -40,8 +40,10 @@ cleared by closing or reloading the page.
 Technology, Results, Error Analysis, and About are directly addressable hash views.
 Opening them does not reload the model session. Images in those evidence views can
 be enlarged in a bounded lightbox and dismissed by selecting the dimmed area. About
-contains the confirmed team-level contribution areas and TechJam context; individual
-member profiles remain pending confirmation.
+contains the four user-confirmed profiles for Jingxuan Qian, Tianshi Bu, Zhiyi Li,
+and Mingxuan Chen, with each card linked to the approved GitHub account. Portrait
+frames intentionally remain empty until the team supplies approved images; the
+site does not invent missing portraits or biographical details.
 
 ## Privacy, options, and shutdown
 

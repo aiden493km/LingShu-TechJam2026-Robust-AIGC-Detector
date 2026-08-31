@@ -7,6 +7,7 @@ colors:
   silver: "#b3b4b7"
   mid-ink: "#6c6d70"
   hairline: "#b9b9b9"
+  team-signal-red: "#b5122b"
 typography:
   display:
     fontFamily: "League Gothic, Impact, sans-serif"
@@ -107,7 +108,7 @@ The system is flat, square, and offline-native. Structure comes from rules, inve
 
 - Paper-white fields divided by one-pixel gray rules.
 - Monumental local League Gothic display type paired with compact Tahoma/Verdana system copy.
-- Carbon-black inverse states and silver receding notation instead of a colored accent.
+- Carbon-black inverse states and silver receding notation, with one locally scoped dark-red signal in the team roster.
 - Square controls, panels, markers, and evidence frames with no general elevation.
 - Local semantic particles and one orchestrated transition from title to analysis.
 
@@ -123,6 +124,7 @@ The palette is an achromatic hierarchy in which contrast, not hue, communicates 
 
 - **Receding Silver:** Monumental model notation and deliberately subordinate display information.
 - **Mid Ink:** Supporting copy, diagnostic labels, progress text, and secondary evidence captions.
+- **Team Signal Red:** A local `#b5122b` accent used only for the About roster's corner ticks and team-lead eyebrow.
 
 ### Neutral
 
@@ -131,7 +133,9 @@ The palette is an achromatic hierarchy in which contrast, not hue, communicates 
 
 ### Named Rules
 
-**The Inversion Rule.** Important interactive states invert Paper Field and Carbon Ink; they do not introduce a new accent hue.
+**The Inversion Rule.** Important interactive states invert Paper Field and Carbon Ink; they do not use the team signal as a generic state color.
+
+**The Team Signal Exception.** Team Signal Red is scoped to `.team-section` and remains non-interactive. It must not become a global brand, success, warning, error, or navigation token.
 
 **The Evidence-Is-Content Rule.** Colors inside supplied evaluation figures belong to those figures and never become interface tokens or generic result states.
 
@@ -161,7 +165,7 @@ The palette is an achromatic hierarchy in which contrast, not hue, communicates 
 
 Desktop uses a full-height application grid with a sticky left rail at `clamp(9rem, 10vw, 10rem)` and a fluid main field. The detector entry surface divides the main field into an 80vh stage and a 20vh four-column evidence strip; the analysis state preserves the rail while splitting its workspace into a large image field and a narrower decision rail. Secondary project views reuse the rail, monumental header, fluid section padding, and ruled grid.
 
-At 1020px the rail contracts to 8.3rem and the analysis split tightens. At the 760px transition the rail becomes a two-row horizontal header, navigation scrolls horizontally, the analysis workspace becomes one column, and the evidence strip becomes two columns. At 430px the evidence and contribution grids become single-column. The implementation supports widths down to 320px.
+At 1020px the rail contracts to 8.3rem, the analysis split tightens, and the team roster changes from four columns to two. At the 760px transition the rail becomes a two-row horizontal header, navigation scrolls horizontally, the analysis workspace and team roster become one column, and the evidence strip becomes two columns. At 430px the evidence strip becomes single-column. The implementation supports widths down to 320px.
 
 **The Rail-to-Strip Rule.** Preserve the 10vw desktop rail and switch the application frame at 760px; do not scale the desktop rail down into an unusable sliver.
 
@@ -215,6 +219,15 @@ Selecting an image triggers one orchestrated title dissolve: the idle hero fades
 
 **The One Dissolve Rule.** Reserve the title-fracture and analysis reveal for the detector's idle-to-analysis transition; do not replay it on route changes or ordinary component states.
 
+### Team Roster
+
+The About roster is an ordered, flat profile grid: four equal columns on wide
+screens, two at 1020px and below, and one at 760px and below. Every profile keeps
+the same square empty portrait frame, eyebrow, name, role, contribution, and
+GitHub-link hierarchy. The portrait frame uses a one-pixel Carbon Ink outline and
+two short Team Signal Red corner ticks. Cards remain square, shadowless, and
+motionless; the team lead is distinguished only by the approved eyebrow color.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -224,6 +237,7 @@ Selecting an image triggers one orchestrated title dissolve: the idle hero fades
 - **Do** keep signal particles local, semantic, pointer-inert, and decorative to assistive technology.
 - **Do** preserve visible `:focus-visible`, reduced-motion, and forced-colors behavior.
 - **Do** keep evidence scope in content labels and captions rather than encoding it as generic visual status tokens.
+- **Do** keep Team Signal Red local to the roster's approved corner ticks and lead eyebrow.
 
 ### Don't:
 
@@ -231,4 +245,5 @@ Selecting an image triggers one orchestrated title dissolve: the idle hero fades
 - **Don't** reuse the `B2-NJR` multi-offset text shadow as an elevation style.
 - **Don't** use the title-dissolve for navigation, hover, loading loops, or secondary pages.
 - **Don't** turn figure-specific colors or evidence labels into brand, accuracy, success, or failure tokens.
+- **Don't** reuse Team Signal Red for navigation, buttons, runtime status, or detector outcomes.
 - **Don't** collapse the 760px mobile transition into a narrow fixed rail or reduce controls below 44px.

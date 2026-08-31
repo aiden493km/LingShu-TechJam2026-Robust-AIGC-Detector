@@ -52,7 +52,7 @@ The same disclosed FP32 B2-NJR model runs locally through WebGPU or the WASM com
 - `assets/figures/ablation_summary.png`, `assets/figures/pipeline_overview.png`, and `assets/figures/transformation_examples.png`: technical-route material.
 - `assets/figures/error_analysis_concept.png`: error-analysis material whose wording must remain consistent with its actual evidence status.
 - `assets/figures/web_demo_preview.png`: presentation mockup only, not runtime truth; it contains concepts such as CUDA and batch size that must not be copied into the real interface.
-- Team names, roles, biographies, and approved portraits still need to be confirmed before the Team destination is treated as complete.
+- The About roster uses the user-confirmed four-member names, contribution copy, and GitHub profiles recorded in `docs/superpowers/specs/2026-08-31-team-roster-design.md`. Portrait frames intentionally remain empty until approved images are supplied; do not invent portraits or additional biographical details.
 
 Internal held-out robustness results, the external demonstration benchmark, browser deployment parity, and historical model-compression experiments are separate evidence sets and must not be merged into one accuracy claim.
 
