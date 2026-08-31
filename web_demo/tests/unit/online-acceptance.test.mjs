@@ -504,6 +504,28 @@ describe('bounded online evidence schema', () => {
     assert.equal(sanitizeFailureMessage(`Model host ${publicUrl}`), `Model host ${publicUrl}`);
   });
 
+  it('preserves ordinary session terminology and safe tokenizer/report URL paths', () => {
+    assert.equal(
+      sanitizeFailureMessage('WASM session creation failed'),
+      'WASM session creation failed',
+    );
+    const reportUrl = 'https://preview.example/models/session-report.json';
+    const tokenizerUrl = 'https://preview.example/assets/tokenizer.wasm';
+    assert.equal(
+      sanitizeFailureMessage(`Runtime reports ${reportUrl} and ${tokenizerUrl}`),
+      `Runtime reports ${reportUrl} and ${tokenizerUrl}`,
+    );
+  });
+
+  it('still redacts explicit token assignments, JSON token values, and Bearer credentials', () => {
+    const raw = 'token=plain-secret {"token":"json-secret"} Authorization: Bearer bearer-secret';
+    const sanitized = sanitizeFailureMessage(raw);
+    for (const value of ['plain-secret', 'json-secret', 'bearer-secret']) {
+      assert.equal(sanitized.includes(value), false);
+    }
+    assert.match(sanitized, /\[credential\]/);
+  });
+
   it('requires exactly ten bounded parity rows per provider and valid header evidence', () => {
     const missingPrediction = validEvidence();
     missingPrediction.providerRuns[0].predictions.pop();

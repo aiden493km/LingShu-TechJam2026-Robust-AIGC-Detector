@@ -1156,7 +1156,6 @@ export function sanitizeFailureMessage(value) {
       new RegExp(`(["']?\\b${credentialName}\\b["']?\\s*[:=]\\s*)(?:"[^"]*"|'[^']*'|[^\\s,}]+)`, 'gi'),
       '$1[credential]',
     )
-    .replace(/\b[^\s,{}]*(?:authorization|cookie|credential|password|secret|session|token|api[_-]?key|access[_-]?key)[^\s,{}]*\b/gi, '[credential]')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 500);
