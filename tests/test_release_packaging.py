@@ -117,6 +117,51 @@ def _create_directory_link(
             )
 
 
+def _write_minimal_release_sources(repository_root: Path) -> None:
+    for relative_path in (
+        "web_demo/dist/index.html",
+        "third_party/browser-runtime-licenses/README.md",
+        "web_demo/models/baseline2_njr_fp32.onnx",
+        "web_demo/models/manifest.json",
+        "web_demo/tools/serve_demo.py",
+        "web_demo/tools/verify_distribution.py",
+        "LICENSE",
+        "THIRD_PARTY_NOTICES.md",
+        "third_party/Community-Forensics-LICENSE",
+        "web_demo/start-demo.bat",
+        "web_demo/tools/bootstrap_windows.ps1",
+        "web_demo/runtimes/windows-x86_64-python.zip",
+        "web_demo/start-demo.command",
+        "web_demo/tools/bootstrap_macos.sh",
+        "web_demo/runtimes/macos-arm64-python.tar.gz",
+    ):
+        path = repository_root / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"fixture")
+
+
+def _commit_fixture_repository(repository_root: Path) -> None:
+    commands = (
+        ("init", "--quiet"),
+        ("config", "user.name", "Release Test"),
+        ("config", "user.email", "release-test@example.invalid"),
+        ("add", "--all"),
+        ("commit", "--quiet", "-m", "test fixture"),
+    )
+    for arguments in commands:
+        result = subprocess.run(
+            ["git", *arguments],
+            cwd=repository_root,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        if result.returncode != 0:
+            raise AssertionError(result.stderr or result.stdout)
+
+
 class ReleasePackagingTests(unittest.TestCase):
     def test_v1_2_metadata_and_license_exist(self) -> None:
         package_json = json.loads(
@@ -360,6 +405,30 @@ class DeterministicReleaseBuilderTests(unittest.TestCase):
         for item in first:
             self.assertRegex(item.sha256, r"^[0-9a-f]{64}$")
 
+    def test_existing_output_assets_are_not_silently_overwritten(self) -> None:
+        module = _load_builder(self)
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            repository_root = temporary_root / "repository"
+            output_dir = temporary_root / "output"
+            _write_minimal_release_sources(repository_root)
+            _commit_fixture_repository(repository_root)
+            first = module.build_release_archives(
+                repository_root, output_dir, "1.2.0", STABLE_EPOCH
+            )
+            before = {archive.path.name: archive.path.read_bytes() for archive in first}
+            with self.assertRaises(FileExistsError):
+                module.build_release_archives(
+                    repository_root,
+                    output_dir,
+                    "1.2.0",
+                    source_date_epoch=STABLE_EPOCH,
+                )
+            self.assertEqual(
+                before,
+                {archive.path.name: archive.path.read_bytes() for archive in first},
+            )
+
     def test_archives_have_one_safe_root_sorted_members_and_strict_allowlist(self) -> None:
         platform_contracts = {
             "windows-x64": (
@@ -531,6 +600,81 @@ class DeterministicReleaseBuilderTests(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 module.build_release_archives(temp / "empty", temp / "out", "1.2.0", STABLE_EPOCH)
 
+    def test_untracked_files_in_recursive_allowlists_are_rejected_without_output(self) -> None:
+        module = _load_builder(self)
+        for untracked_name in (
+            "web_demo/dist/untracked.js",
+            "third_party/browser-runtime-licenses/untracked.txt",
+        ):
+            with self.subTest(path=untracked_name), tempfile.TemporaryDirectory() as temporary_directory:
+                temporary_root = Path(temporary_directory)
+                repository_root = temporary_root / "repository"
+                _write_minimal_release_sources(repository_root)
+                _commit_fixture_repository(repository_root)
+                untracked = repository_root / untracked_name
+                untracked.parent.mkdir(parents=True, exist_ok=True)
+                untracked.write_bytes(b"untracked")
+                output_dir = temporary_root / "output"
+
+                with self.assertRaisesRegex(ValueError, r"(?i)untracked"):
+                    module.build_release_archives(
+                        repository_root, output_dir, "1.2.0", STABLE_EPOCH
+                    )
+                self.assertFalse(output_dir.exists())
+
+    def test_modified_tracked_inputs_are_rejected_without_output(self) -> None:
+        module = _load_builder(self)
+        for modified_name in ("web_demo/dist/index.html", "LICENSE"):
+            with self.subTest(path=modified_name), tempfile.TemporaryDirectory() as temporary_directory:
+                temporary_root = Path(temporary_directory)
+                repository_root = temporary_root / "repository"
+                _write_minimal_release_sources(repository_root)
+                _commit_fixture_repository(repository_root)
+                (repository_root / modified_name).write_bytes(b"modified")
+                output_dir = temporary_root / "output"
+
+                with self.assertRaisesRegex(ValueError, r"(?i)(?:modified|HEAD)"):
+                    module.build_release_archives(
+                        repository_root, output_dir, "1.2.0", STABLE_EPOCH
+                    )
+                self.assertFalse(output_dir.exists())
+
+    def test_windows_unsafe_member_components_and_normalized_collisions_are_rejected(self) -> None:
+        module = _load_builder(self)
+        for unsafe_name in (
+            "CON",
+            "con.txt",
+            "PRN.json",
+            "AUX",
+            "NUL.bin",
+            "CLOCK$",
+            "COM1.txt",
+            "com9",
+            "LPT1.log",
+            "lpt9",
+            "file.",
+            "file ",
+            "x:y",
+            "e\u0301.txt",
+        ):
+            with self.subTest(name=unsafe_name):
+                with self.assertRaises(ValueError):
+                    module._validate_relative_name(f"web_demo/dist/{unsafe_name}")
+
+        for first_name, second_name in (
+            ("a", "a."),
+            ("caf\u00e9.txt", "cafe\u0301.txt"),
+        ):
+            with self.subTest(collision=(first_name, second_name)):
+                with self.assertRaises(ValueError):
+                    module._validated_entries(
+                        "Release",
+                        [
+                            module._Entry(first_name, content=b"first"),
+                            module._Entry(second_name, content=b"second"),
+                        ],
+                    )
+
     def test_symlinked_source_tree_is_rejected(self) -> None:
         module = _load_builder(self)
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -556,24 +700,10 @@ class DeterministicReleaseBuilderTests(unittest.TestCase):
             for filename in ("baseline2_njr_fp32.onnx", "manifest.json"):
                 (external_models / filename).write_bytes(b"external")
 
-            for relative_path in (
-                "web_demo/dist/index.html",
-                "third_party/browser-runtime-licenses/README.md",
-                "web_demo/tools/serve_demo.py",
-                "web_demo/tools/verify_distribution.py",
-                "LICENSE",
-                "THIRD_PARTY_NOTICES.md",
-                "third_party/Community-Forensics-LICENSE",
-                "web_demo/start-demo.bat",
-                "web_demo/tools/bootstrap_windows.ps1",
-                "web_demo/runtimes/windows-x86_64-python.zip",
-                "web_demo/start-demo.command",
-                "web_demo/tools/bootstrap_macos.sh",
-                "web_demo/runtimes/macos-arm64-python.tar.gz",
-            ):
-                path = fake_root / relative_path
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_bytes(b"fixture")
+            _write_minimal_release_sources(fake_root)
+            for filename in ("baseline2_njr_fp32.onnx", "manifest.json"):
+                (fake_root / "web_demo" / "models" / filename).unlink()
+            (fake_root / "web_demo" / "models").rmdir()
             _create_directory_link(
                 self, external_models, fake_root / "web_demo" / "models"
             )

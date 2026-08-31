@@ -8,6 +8,7 @@ import shutil
 import stat
 import subprocess
 import tempfile
+import unicodedata
 import zipfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -30,6 +31,38 @@ _MACOS_LAUNCHER = (
     b'SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1\n'
     b'exec "$SCRIPT_DIR/web_demo/start-demo.command" "$@"\n'
 )
+_RECURSIVE_SOURCE_ROOTS = (
+    "web_demo/dist",
+    "third_party/browser-runtime-licenses",
+)
+_COMMON_SOURCE_FILES = (
+    "web_demo/models/baseline2_njr_fp32.onnx",
+    "web_demo/models/manifest.json",
+    "web_demo/tools/serve_demo.py",
+    "web_demo/tools/verify_distribution.py",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "third_party/Community-Forensics-LICENSE",
+)
+_WINDOWS_SOURCE_FILES = (
+    "web_demo/start-demo.bat",
+    "web_demo/tools/bootstrap_windows.ps1",
+    "web_demo/runtimes/windows-x86_64-python.zip",
+)
+_MACOS_SOURCE_FILES = (
+    "web_demo/start-demo.command",
+    "web_demo/tools/bootstrap_macos.sh",
+    "web_demo/runtimes/macos-arm64-python.tar.gz",
+)
+_WINDOWS_RESERVED_NAMES = {
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    "CLOCK$",
+    *(f"COM{number}" for number in range(1, 10)),
+    *(f"LPT{number}" for number in range(1, 10)),
+}
 
 
 @dataclass(frozen=True)
@@ -67,7 +100,24 @@ def _validate_relative_name(name: str) -> None:
     parts = PurePosixPath(name).parts
     if not parts or any(part in ("", ".", "..") for part in parts):
         raise ValueError(f"unsafe archive member name: {name!r}")
+    if name != "/".join(parts):
+        raise ValueError(f"non-normalized archive member name: {name!r}")
+    for part in parts:
+        if unicodedata.normalize("NFC", part) != part:
+            raise ValueError(f"non-NFC archive member component: {part!r}")
+        if ":" in part or part.endswith((".", " ")):
+            raise ValueError(f"Windows-unsafe archive member component: {part!r}")
+        reserved_base = part.split(".", 1)[0].rstrip(" .").upper()
+        if reserved_base in _WINDOWS_RESERVED_NAMES:
+            raise ValueError(f"Windows-reserved archive member component: {part!r}")
     name.encode("utf-8")
+
+
+def _windows_name_key(name: str) -> str:
+    return "/".join(
+        unicodedata.normalize("NFC", part).rstrip(" .").casefold()
+        for part in name.split("/")
+    )
 
 
 def _is_link(path: Path) -> bool:
@@ -146,27 +196,28 @@ def _source_entry(repository_root: Path, relative_name: str) -> _Entry:
 def _tree_entries(repository_root: Path, relative_root: str) -> list[_Entry]:
     _validate_relative_name(relative_root)
     tree_root = repository_root / relative_root
+    filesystem_names = {
+        path.relative_to(repository_root).as_posix()
+        for path in _walk_regular_files(repository_root, tree_root)
+    }
+    tracked_names = set(_git_ls_files(repository_root, (relative_root,)))
+    untracked_names = sorted(filesystem_names - tracked_names)
+    if untracked_names:
+        raise ValueError(
+            "untracked release source is not allowed: " + ", ".join(untracked_names)
+        )
     entries = []
-    for path in _walk_regular_files(repository_root, tree_root):
-        relative_name = path.relative_to(repository_root).as_posix()
+    for relative_name in sorted(tracked_names):
         _validate_relative_name(relative_name)
-        entries.append(_Entry(relative_name, source=path))
+        entries.append(_source_entry(repository_root, relative_name))
     return entries
 
 
 def _common_entries(repository_root: Path) -> list[_Entry]:
     entries = []
-    entries.extend(_tree_entries(repository_root, "web_demo/dist"))
-    entries.extend(_tree_entries(repository_root, "third_party/browser-runtime-licenses"))
-    for relative_name in (
-        "web_demo/models/baseline2_njr_fp32.onnx",
-        "web_demo/models/manifest.json",
-        "web_demo/tools/serve_demo.py",
-        "web_demo/tools/verify_distribution.py",
-        "LICENSE",
-        "THIRD_PARTY_NOTICES.md",
-        "third_party/Community-Forensics-LICENSE",
-    ):
+    for relative_root in _RECURSIVE_SOURCE_ROOTS:
+        entries.extend(_tree_entries(repository_root, relative_root))
+    for relative_name in _COMMON_SOURCE_FILES:
         entries.append(_source_entry(repository_root, relative_name))
     return entries
 
@@ -177,18 +228,20 @@ def _platform_entries(repository_root: Path, platform: str) -> tuple[str, str, l
         asset_stem = _WINDOWS_ROOT
         entries = [
             _Entry("START-HERE-WINDOWS.bat", content=_WINDOWS_LAUNCHER),
-            _source_entry(repository_root, "web_demo/start-demo.bat"),
-            _source_entry(repository_root, "web_demo/tools/bootstrap_windows.ps1"),
-            _source_entry(repository_root, "web_demo/runtimes/windows-x86_64-python.zip"),
+            *(
+                _source_entry(repository_root, relative_name)
+                for relative_name in _WINDOWS_SOURCE_FILES
+            ),
         ]
     elif platform == "macos-apple-silicon":
         root_name = _MACOS_ROOT
         asset_stem = _MACOS_ROOT
         entries = [
             _Entry("START-HERE-MAC.command", content=_MACOS_LAUNCHER),
-            _source_entry(repository_root, "web_demo/start-demo.command"),
-            _source_entry(repository_root, "web_demo/tools/bootstrap_macos.sh"),
-            _source_entry(repository_root, "web_demo/runtimes/macos-arm64-python.tar.gz"),
+            *(
+                _source_entry(repository_root, relative_name)
+                for relative_name in _MACOS_SOURCE_FILES
+            ),
         ]
     else:
         raise ValueError(f"unsupported release platform: {platform}")
@@ -203,7 +256,7 @@ def _validated_entries(root_name: str, entries: list[_Entry]) -> tuple[list[str]
         _validate_relative_name(entry.name)
         if (entry.source is None) == (entry.content is None):
             raise ValueError(f"archive entry must have exactly one content source: {entry.name}")
-        folded = entry.name.casefold()
+        folded = _windows_name_key(entry.name)
         previous = files_by_case.get(folded)
         if previous is not None:
             raise ValueError(
@@ -213,12 +266,12 @@ def _validated_entries(root_name: str, entries: list[_Entry]) -> tuple[list[str]
         files_by_name[entry.name] = entry
 
     directory_names = {root_name}
-    directories_by_case = {root_name.casefold(): root_name}
+    directories_by_case = {_windows_name_key(root_name): root_name}
     for entry_name in files_by_name:
         parts = entry_name.split("/")
         for end in range(1, len(parts)):
             relative_directory = "/".join(parts[:end])
-            folded = relative_directory.casefold()
+            folded = _windows_name_key(relative_directory)
             if folded in files_by_case:
                 raise ValueError(
                     f"archive path is both a file and directory: {relative_directory!r}"
@@ -248,6 +301,56 @@ def _git_head_epoch(repository_root: Path) -> int:
         detail = result.stderr.strip() or result.stdout.strip() or "no timestamp returned"
         raise RuntimeError(f"could not read git HEAD commit timestamp: {detail}")
     return int(result.stdout.strip())
+
+
+def _git_ls_files(repository_root: Path, pathspecs: tuple[str, ...]) -> tuple[str, ...]:
+    result = subprocess.run(
+        ["git", "-C", str(repository_root), "ls-files", "-z", "--", *pathspecs],
+        check=False,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        detail = result.stderr.decode("utf-8", errors="replace").strip()
+        raise RuntimeError(f"could not enumerate tracked release inputs: {detail}")
+    try:
+        return tuple(
+            item.decode("utf-8")
+            for item in result.stdout.split(b"\0")
+            if item
+        )
+    except UnicodeDecodeError as error:
+        raise ValueError("tracked release input path is not valid UTF-8") from error
+
+
+def _prevalidate_release_sources(repository_root: Path) -> None:
+    for relative_root in _RECURSIVE_SOURCE_ROOTS:
+        _walk_regular_files(repository_root, repository_root / relative_root)
+    for relative_name in (
+        *_COMMON_SOURCE_FILES,
+        *_WINDOWS_SOURCE_FILES,
+        *_MACOS_SOURCE_FILES,
+    ):
+        _require_regular_file(repository_root, repository_root / relative_name)
+
+
+def _require_tracked_clean_entries(repository_root: Path, entries: list[_Entry]) -> None:
+    source_names = tuple(
+        sorted({entry.name for entry in entries if entry.source is not None})
+    )
+    tracked_names = set(_git_ls_files(repository_root, source_names))
+    missing_from_index = sorted(set(source_names) - tracked_names)
+    if missing_from_index:
+        raise ValueError(
+            "release source is not tracked by Git: " + ", ".join(missing_from_index)
+        )
+    result = subprocess.run(
+        ["git", "-C", str(repository_root), "diff", "--quiet", "HEAD", "--", *source_names],
+        check=False,
+    )
+    if result.returncode == 1:
+        raise ValueError("release inputs are modified relative to Git HEAD")
+    if result.returncode != 0:
+        raise RuntimeError("could not compare release inputs with Git HEAD")
 
 
 def _zip_timestamp(epoch: int) -> tuple[int, int, int, int, int, int]:
@@ -328,7 +431,11 @@ def build_release_archives(
     version: str,
     source_date_epoch: int | None = None,
 ) -> tuple[BuiltArchive, BuiltArchive]:
-    """Build the Windows x64 and Apple Silicon macOS release ZIPs."""
+    """Build the two portable ZIPs from clean, tracked HEAD inputs.
+
+    Callers must prevent concurrent repository writes: validation and file reads
+    are separate operations, so this function is not a filesystem snapshot.
+    """
 
     _validate_version(version)
     requested_repository_root = Path(repository_root)
@@ -348,12 +455,28 @@ def build_release_archives(
     epoch = _git_head_epoch(repository_root) if source_date_epoch is None else source_date_epoch
     timestamp = _zip_timestamp(epoch)
 
+    output_paths = (
+        output_dir / f"{_WINDOWS_ROOT}-v{version}.zip",
+        output_dir / f"{_MACOS_ROOT}-v{version}.zip",
+    )
+    existing_outputs = [path for path in output_paths if path.exists()]
+    if existing_outputs:
+        raise FileExistsError(
+            "release output already exists: " + ", ".join(str(path) for path in existing_outputs)
+        )
+
+    _prevalidate_release_sources(repository_root)
     common_entries = _common_entries(repository_root)
     prepared = []
     for platform in ("windows-x64", "macos-apple-silicon"):
         root_name, asset_stem, platform_entries = _platform_entries(repository_root, platform)
         directories, entries = _validated_entries(root_name, common_entries + platform_entries)
         prepared.append((platform, root_name, asset_stem, directories, entries))
+
+    _require_tracked_clean_entries(
+        repository_root,
+        [entry for _, _, _, _, entries in prepared for entry in entries],
+    )
 
     built = []
     for platform, root_name, asset_stem, directories, entries in prepared:
