@@ -28,27 +28,42 @@ const RESIZE_OPTIONS = {
   linearRGB: false,
 } as const;
 
+const JPEG_RUNTIME_WARMUP_BASE64 =
+  '/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAf/CABEIAAEAAQMBEQACEQEDEQH/xAAmAAEAAAAAAAAAAAAAAAAAAAAKAQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAAAB//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAT8Af//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQIBAT8Af//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQMBAT8Af//Z';
+const WEBP_RUNTIME_WARMUP_BASE64 = 'UklGRhoAAABXRUJQVlA4TA4AAAAvAAAAAAcQEf0PRET/Aw==';
+
+function decodeEmbeddedBytes(value: string): ArrayBuffer {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes.buffer;
+}
+
+const JPEG_RUNTIME_WARMUP = decodeEmbeddedBytes(JPEG_RUNTIME_WARMUP_BASE64);
+const WEBP_RUNTIME_WARMUP = decodeEmbeddedBytes(WEBP_RUNTIME_WARMUP_BASE64);
+
 let imageRuntimeReady: Promise<void> | undefined;
 
 async function initializeEmscriptenDecoder(
   initialize: (options?: { print?: (...values: unknown[]) => void; printErr?: (...values: unknown[]) => void }) => Promise<void>,
   decode: (buffer: ArrayBuffer) => Promise<ImageData>,
+  warmup: ArrayBuffer,
 ): Promise<void> {
   await initialize({ print: () => undefined, printErr: () => undefined });
-  try {
-    await decode(new ArrayBuffer(0));
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Decoding error') return;
-    throw error;
-  }
-  throw new Error('Image decoder accepted an invalid warm-up payload');
+  await decode(warmup);
 }
 
 export function prepareImageRuntime(): Promise<void> {
   imageRuntimeReady ??= Promise.all([
-    initializeEmscriptenDecoder(initJpeg, (buffer) => decodeJpeg(buffer, { preserveOrientation: false })),
+    initializeEmscriptenDecoder(
+      initJpeg,
+      (buffer) => decodeJpeg(buffer, { preserveOrientation: false }),
+      JPEG_RUNTIME_WARMUP,
+    ),
     Promise.resolve(initPng()).then(() => undefined),
-    initializeEmscriptenDecoder(initWebp, decodeWebp),
+    initializeEmscriptenDecoder(initWebp, decodeWebp, WEBP_RUNTIME_WARMUP),
     Promise.resolve(initResize()).then(() => undefined),
   ]).then(() => undefined);
   return imageRuntimeReady;

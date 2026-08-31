@@ -198,9 +198,9 @@ describe('imageDataToNormalizedChw', () => {
 });
 
 describe('preprocessImage', () => {
-  it('warms every supported decoder and the resize runtime before image selection', async () => {
-    vi.mocked(decodeJpeg).mockRejectedValue(new Error('Decoding error'));
-    vi.mocked(decodeWebp).mockRejectedValue(new Error('Decoding error'));
+  it('warms every supported decoder with valid bytes before image selection', async () => {
+    vi.mocked(decodeJpeg).mockResolvedValue(solidImage(1, 1, [0, 0, 0, 255]));
+    vi.mocked(decodeWebp).mockResolvedValue(solidImage(1, 1, [0, 0, 0, 255]));
     const module = await import('../../src/runtime/preprocess');
     expect(typeof module.prepareImageRuntime).toBe('function');
 
@@ -210,6 +210,11 @@ describe('preprocessImage', () => {
     expect(initPng).toHaveBeenCalledTimes(1);
     expect(initWebp).toHaveBeenCalledTimes(1);
     expect(initResize).toHaveBeenCalledTimes(1);
+    const jpegWarmup = new Uint8Array(vi.mocked(decodeJpeg).mock.calls[0]![0]);
+    const webpWarmup = new Uint8Array(vi.mocked(decodeWebp).mock.calls[0]![0]);
+    expect([...jpegWarmup.subarray(0, 2)]).toEqual([0xff, 0xd8]);
+    expect(new TextDecoder().decode(webpWarmup.subarray(0, 4))).toBe('RIFF');
+    expect(new TextDecoder().decode(webpWarmup.subarray(8, 12))).toBe('WEBP');
   });
 
   it('reuses one validated byte buffer across the validation and preprocessing boundary', async () => {
