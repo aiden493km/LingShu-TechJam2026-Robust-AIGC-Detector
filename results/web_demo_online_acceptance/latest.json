@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "passed": true,
-  "generatedAt": "2026-08-31T08:21:09.918Z",
-  "testedCommit": "5bb2e3cd071a115e0e8637aca9dc1c9fda8796ff",
+  "generatedAt": "2026-08-31T11:11:00.773Z",
+  "testedCommit": "3fe546c87c92a0833c71bcaa2e4e955bd29bedcd",
   "deploymentUrl": "https://lingshu-aigc-detector.vercel.app/",
   "browser": {
     "name": "Microsoft Edge",
@@ -26,7 +26,7 @@
           "cache-control": "public, max-age=0, must-revalidate",
           "content-type": "text/html; charset=utf-8",
           "content-length": "572",
-          "etag": "\"2636f2330cfc4925f1c61d0dec38e833\""
+          "etag": "\"e25e5208d92a68eb2133af34aaff2584\""
         }
       },
       {
@@ -381,7 +381,7 @@
         "method": "GET",
         "kind": "same-origin",
         "origin": "https://lingshu-aigc-detector.vercel.app",
-        "path": "/assets/index-CMWnDiMy.css",
+        "path": "/assets/index-BjWZNU_a.css",
         "count": 3
       },
       {
@@ -389,7 +389,7 @@
         "method": "GET",
         "kind": "same-origin",
         "origin": "https://lingshu-aigc-detector.vercel.app",
-        "path": "/assets/index-rwLn3xEE.js",
+        "path": "/assets/index-BSjAYE3F.js",
         "count": 3
       },
       {
