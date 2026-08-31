@@ -128,6 +128,15 @@ describe('static runtime build configuration', () => {
       expect(result.stdout.replaceAll('\\', '/')).toMatch(
         new RegExp(`^\\.gitignore:\\d+:[^\\t]+\\t${relativePath.replace('.', '\\.')}\\r?\\n?$`),
       );
+
+      const trackedResult = spawnSync(
+        'git',
+        ['ls-files', '--error-unmatch', '--', relativePath],
+        { cwd: repositoryRoot, encoding: 'utf8' },
+      );
+
+      expect(trackedResult.status, `${relativePath} must not be tracked`).toBe(1);
+      expect(trackedResult.stdout).toBe('');
     }
   });
 

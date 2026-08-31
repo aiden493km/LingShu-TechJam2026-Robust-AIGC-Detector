@@ -7,6 +7,23 @@ const MODEL_DESTINATION =
   'https://ruv1f22gd5afyug3.public.blob.vercel-storage.com/models/baseline2_njr_fp32-e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69.onnx';
 const REVALIDATE = 'public, max-age=0, must-revalidate';
 const IMMUTABLE = 'public, max-age=31536000, immutable';
+const ALLOWED_TOP_LEVEL_KEYS = [
+  '$schema',
+  'framework',
+  'installCommand',
+  'buildCommand',
+  'outputDirectory',
+  'rewrites',
+  'headers',
+] as const;
+const FORBIDDEN_METADATA_KEYS = new Set([
+  'blob_read_write_token',
+  'vercel_oidc_token',
+  'token',
+  'secret',
+  'projectid',
+  'orgid',
+]);
 
 type Header = {
   key: string;
@@ -23,7 +40,7 @@ type Rewrite = {
   destination: string;
 };
 
-type VercelConfig = {
+type VercelConfig = Record<string, unknown> & {
   $schema?: string;
   framework?: string;
   installCommand?: string;
@@ -36,7 +53,22 @@ type VercelConfig = {
 };
 
 async function readConfig(): Promise<VercelConfig> {
-  return JSON.parse(await readFile(new URL('../../vercel.json', import.meta.url), 'utf8')) as VercelConfig;
+  return JSON.parse(
+    await readFile(new URL('../../vercel.json', import.meta.url), 'utf8'),
+  ) as VercelConfig;
+}
+
+function serializedObjectKeys(value: unknown): string[] {
+  const keys: string[] = [];
+
+  JSON.parse(JSON.stringify(value), (key: string, nestedValue: unknown) => {
+    if (key !== '') {
+      keys.push(key);
+    }
+    return nestedValue;
+  });
+
+  return keys;
 }
 
 function headerMapFor(rules: HeaderRule[], source: string): Record<string, string> {
@@ -48,6 +80,28 @@ function headerMapFor(rules: HeaderRule[], source: string): Record<string, strin
 }
 
 describe('Vercel online delivery configuration', () => {
+  it('allows only the reviewed top-level deployment keys', async () => {
+    const config = await readConfig();
+
+    expect(Object.keys(config).sort()).toEqual([...ALLOWED_TOP_LEVEL_KEYS].sort());
+    expect(config).not.toHaveProperty('env');
+    expect(config).not.toHaveProperty('functions');
+    expect(config).not.toHaveProperty('redirects');
+  });
+
+  it('contains no serialized secret or Vercel project metadata keys', async () => {
+    const serializedKeys = serializedObjectKeys(await readConfig());
+    const forbiddenKeys = serializedKeys.filter((key) => {
+      const normalized = key.toLowerCase();
+      return (
+        FORBIDDEN_METADATA_KEYS.has(normalized) ||
+        /(?:^|[_-])(?:token|secret)(?:$|[_-])/i.test(key)
+      );
+    });
+
+    expect(forbiddenKeys).toEqual([]);
+  });
+
   it('uses the isolated online Vite build output', async () => {
     const config = await readConfig();
 
