@@ -1,0 +1,545 @@
+{
+  "schema_version": 1,
+  "passed": true,
+  "generatedAt": "2026-08-31T08:21:09.918Z",
+  "testedCommit": "5bb2e3cd071a115e0e8637aca9dc1c9fda8796ff",
+  "deploymentUrl": "https://lingshu-aigc-detector.vercel.app/",
+  "browser": {
+    "name": "Microsoft Edge",
+    "version": "152.0.4191.53"
+  },
+  "headers": {
+    "resources": [
+      {
+        "kind": "root",
+        "path": "/",
+        "status": 200,
+        "headers": {
+          "content-security-policy": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; worker-src 'self' blob:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
+          "cross-origin-embedder-policy": "require-corp",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "no-referrer",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "cache-control": "public, max-age=0, must-revalidate",
+          "content-type": "text/html; charset=utf-8",
+          "content-length": "572",
+          "etag": "\"2636f2330cfc4925f1c61d0dec38e833\""
+        }
+      },
+      {
+        "kind": "manifest",
+        "path": "/models/manifest.json",
+        "status": 200,
+        "headers": {
+          "content-security-policy": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; worker-src 'self' blob:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
+          "cross-origin-embedder-policy": "require-corp",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "no-referrer",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "cache-control": "public, max-age=0, must-revalidate",
+          "content-type": "application/json; charset=utf-8",
+          "etag": "W/\"6a5f580430d5118ca89a007c612641d0\""
+        }
+      },
+      {
+        "kind": "model",
+        "path": "/models/baseline2_njr_fp32.onnx",
+        "status": 200,
+        "headers": {
+          "content-security-policy": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; worker-src 'self' blob:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
+          "cross-origin-embedder-policy": "require-corp",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "no-referrer",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "cache-control": "public, max-age=31536000, immutable",
+          "content-type": "application/octet-stream",
+          "etag": "W/\"5048b97ce3b0c12d57b884cce2a48e21-11\""
+        }
+      },
+      {
+        "kind": "ort-mjs",
+        "path": "/assets/ort-wasm-simd-threaded.asyncify.mjs",
+        "status": 200,
+        "headers": {
+          "content-security-policy": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; worker-src 'self' blob:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
+          "cross-origin-embedder-policy": "require-corp",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "no-referrer",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "cache-control": "public, max-age=31536000, immutable",
+          "content-type": "application/javascript; charset=utf-8",
+          "etag": "W/\"5703d1403c840bc07cfa7cfd7395b520\""
+        }
+      },
+      {
+        "kind": "ort-wasm",
+        "path": "/assets/ort-wasm-simd-threaded.asyncify.wasm",
+        "status": 200,
+        "headers": {
+          "content-security-policy": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; worker-src 'self' blob:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
+          "cross-origin-embedder-policy": "require-corp",
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-resource-policy": "same-origin",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()",
+          "referrer-policy": "no-referrer",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "cache-control": "public, max-age=31536000, immutable",
+          "content-type": "application/wasm",
+          "etag": "W/\"38be84cb0ef42d2fdb84359bac157431\""
+        }
+      }
+    ]
+  },
+  "model": {
+    "path": "/models/baseline2_njr_fp32.onnx",
+    "bytes": 88123029,
+    "sha256": "e2cdc94a06a7a7f72c763d46a92ef3ce84675fd9ae6a4664c94c6f5d99b66b69",
+    "progress": [
+      {
+        "loaded": 0,
+        "total": 88123029
+      },
+      {
+        "loaded": 8388608,
+        "total": 88123029
+      },
+      {
+        "loaded": 16777216,
+        "total": 88123029
+      },
+      {
+        "loaded": 25165824,
+        "total": 88123029
+      },
+      {
+        "loaded": 33554432,
+        "total": 88123029
+      },
+      {
+        "loaded": 41943040,
+        "total": 88123029
+      },
+      {
+        "loaded": 50331648,
+        "total": 88123029
+      },
+      {
+        "loaded": 58720256,
+        "total": 88123029
+      },
+      {
+        "loaded": 67108864,
+        "total": 88123029
+      },
+      {
+        "loaded": 75497472,
+        "total": 88123029
+      },
+      {
+        "loaded": 83886080,
+        "total": 88123029
+      },
+      {
+        "loaded": 88123029,
+        "total": 88123029
+      }
+    ]
+  },
+  "providers": [
+    "webgpu",
+    "wasm"
+  ],
+  "providerRuns": [
+    {
+      "mode": "webgpu",
+      "provider": "webgpu",
+      "crossOriginIsolated": true,
+      "predictions": [
+        {
+          "source": "demo_images/f1.png",
+          "referenceProbability": 0.9999985694885254,
+          "probability": 0.9999983780094724,
+          "absoluteError": 1.9147905294669698e-7,
+          "label": "AIGC",
+          "provider": "webgpu",
+          "thresholdFlip": false
+        },
+        {
+          "source": "demo_images/f2.png",
+          "referenceProbability": 0.9999996423721313,
+          "probability": 0.9999996341625613,
+          "absoluteError": 8.209570023787194e-9,
+          "label": "AIGC",
+          "provider": "webgpu",
+          "thresholdFlip": false
+        },
+        {
+          "source": "demo_images/f3.png",
+          "referenceProbability": 0.9999998807907104,
+          "probability": 0.9999999384645875,
+          "absoluteError": 5.767387700750248e-8,
+          "label": "AIGC",
+          "provider": "webgpu",
+          "thresholdFlip": false
+        },
+        {
+          "source": "demo_images/f4.png",
+          "referenceProbability": 0.999998927116394,
+          "probability": 0.9999985121339541,
+          "absoluteError": 4.149824399668489e-7,
+          "label": "AIGC",
+          "provider": "webgpu",
+          "thresholdFlip": false
+        },
+        {
+          "source": "demo_images/f5.png",
+          "referenceProbability": 0.9999974966049194,
+          "probability": 0.9999974114952228,
+          "absoluteError": 8.510969662367529e-8,
+          "label": "AIGC",
+          "provider": "webgpu",
+          "thresholdFlip": false
+        },
+        {
+          "source": "demo_images/r1.png",
+          "referenceProbability": 0.9982048273086548,
+          "probability": 0.9993134632466377,
+          "absoluteError": 0.001108635937982938,
+          "label": "AIGC",
+          "provider": "webgpu",
+          "thresholdFlip": false
+        },
+        {
+          "source": "demo_images/r2.png",
+          "referenceProbability": 2.4952137778200267e-7,
+          "probability": 2.4952255436131797e-7,
+          "absoluteError": 1.17657931529779e-12,
+          "label": "Real",
+          "provider": "webgpu",
+          "thresholdFlip": false
+        },
+        {
+          "source": "demo_images/r3.png",
+          "referenceProbability": 3.5798055364466563e-7,
+          "probability": 3.579832936097122e-7,
+          "absoluteError": 2.739965046589792e-12,
+          "label": "Real",
+          "provider": "webgpu",
+          "thresholdFlip": false
+        },
+        {
+          "source": "demo_images/r4.png",
+          "referenceProbability": 6.592869681298907e-7,
+          "probability": 6.592888999602248e-7,
+          "absoluteError": 1.931830334027005e-12,
+          "label": "Real",
+          "provider": "webgpu",
+          "thresholdFlip": false
+        },
+        {
+          "source": "demo_images/r5.png",
+          "referenceProbability": 0.0000017951260815607384,
+          "probability": 0.0000017951124557224238,
+          "absoluteError": 1.362583831462794e-11,
+          "label": "Real",
+          "provider": "webgpu",
+          "thresholdFlip": false
+        }
+      ]
+    },
+    {
+      "mode": "wasm",
+      "provider": "wasm",
+      "crossOriginIsolated": true,
+      "predictions": [
+        {
+          "source": "demo_images/f1.png",
+          "referenceProbability": 0.9999985694885254,
+          "probability": 0.9999983780125662,
+          "absoluteError": 1.9147595919921656e-7,
+          "label": "AIGC",
+          "provider": "wasm",
+          "thresholdFlip": false
+        },
+        {
+          "source": "demo_images/f2.png",
+          "referenceProbability": 0.9999996423721313,
+          "probability": 0.9999996341594215,
+          "absoluteError": 8.212709845523136e-9,
+          "label": "AIGC",
+          "provider": "wasm",
+          "thresholdFlip": false
+        },
+        {
+          "source": "demo_images/f3.png",
+          "referenceProbability": 0.9999998807907104,
+          "probability": 0.9999999384643528,
+          "absoluteError": 5.767364230635508e-8,
+          "label": "AIGC",
+          "provider": "wasm",
+          "thresholdFlip": false
+        },
+        {
+          "source": "demo_images/f4.png",
+          "referenceProbability": 0.999998927116394,
+          "probability": 0.9999985121353729,
+          "absoluteError": 4.1498102110182344e-7,
+          "label": "AIGC",
+          "provider": "wasm",
+          "thresholdFlip": false
+        },
+        {
+          "source": "demo_images/f5.png",
+          "referenceProbability": 0.9999974966049194,
+          "probability": 0.9999974115248456,
+          "absoluteError": 8.508007387497685e-8,
+          "label": "AIGC",
+          "provider": "wasm",
+          "thresholdFlip": false
+        },
+        {
+          "source": "demo_images/r1.png",
+          "referenceProbability": 0.9982048273086548,
+          "probability": 0.9993134979227599,
+          "absoluteError": 0.001108670614105134,
+          "label": "AIGC",
+          "provider": "wasm",
+          "thresholdFlip": false
+        },
+        {
+          "source": "demo_images/r2.png",
+          "referenceProbability": 2.4952137778200267e-7,
+          "probability": 2.4952255436131797e-7,
+          "absoluteError": 1.17657931529779e-12,
+          "label": "Real",
+          "provider": "wasm",
+          "thresholdFlip": false
+        },
+        {
+          "source": "demo_images/r3.png",
+          "referenceProbability": 3.5798055364466563e-7,
+          "probability": 3.579795382365534e-7,
+          "absoluteError": 1.0154081122556458e-12,
+          "label": "Real",
+          "provider": "wasm",
+          "thresholdFlip": false
+        },
+        {
+          "source": "demo_images/r4.png",
+          "referenceProbability": 6.592869681298907e-7,
+          "probability": 6.592800975683169e-7,
+          "absoluteError": 6.870561573883594e-12,
+          "label": "Real",
+          "provider": "wasm",
+          "thresholdFlip": false
+        },
+        {
+          "source": "demo_images/r5.png",
+          "referenceProbability": 0.0000017951260815607384,
+          "probability": 0.000001795107319881058,
+          "absoluteError": 1.8761679680387837e-11,
+          "label": "Real",
+          "provider": "wasm",
+          "thresholdFlip": false
+        }
+      ]
+    }
+  ],
+  "crossOriginIsolated": true,
+  "thresholdFlips": 0,
+  "privacy": {
+    "requestCount": 78,
+    "externalOrigins": [],
+    "disallowedMethods": [],
+    "imageRequests": 0,
+    "postReadyBlockedRequests": 0,
+    "webSocketRequests": 0,
+    "requests": [
+      {
+        "type": "http",
+        "method": "GET",
+        "kind": "same-origin",
+        "origin": "https://lingshu-aigc-detector.vercel.app",
+        "path": "/",
+        "count": 3
+      },
+      {
+        "type": "http",
+        "method": "GET",
+        "kind": "same-origin",
+        "origin": "https://lingshu-aigc-detector.vercel.app",
+        "path": "/assets/index-CMWnDiMy.css",
+        "count": 3
+      },
+      {
+        "type": "http",
+        "method": "GET",
+        "kind": "same-origin",
+        "origin": "https://lingshu-aigc-detector.vercel.app",
+        "path": "/assets/index-rwLn3xEE.js",
+        "count": 3
+      },
+      {
+        "type": "http",
+        "method": "GET",
+        "kind": "same-origin",
+        "origin": "https://lingshu-aigc-detector.vercel.app",
+        "path": "/assets/mozjpeg_dec-muSO2n8T.wasm",
+        "count": 3
+      },
+      {
+        "type": "http",
+        "method": "GET",
+        "kind": "same-origin",
+        "origin": "https://lingshu-aigc-detector.vercel.app",
+        "path": "/assets/ort-wasm-simd-threaded.asyncify.mjs",
+        "count": 12
+      },
+      {
+        "type": "http",
+        "method": "GET",
+        "kind": "same-origin",
+        "origin": "https://lingshu-aigc-detector.vercel.app",
+        "path": "/assets/ort-wasm-simd-threaded.asyncify.wasm",
+        "count": 3
+      },
+      {
+        "type": "http",
+        "method": "GET",
+        "kind": "same-origin",
+        "origin": "https://lingshu-aigc-detector.vercel.app",
+        "path": "/assets/squoosh_png_bg-DAY7U9NW.wasm",
+        "count": 3
+      },
+      {
+        "type": "http",
+        "method": "GET",
+        "kind": "same-origin",
+        "origin": "https://lingshu-aigc-detector.vercel.app",
+        "path": "/assets/squoosh_resize_bg-YY9xfwUg.wasm",
+        "count": 3
+      },
+      {
+        "type": "http",
+        "method": "GET",
+        "kind": "same-origin",
+        "origin": "https://lingshu-aigc-detector.vercel.app",
+        "path": "/assets/webp_dec-C990n7mh.wasm",
+        "count": 3
+      },
+      {
+        "type": "http",
+        "method": "GET",
+        "kind": "same-origin",
+        "origin": "https://lingshu-aigc-detector.vercel.app",
+        "path": "/brands/github-mark.svg",
+        "count": 3
+      },
+      {
+        "type": "http",
+        "method": "GET",
+        "kind": "same-origin",
+        "origin": "https://lingshu-aigc-detector.vercel.app",
+        "path": "/fonts/league-gothic-latin.ttf",
+        "count": 3
+      },
+      {
+        "type": "http",
+        "method": "GET",
+        "kind": "model",
+        "origin": "https://lingshu-aigc-detector.vercel.app",
+        "path": "/models/baseline2_njr_fp32.onnx",
+        "count": 33
+      },
+      {
+        "type": "http",
+        "method": "GET",
+        "kind": "same-origin",
+        "origin": "https://lingshu-aigc-detector.vercel.app",
+        "path": "/models/manifest.json",
+        "count": 3
+      }
+    ]
+  },
+  "cache": {
+    "reloadModelRequests": 11,
+    "observations": [
+      {
+        "path": "/models/baseline2_njr_fp32.onnx",
+        "transferSize": 8388908,
+        "encodedBodySize": 8388608
+      },
+      {
+        "path": "/models/baseline2_njr_fp32.onnx",
+        "transferSize": 8388908,
+        "encodedBodySize": 8388608
+      },
+      {
+        "path": "/models/baseline2_njr_fp32.onnx",
+        "transferSize": 8388908,
+        "encodedBodySize": 8388608
+      },
+      {
+        "path": "/models/baseline2_njr_fp32.onnx",
+        "transferSize": 8388908,
+        "encodedBodySize": 8388608
+      },
+      {
+        "path": "/models/baseline2_njr_fp32.onnx",
+        "transferSize": 8388908,
+        "encodedBodySize": 8388608
+      },
+      {
+        "path": "/models/baseline2_njr_fp32.onnx",
+        "transferSize": 8388908,
+        "encodedBodySize": 8388608
+      },
+      {
+        "path": "/models/baseline2_njr_fp32.onnx",
+        "transferSize": 8388908,
+        "encodedBodySize": 8388608
+      },
+      {
+        "path": "/models/baseline2_njr_fp32.onnx",
+        "transferSize": 8388908,
+        "encodedBodySize": 8388608
+      },
+      {
+        "path": "/models/baseline2_njr_fp32.onnx",
+        "transferSize": 8388908,
+        "encodedBodySize": 8388608
+      },
+      {
+        "path": "/models/baseline2_njr_fp32.onnx",
+        "transferSize": 4237249,
+        "encodedBodySize": 4236949
+      }
+    ],
+    "interpretation": "A reload observation only; no permanent-cache claim."
+  },
+  "offline": {
+    "completed": true,
+    "source": "demo_images/r5.png",
+    "provider": "webgpu",
+    "probability": 0.0000017951124557224238,
+    "label": "Real"
+  },
+  "console": {
+    "warningCount": 4,
+    "errorCount": 0,
+    "pageErrorCount": 0
+  }
+}

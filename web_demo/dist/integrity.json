@@ -32,14 +32,14 @@
       "sha256": "283d0f41496032bf285a9d5583b398d89ea94686642fef4d2e27cd970bfd8583"
     },
     {
+      "path": "assets/index-BOiVzlqC.js",
+      "bytes": 433557,
+      "sha256": "96d5e78bd14a9ce0ed37ec6620bd0eddf6c9200617652e2a2516c2e66c87558b"
+    },
+    {
       "path": "assets/index-BjWZNU_a.css",
       "bytes": 36446,
       "sha256": "c56901f46f87a6b31dbcca9fc8db6ea9a69b5312b6d212aa650582b486aaa7ce"
-    },
-    {
-      "path": "assets/index-CivUkRHw.js",
-      "bytes": 429449,
-      "sha256": "b6ae4d33b6dba0ca409c81d9f0dd30d79d58f7f3d3c74ce150cae7eb1dd1b77f"
     },
     {
       "path": "assets/jsquash_magic_kernel_bg-Cq4C4bH5.wasm",
@@ -109,7 +109,7 @@
     {
       "path": "index.html",
       "bytes": 572,
-      "sha256": "e1bf873395df169d8015df379f247093e3bd3887d084853bd1f4cb3b0c825632"
+      "sha256": "b60db3dedae28c40bc92c245c0d408d96cc06f68e3f63114fa08eff284a141ab"
     },
     {
       "path": "team/jingxuan-qian.png",

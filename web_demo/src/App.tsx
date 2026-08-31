@@ -9,6 +9,7 @@ import {
 
 import type { DetectorState, ImageDetails, PreviewImage } from './detector/machine';
 import { useDetector, type UseDetectorResult } from './detector/use-detector';
+import { DEPLOYMENT_MODE, modelDeliveryCopy } from './runtime/deployment';
 import type { LoadedModelSession } from './runtime/model-session';
 import { DetectorEvidence } from './site/DetectorEvidence';
 import { DissolveTitle } from './site/DissolveTitle';
@@ -26,6 +27,7 @@ import {
 export const APP_NAME = 'LingShu Robust AIGC Detector';
 export const REPOSITORY_URL =
   'https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector';
+const delivery = modelDeliveryCopy(DEPLOYMENT_MODE);
 
 export type DetectorScreenProps = UseDetectorResult & {
   readonly currentRoute?: SiteRoute;
@@ -253,7 +255,12 @@ function ModelRuntimeDiagnostics({ state }: { readonly state: ModelErrorState })
   );
 }
 
-function PhaseStatus({ state }: { readonly state: DetectorState }) {
+type LoadingViewProps = {
+  readonly state: DetectorState;
+  readonly delivery: ReturnType<typeof modelDeliveryCopy>;
+};
+
+export function PhaseStatus({ state, delivery }: LoadingViewProps) {
   switch (state.phase) {
     case 'booting': {
       const percent = state.progress.total > 0
@@ -261,9 +268,9 @@ function PhaseStatus({ state }: { readonly state: DetectorState }) {
         : 0;
       return (
         <div className="phase-content loading-state">
-          <p className="phase-name">Loading model</p>
-          <p>Verifying and preparing the local FP32 session.</p>
-          <progress aria-label="Local FP32 model loading progress" value={state.progress.loaded} max={state.progress.total} />
+          <p className="phase-name">{delivery.title}</p>
+          <p>{delivery.detail}</p>
+          <progress aria-label={delivery.progressLabel} value={state.progress.loaded} max={state.progress.total} />
           <p className="progress-copy">{formatBytes(state.progress.loaded)} / {formatBytes(state.progress.total)} bytes · {percent.toFixed(0)}%</p>
         </div>
       );
@@ -337,15 +344,16 @@ function SiteRail({ state, currentRoute }: { readonly state: DetectorState; read
   );
 }
 
-function LocalFieldCard({ state }: { readonly state: DetectorState }) {
+export function LocalFieldCard({ state, delivery }: LoadingViewProps) {
   if (state.phase === 'booting') {
     const percent = state.progress.total > 0
       ? Math.min(100, (state.progress.loaded / state.progress.total) * 100)
       : 0;
     return (
       <div className="local-field-loading" aria-live="polite">
-        <strong>LOADING LOCAL MODEL</strong>
-        <progress aria-label="Local FP32 model loading progress" value={state.progress.loaded} max={state.progress.total} />
+        <strong>{delivery.title}</strong>
+        <span className="sr-only">{delivery.detail}</span>
+        <progress aria-label={delivery.progressLabel} value={state.progress.loaded} max={state.progress.total} />
         <span>{percent.toFixed(0)}% · FP32</span>
         <span className="sr-only">Image bytes remain in browser memory. They are never uploaded or saved.</span>
       </div>
@@ -487,14 +495,14 @@ export function DetectorScreen({ state, selectFile, reset, retryModel, currentRo
         <section className={`detector-stage${isDragging ? ' is-dragging' : ''}`} data-presentation={presentation} data-phase={state.phase} aria-label="Local image detector" aria-busy={isBusy} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
           <section className="idle-hero" aria-hidden={presentation !== 'idle'}>
             <DissolveTitle />
-            <LocalFieldCard state={state} />
+            <LocalFieldCard state={state} delivery={delivery} />
             <p className="model-word">B2-NJR</p>
             <p className="hero-description">Local browser inference for robust real-vs-AIGC image detection.</p>
             <div className="hero-action-cluster">
               <div className="hero-actions"><IdleActions state={state} canSelect={canSelect} retryModel={retryModel} reset={reset} /><RouteLink className="secondary-action" href="#/technology">VIEW MODEL DETAILS</RouteLink></div>
               <p className="upload-contract">Single still JPEG, PNG, or WebP · 25 MiB maximum</p>
             </div>
-            {presentation === 'idle' && (state.phase === 'error' || model?.fallbackReason !== undefined) ? <div className="idle-phase-panel"><PhaseStatus state={state} />{model?.fallbackReason === undefined ? null : <p className="fallback-note">Compatibility note: {model.fallbackReason}. The same FP32 model is running with WASM.</p>}</div> : null}
+            {presentation === 'idle' && (state.phase === 'error' || model?.fallbackReason !== undefined) ? <div className="idle-phase-panel"><PhaseStatus state={state} delivery={delivery} />{model?.fallbackReason === undefined ? null : <p className="fallback-note">Compatibility note: {model.fallbackReason}. The same FP32 model is running with WASM.</p>}</div> : null}
           </section>
           <section className="analysis-layer" aria-hidden={presentation === 'idle'}>
             {presentation === 'idle' ? null : <>
@@ -508,7 +516,7 @@ export function DetectorScreen({ state, selectFile, reset, retryModel, currentRo
             <div className="analysis-workspace">
               <AnalysisPreview state={state} />
               <section className="analysis-result" aria-live="polite">
-                <PhaseStatus state={state} />
+                <PhaseStatus state={state} delivery={delivery} />
                 {model?.fallbackReason !== undefined ? <p className="fallback-note">Compatibility note: {model.fallbackReason}. The same FP32 model is running with WASM.</p> : null}
                 <div className="analysis-actions"><button className="primary-action" type="button" aria-label="Choose a replacement image" onClick={() => requestImageSelection(fileInputRef.current)}>REPLACE IMAGE</button><RouteLink className="secondary-action" href="#/technology">VIEW MODEL DETAILS</RouteLink></div>
               </section>

@@ -9,7 +9,9 @@ import {
   createOrtSession,
   fetchModelBytes,
   fetchModelManifest,
+  fetchVerifiedModelBytes,
   hasWebGpuAdapter,
+  loadModelSession,
   ModelSessionContractError,
   ModelSessionInitializationError,
   parseProviderPreference,
@@ -69,6 +71,7 @@ interface FakeReaderOptions {
 function streamResponse(
   options: FakeReaderOptions = {},
   headers: Record<string, string> = {},
+  status = 200,
 ): {
   response: Response;
   read: ReturnType<typeof vi.fn>;
@@ -92,10 +95,11 @@ function streamResponse(
   const releaseLock = vi.fn();
   const response = {
     ok: true,
-    status: 200,
+    status,
     statusText: 'OK',
     headers: new Headers(headers),
     body: {
+      cancel,
       getReader: () => ({ read, cancel, releaseLock }),
     },
   } as unknown as Response;
@@ -358,6 +362,199 @@ describe('manifest and streamed model loading', () => {
     ]);
     expect(fixture.cancel).not.toHaveBeenCalled();
     expect(fixture.releaseLock).toHaveBeenCalledOnce();
+  });
+
+  it('downloads the online model in exact byte ranges with committed monotonic progress', async () => {
+    const responses = [
+      streamResponse(
+        { chunks: [Uint8Array.of(1, 2, 3)] },
+        { 'Content-Length': '3', 'Content-Range': 'bytes 0-2/7' },
+        206,
+      ).response,
+      streamResponse(
+        { chunks: [Uint8Array.of(4), Uint8Array.of(5, 6)] },
+        { 'Content-Length': '3', 'Content-Range': 'bytes 3-5/7' },
+        206,
+      ).response,
+      streamResponse(
+        { chunks: [Uint8Array.of(7)] },
+        { 'Content-Length': '1', 'Content-Range': 'bytes 6-6/7' },
+        206,
+      ).response,
+    ];
+    const fetcher = vi.fn(async () => responses.shift()!);
+    const progress = vi.fn();
+
+    const bytes = await fetchModelBytes(
+      { file: 'tiny.onnx', bytes: 7 },
+      { fetch: fetcher, onProgress: progress, rangeChunkBytes: 3 },
+    );
+
+    expect(bytes).toEqual(Uint8Array.of(1, 2, 3, 4, 5, 6, 7));
+    expect(fetcher.mock.calls).toEqual([
+      ['/models/tiny.onnx?range=0-2', { headers: { Range: 'bytes=0-2' } }],
+      ['/models/tiny.onnx?range=3-5', { headers: { Range: 'bytes=3-5' } }],
+      ['/models/tiny.onnx?range=6-6', { headers: { Range: 'bytes=6-6' } }],
+    ]);
+    expect(progress.mock.calls.map(([value]) => value)).toEqual([
+      { loaded: 0, total: 7 },
+      { loaded: 3, total: 7 },
+      { loaded: 6, total: 7 },
+      { loaded: 7, total: 7 },
+    ]);
+  });
+
+  it('retries only an interrupted range without regressing reported progress', async () => {
+    const interrupted = streamResponse(
+      { chunks: [Uint8Array.of(1)], failure: new TypeError('network interrupted') },
+      { 'Content-Length': '3', 'Content-Range': 'bytes 0-2/5' },
+      206,
+    );
+    const responses = [
+      interrupted.response,
+      streamResponse(
+        { chunks: [Uint8Array.of(1, 2, 3)] },
+        { 'Content-Length': '3', 'Content-Range': 'bytes 0-2/5' },
+        206,
+      ).response,
+      streamResponse(
+        { chunks: [Uint8Array.of(4, 5)] },
+        { 'Content-Length': '2', 'Content-Range': 'bytes 3-4/5' },
+        206,
+      ).response,
+    ];
+    const fetcher = vi.fn(async () => responses.shift()!);
+    const progress = vi.fn();
+
+    await expect(fetchModelBytes(
+      { file: 'tiny.onnx', bytes: 5 },
+      { fetch: fetcher, onProgress: progress, rangeChunkBytes: 3 },
+    )).resolves.toEqual(Uint8Array.of(1, 2, 3, 4, 5));
+
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(fetcher.mock.calls[0]).toEqual(fetcher.mock.calls[1]);
+    expect(progress.mock.calls.map(([value]) => value)).toEqual([
+      { loaded: 0, total: 5 },
+      { loaded: 3, total: 5 },
+      { loaded: 5, total: 5 },
+    ]);
+    expect(interrupted.cancel).toHaveBeenCalledOnce();
+  });
+
+  it('rejects a server that ignores an online byte-range request', async () => {
+    const ignoredRange = streamResponse(
+      { chunks: [Uint8Array.of(1, 2, 3, 4, 5)] },
+      { 'Content-Length': '5' },
+      200,
+    );
+
+    await expect(fetchModelBytes(
+      { file: 'tiny.onnx', bytes: 5 },
+      { fetch: vi.fn().mockResolvedValue(ignoredRange.response), rangeChunkBytes: 3 },
+    )).rejects.toThrow(/206|partial|content-range/i);
+
+    expect(ignoredRange.read).not.toHaveBeenCalled();
+    expect(ignoredRange.cancel).toHaveBeenCalledOnce();
+  });
+
+  it('verifies the exact five streamed bytes and applies cache override only to the model', async () => {
+    const fixture = streamResponse({
+      chunks: [Uint8Array.of(1, 2), Uint8Array.of(3, 4, 5)],
+    });
+    const fetcher = vi.fn().mockResolvedValue(fixture.response);
+    const verifier = vi.fn().mockResolvedValue(undefined);
+    const expectedSha256 = 'a'.repeat(64);
+
+    const bytes = await fetchVerifiedModelBytes(
+      { file: 'tiny.onnx', bytes: 5, sha256: expectedSha256 },
+      { fetch: fetcher, modelCache: 'reload', verifySha256: verifier },
+    );
+
+    expect(bytes).toEqual(Uint8Array.of(1, 2, 3, 4, 5));
+    expect(fetcher).toHaveBeenCalledWith('/models/tiny.onnx', { cache: 'reload' });
+    expect(verifier).toHaveBeenCalledOnce();
+    expect(verifier).toHaveBeenCalledWith(bytes, expectedSha256);
+  });
+
+  it('stops before provider selection and session creation when verification fails', async () => {
+    const integrityFailure = new Error('downloaded model failed verification');
+    const modelFixture = streamResponse({
+      chunks: [new Uint8Array(manifest.model.bytes)],
+    });
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(manifestJson), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(modelFixture.response);
+    const verifySha256 = vi.fn().mockRejectedValue(integrityFailure);
+    const hasAdapter = vi.fn().mockResolvedValue(true);
+    const create = vi.fn().mockResolvedValue(validSession());
+
+    await expect(
+      loadModelSession({
+        fetch: fetcher,
+        modelCache: 'reload',
+        verifySha256,
+        hasWebGpuAdapter: hasAdapter,
+        create,
+      }),
+    ).rejects.toBe(integrityFailure);
+
+    expect(fetcher).toHaveBeenNthCalledWith(1, '/models/manifest.json', undefined);
+    expect(fetcher).toHaveBeenNthCalledWith(2, `/models/${manifest.model.file}`, {
+      cache: 'reload',
+    });
+    expect(verifySha256).toHaveBeenCalledWith(expect.any(Uint8Array), manifest.model.sha256);
+    expect(hasAdapter).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+    expect(ortMock.create).not.toHaveBeenCalled();
+  });
+
+  it('preserves an abort raised while model verification is pending', async () => {
+    const modelFixture = streamResponse({
+      chunks: [new Uint8Array(manifest.model.bytes)],
+    });
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(manifestJson), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(modelFixture.response);
+    let resolveVerification: (() => void) | undefined;
+    const verifySha256 = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveVerification = resolve;
+        }),
+    );
+    const hasAdapter = vi.fn().mockResolvedValue(true);
+    const create = vi.fn().mockResolvedValue(validSession());
+    const controller = new AbortController();
+    const abortError = new DOMException('Model load was cancelled', 'AbortError');
+
+    const loading = loadModelSession({
+      fetch: fetcher,
+      signal: controller.signal,
+      verifySha256,
+      hasWebGpuAdapter: hasAdapter,
+      create,
+    });
+    await vi.waitFor(() => expect(verifySha256).toHaveBeenCalledOnce());
+
+    controller.abort(abortError);
+    resolveVerification?.();
+
+    await expect(loading).rejects.toBe(abortError);
+    expect(hasAdapter).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+    expect(ortMock.create).not.toHaveBeenCalled();
   });
 
   it.each([

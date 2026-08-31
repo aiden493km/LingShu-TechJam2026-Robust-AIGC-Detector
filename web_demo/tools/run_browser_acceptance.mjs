@@ -50,6 +50,8 @@ const MODEL_TIMEOUT_MS = 180_000;
 const INFERENCE_TIMEOUT_MS = 180_000;
 const PROCESS_OUTPUT_LIMIT = 1024 * 1024;
 const FRESH_COPY_NAME = 'LingShu 评委 本地复现';
+export const RESULT_RETURN_CONTROL_NAME = 'Back to detector home';
+export const ERROR_RESET_CONTROL_NAME = 'Reset detector';
 
 const DEMO_SOURCES = [
   'demo_images/f1.png',
@@ -1538,8 +1540,8 @@ async function resetAndAssert(page) {
     `Reset requires a completed or failed workflow, observed ${phase}`,
   );
   const actionName = phase === 'Current phase: error'
-    ? /reset detector/i
-    : /back to detector home/i;
+    ? new RegExp(ERROR_RESET_CONTROL_NAME, 'i')
+    : new RegExp(RESULT_RETURN_CONTROL_NAME, 'i');
   await page.getByRole('button', { name: actionName }).click();
   await waitForPhaseOutcome(page, 'ready', 10_000);
   invariant(await page.locator('.preview-figure').count() === 0, 'Reset must clear the preview');

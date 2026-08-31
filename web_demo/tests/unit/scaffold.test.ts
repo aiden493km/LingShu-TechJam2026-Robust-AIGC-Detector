@@ -6,10 +6,13 @@ import {
   APP_NAME,
   consumeSelectedFiles,
   DetectorScreen,
+  LocalFieldCard,
+  PhaseStatus,
   requestImageSelection,
 } from '../../src/App';
 import type { DetectorState } from '../../src/detector/machine';
 import type { RuntimeEnvironmentSnapshot } from '../../src/runtime/capabilities';
+import { modelDeliveryCopy, type DeploymentMode } from '../../src/runtime/deployment';
 import type { LoadedModelSession } from '../../src/runtime/model-session';
 import { DetectorEvidence } from '../../src/site/DetectorEvidence';
 import type { RecentDetection } from '../../src/site/session-history';
@@ -47,6 +50,11 @@ function render(state: DetectorState): string {
   );
 }
 
+type LoadingViewProps = {
+  readonly state: Extract<DetectorState, { phase: 'booting' }>;
+  readonly delivery: ReturnType<typeof modelDeliveryCopy>;
+};
+
 describe('frontend scaffold', () => {
   it('uses the frozen product name', () => {
     expect(APP_NAME).toBe('LingShu Robust AIGC Detector');
@@ -65,11 +73,34 @@ describe('frontend scaffold', () => {
     expect(html).not.toContain('class="local-field-card"');
     expect(html).not.toContain('class="idle-phase-panel"');
     expect(html).toContain('LOADING LOCAL MODEL');
+    expect(html).toContain('Verifying and preparing the local FP32 session.');
+    expect(html).toContain('aria-label="Local FP32 model loading progress"');
     expect(html).toContain('<progress');
     expect(html).toContain('44061514');
     expect(html).toContain('JPEG, PNG, or WebP');
     expect(html).toContain('25 MiB');
     expect(html).toContain('never uploaded or saved');
+  });
+
+  const loadingState: LoadingViewProps['state'] = {
+    phase: 'booting',
+    progress: { loaded: 44_061_514, total: 88_123_029 },
+  };
+
+  it.each([
+    ['phase content', PhaseStatus],
+    ['local field card', LocalFieldCard],
+  ])('renders explicit local and online delivery copy in the %s', (_name, LoadingView) => {
+    for (const mode of ['local', 'online'] satisfies readonly DeploymentMode[]) {
+      const delivery = modelDeliveryCopy(mode);
+      const html = renderToStaticMarkup(
+        createElement(LoadingView, { state: loadingState, delivery }),
+      );
+
+      expect(html).toContain(delivery.title);
+      expect(html).toContain(delivery.detail);
+      expect(html).toContain(`aria-label="${delivery.progressLabel}"`);
+    }
   });
 
   it('renders one keyboard file input and the complete successful result metadata', () => {

@@ -1,7 +1,7 @@
-import decodeJpeg from '@jsquash/jpeg/decode.js';
-import decodePng from '@jsquash/png/decode.js';
-import resize from '@jsquash/resize';
-import decodeWebp from '@jsquash/webp/decode.js';
+import decodeJpeg, { init as initJpeg } from '@jsquash/jpeg/decode.js';
+import decodePng, { init as initPng } from '@jsquash/png/decode.js';
+import resize, { initResize } from '@jsquash/resize';
+import decodeWebp, { init as initWebp } from '@jsquash/webp/decode.js';
 
 import { applyExifOrientation, readJpegOrientation } from './exif';
 import {
@@ -27,6 +27,47 @@ const RESIZE_OPTIONS = {
   premultiply: false,
   linearRGB: false,
 } as const;
+
+const JPEG_RUNTIME_WARMUP_BASE64 =
+  '/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAMDAwMDAwQEBAQFBQUFBQcHBgYHBwsICQgJCAsRCwwLCwwLEQ8SDw4PEg8bFRMTFRsfGhkaHyYiIiYwLTA+PlQBAwMDAwMDBAQEBAUFBQUFBwcGBgcHCwgJCAkICxELDAsLDAsRDxIPDg8SDxsVExMVGx8aGRofJiIiJjAtMD4+VP/CABEIAAgACAMBEQACEQEDEQH/xAAmAAEAAAAAAAAAAAAAAAAAAAAJAQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAAqj//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAT8Af//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQIBAT8Af//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQMBAT8Af//Z';
+const WEBP_RUNTIME_WARMUP_BASE64 = 'UklGRhoAAABXRUJQVlA4TA4AAAAvAAAAAAcQEf0PRET/Aw==';
+
+function decodeEmbeddedBytes(value: string): ArrayBuffer {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes.buffer;
+}
+
+const JPEG_RUNTIME_WARMUP = decodeEmbeddedBytes(JPEG_RUNTIME_WARMUP_BASE64);
+const WEBP_RUNTIME_WARMUP = decodeEmbeddedBytes(WEBP_RUNTIME_WARMUP_BASE64);
+
+let imageRuntimeReady: Promise<void> | undefined;
+
+async function initializeEmscriptenDecoder(
+  initialize: (options?: { print?: (...values: unknown[]) => void; printErr?: (...values: unknown[]) => void }) => Promise<void>,
+  decode: (buffer: ArrayBuffer) => Promise<ImageData>,
+  warmup: ArrayBuffer,
+): Promise<void> {
+  await initialize({ print: () => undefined, printErr: () => undefined });
+  await decode(warmup);
+}
+
+export function prepareImageRuntime(): Promise<void> {
+  imageRuntimeReady ??= Promise.all([
+    initializeEmscriptenDecoder(
+      initJpeg,
+      (buffer) => decodeJpeg(buffer, { preserveOrientation: false }),
+      JPEG_RUNTIME_WARMUP,
+    ),
+    Promise.resolve(initPng()).then(() => undefined),
+    initializeEmscriptenDecoder(initWebp, decodeWebp, WEBP_RUNTIME_WARMUP),
+    Promise.resolve(initResize()).then(() => undefined),
+  ]).then(() => undefined);
+  return imageRuntimeReady;
+}
 
 export interface PreprocessedImage {
   tensor: Float32Array;

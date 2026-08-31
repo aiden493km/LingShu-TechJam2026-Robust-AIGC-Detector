@@ -41,11 +41,14 @@ runs/
 # Frontend-generated tests and design review artifacts
 web_demo/.generated-tests/
 web_demo/.runtime-cache/
+web_demo/dist-online/
 .impeccable/review/
 .impeccable/live/
 
 # Secrets
 .env
+web_demo/.vercel/
+web_demo/.env.local
 
 # OS
 .DS_Store

@@ -22,6 +22,7 @@ import {
   type ProviderDiagnostic,
 } from '../runtime/model-session';
 import {
+  prepareImageRuntime,
   preprocessValidatedImage,
   type PreprocessedImage,
 } from '../runtime/preprocess';
@@ -144,6 +145,7 @@ export async function prepareSelectedImage(
 
 export interface DetectorDependencies {
   readonly loadModel: (options: LoadModelSessionOptions) => Promise<LoadedModelSession>;
+  readonly prepareImageRuntime: () => Promise<void>;
   readonly collectEnvironment: () =>
     | RuntimeEnvironmentSnapshot
     | Promise<RuntimeEnvironmentSnapshot>;
@@ -166,6 +168,7 @@ export interface DetectorDependencies {
 function browserDependencies(): DetectorDependencies {
   return {
     loadModel: loadModelSession,
+    prepareImageRuntime,
     collectEnvironment: collectRuntimeEnvironment,
     inspectEnvironment: inspectRuntimeEnvironment,
     readAndValidate: readAndValidateImageFile,
@@ -289,17 +292,20 @@ export class DetectorController {
       });
   }
 
-  private async performModelLoad(): Promise<void> {
+  private async performModelLoad(modelCache?: RequestCache): Promise<void> {
     const operation = this.gate.begin();
+    let model: LoadedModelSession | undefined;
     try {
-      const model = await this.dependencies.loadModel({
+      model = await this.dependencies.loadModel({
         signal: operation.signal,
+        ...(modelCache === undefined ? {} : { modelCache }),
         onProgress: (progress) => {
           if (this.gate.isCurrent(operation) && !this.disposed) {
             this.publish({ type: 'model-progressed', progress });
           }
         },
       });
+      await this.dependencies.prepareImageRuntime();
       if (!this.gate.isCurrent(operation) || this.disposed) {
         await releaseModel(model);
         return;
@@ -307,6 +313,9 @@ export class DetectorController {
       this.model = model;
       this.publish({ type: 'model-ready', model });
     } catch (error) {
+      if (model !== undefined) {
+        await releaseModel(model);
+      }
       if (!this.gate.isCurrent(operation) || this.disposed) {
         return;
       }
@@ -330,17 +339,17 @@ export class DetectorController {
     }
   }
 
-  private beginModelLoad(): Promise<void> {
+  private beginModelLoad(modelCache?: RequestCache): Promise<void> {
     const active = this.activeLoad;
     if (active !== undefined) {
       return active.then(() => {
         if (!this.disposed && this.model === undefined && this.state.phase === 'booting') {
-          return this.beginModelLoad();
+          return this.beginModelLoad(modelCache);
         }
       });
     }
 
-    const work = this.performModelLoad();
+    const work = this.performModelLoad(modelCache);
     const tracked = work.finally(() => {
       if (this.activeLoad === tracked) {
         this.activeLoad = undefined;
@@ -452,7 +461,7 @@ export class DetectorController {
     this.gate.cancel();
     this.previews.clear();
     this.publish({ type: 'retry-model' });
-    await this.beginModelLoad();
+    await this.beginModelLoad('reload');
   };
 
   async dispose(): Promise<void> {
