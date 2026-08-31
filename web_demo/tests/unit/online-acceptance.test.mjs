@@ -456,6 +456,16 @@ describe('bounded online evidence schema', () => {
     }
   });
 
+  it('accepts bounded range-request cache evidence and rejects an unbounded count', () => {
+    const ranged = validEvidence();
+    ranged.cache.reloadModelRequests = 11;
+    assert.equal(validateOnlineEvidence(ranged).passed, true);
+
+    const unbounded = validEvidence();
+    unbounded.cache.reloadModelRequests = 33;
+    assert.throws(() => validateOnlineEvidence(unbounded), /cache|bounded|32/i);
+  });
+
   it('rejects sensitive fields, query-bearing URLs, and unbounded logs', () => {
     const secret = validEvidence();
     secret.privacy.authorization = 'Bearer should-never-be-recorded';

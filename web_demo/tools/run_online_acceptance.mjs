@@ -355,7 +355,7 @@ function validatePrivacy(value, deploymentUrl) {
 function validateCache(value) {
   exactKeys(value, ['interpretation', 'observations', 'reloadModelRequests'], 'cache evidence');
   nonNegativeInteger(value.reloadModelRequests, 'cache.reloadModelRequests');
-  invariant(value.reloadModelRequests <= 2, 'cache.reloadModelRequests must be bounded');
+  invariant(value.reloadModelRequests <= 32, 'cache.reloadModelRequests must be bounded at 32');
   invariant(Array.isArray(value.observations) && value.observations.length >= 1 && value.observations.length <= 10, 'cache observations must contain 1 to 10 entries');
   for (const [index, observation] of value.observations.entries()) {
     exactKeys(observation, ['encodedBodySize', 'path', 'transferSize'], `cache.observations[${index}]`);

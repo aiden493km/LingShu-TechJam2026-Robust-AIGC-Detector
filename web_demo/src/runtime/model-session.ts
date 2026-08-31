@@ -65,6 +65,7 @@ export interface FetchOptions {
 export interface ModelFetchOptions extends FetchOptions {
   readonly onProgress?: (progress: ModelLoadProgress) => void;
   readonly modelCache?: RequestCache;
+  readonly rangeChunkBytes?: number;
 }
 
 export interface ModelDownloadDescriptor {
@@ -104,6 +105,8 @@ export interface LoadModelSessionOptions extends VerifiedModelFetchOptions {
 const WASM_PATH = '/assets/ort-wasm-simd-threaded.asyncify.wasm';
 const WASM_MJS_PATH = '/assets/ort-wasm-simd-threaded.asyncify.mjs';
 const DIAGNOSTIC_LIMIT = 300;
+export const ONLINE_MODEL_RANGE_CHUNK_BYTES = 8 * 1024 * 1024;
+const MODEL_RANGE_ATTEMPTS = 3;
 let ortConfigured = false;
 
 function currentEnvironment(): RuntimeEnvironment {
@@ -134,14 +137,20 @@ function defaultFetch(): FetchFunction {
 function fetchInit(
   signal: AbortSignal | undefined,
   cache?: RequestCache,
+  range?: string,
 ): RequestInit | undefined {
-  if (signal === undefined && cache === undefined) {
+  if (signal === undefined && cache === undefined && range === undefined) {
     return undefined;
   }
   return {
     ...(signal === undefined ? {} : { signal }),
     ...(cache === undefined ? {} : { cache }),
+    ...(range === undefined ? {} : { headers: { Range: range } }),
   };
+}
+
+function onlineRangeChunkBytes(): number | undefined {
+  return import.meta.env.MODE === 'online' ? ONLINE_MODEL_RANGE_CHUNK_BYTES : undefined;
 }
 
 function sanitizeDiagnostic(error: unknown): string {
@@ -482,6 +491,124 @@ async function streamModelResponse(
   }
 }
 
+function expectedContentRange(
+  response: Response,
+  start: number,
+  end: number,
+  total: number,
+): void {
+  if (response.status !== 206) {
+    throw new ModelDownloadError(
+      `Model byte range must return HTTP 206; received ${response.status}`,
+    );
+  }
+  const value = response.headers.get('Content-Range');
+  const expected = `bytes ${start}-${end}/${total}`;
+  if (value !== expected) {
+    throw new ModelDownloadError(
+      `Model Content-Range ${JSON.stringify(value)} does not match ${expected}`,
+    );
+  }
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    (error instanceof DOMException && error.name === 'AbortError') ||
+    (error instanceof Error && error.name === 'AbortError')
+  );
+}
+
+function isRetryableRangeError(error: unknown): boolean {
+  if (isAbortError(error)) return false;
+  if (!(error instanceof ModelDownloadError)) return true;
+  return (
+    error.message.startsWith('Model stream ended at ') ||
+    /: HTTP (?:408|429|5\d\d)$/.test(error.message)
+  );
+}
+
+async function fetchModelRange(
+  fetcher: FetchFunction,
+  path: string,
+  start: number,
+  end: number,
+  total: number,
+  options: ModelFetchOptions,
+): Promise<Uint8Array> {
+  const range = `bytes=${start}-${end}`;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= MODEL_RANGE_ATTEMPTS; attempt += 1) {
+    options.signal?.throwIfAborted();
+    try {
+      const response = await fetcher(
+        path,
+        fetchInit(options.signal, options.modelCache, range),
+      );
+      if (typeof response !== 'object' || response === null || response.ok !== true) {
+        if (typeof response === 'object' && response !== null) {
+          await cancelBody(response, 'model range response rejected');
+        }
+        const status =
+          typeof response === 'object' && response !== null
+            ? `HTTP ${String(response.status)}`
+            : 'an invalid response';
+        throw new ModelDownloadError(`Failed to fetch ${path} ${range}: ${status}`);
+      }
+      try {
+        expectedContentRange(response, start, end, total);
+      } catch (error) {
+        await cancelBody(response, error);
+        throw error;
+      }
+      return await streamModelResponse(
+        response,
+        end - start + 1,
+        options.signal,
+        undefined,
+      );
+    } catch (error) {
+      if (isAbortError(error)) throw error;
+      if (!isRetryableRangeError(error)) throw error;
+      lastError = error;
+    }
+  }
+  throw new ModelDownloadError(
+    `Model range ${range} failed after ${MODEL_RANGE_ATTEMPTS} attempts: ${sanitizeDiagnostic(lastError)}`,
+  );
+}
+
+async function fetchModelBytesInRanges(
+  fetcher: FetchFunction,
+  path: string,
+  expectedBytes: number,
+  rangeChunkBytes: number,
+  options: ModelFetchOptions,
+): Promise<Uint8Array> {
+  if (!Number.isSafeInteger(rangeChunkBytes) || rangeChunkBytes <= 0) {
+    throw new ModelDownloadError(
+      `Model range chunk size is invalid: ${String(rangeChunkBytes)}`,
+    );
+  }
+  const output = new Uint8Array(expectedBytes);
+  let loaded = 0;
+  options.onProgress?.({ loaded, total: expectedBytes });
+  while (loaded < expectedBytes) {
+    const end = Math.min(expectedBytes, loaded + rangeChunkBytes) - 1;
+    const chunk = await fetchModelRange(
+      fetcher,
+      path,
+      loaded,
+      end,
+      expectedBytes,
+      options,
+    );
+    output.set(chunk, loaded);
+    loaded += chunk.byteLength;
+    options.onProgress?.({ loaded, total: expectedBytes });
+  }
+  return output;
+}
+
 export async function fetchModelBytes(
   descriptor: ModelDownloadDescriptor,
   options: ModelFetchOptions = {},
@@ -495,6 +622,16 @@ export async function fetchModelBytes(
 
   const fetcher = options.fetch ?? defaultFetch();
   const path = `/models/${descriptor.file}`;
+  const rangeChunkBytes = options.rangeChunkBytes ?? onlineRangeChunkBytes();
+  if (rangeChunkBytes !== undefined) {
+    return fetchModelBytesInRanges(
+      fetcher,
+      path,
+      descriptor.bytes,
+      rangeChunkBytes,
+      options,
+    );
+  }
   const response = await fetcher(path, fetchInit(options.signal, options.modelCache));
   if (typeof response !== 'object' || response === null || response.ok !== true) {
     if (typeof response === 'object' && response !== null) {
@@ -534,6 +671,9 @@ export async function loadModelSession(
     ...sharedFetchOptions,
     ...(options.onProgress === undefined ? {} : { onProgress: options.onProgress }),
     ...(options.modelCache === undefined ? {} : { modelCache: options.modelCache }),
+    ...(options.rangeChunkBytes === undefined
+      ? {}
+      : { rangeChunkBytes: options.rangeChunkBytes }),
     ...(options.verifySha256 === undefined
       ? {}
       : { verifySha256: options.verifySha256 }),

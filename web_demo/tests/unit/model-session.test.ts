@@ -71,6 +71,7 @@ interface FakeReaderOptions {
 function streamResponse(
   options: FakeReaderOptions = {},
   headers: Record<string, string> = {},
+  status = 200,
 ): {
   response: Response;
   read: ReturnType<typeof vi.fn>;
@@ -94,10 +95,11 @@ function streamResponse(
   const releaseLock = vi.fn();
   const response = {
     ok: true,
-    status: 200,
+    status,
     statusText: 'OK',
     headers: new Headers(headers),
     body: {
+      cancel,
       getReader: () => ({ read, cancel, releaseLock }),
     },
   } as unknown as Response;
@@ -360,6 +362,99 @@ describe('manifest and streamed model loading', () => {
     ]);
     expect(fixture.cancel).not.toHaveBeenCalled();
     expect(fixture.releaseLock).toHaveBeenCalledOnce();
+  });
+
+  it('downloads the online model in exact byte ranges with committed monotonic progress', async () => {
+    const responses = [
+      streamResponse(
+        { chunks: [Uint8Array.of(1, 2, 3)] },
+        { 'Content-Length': '3', 'Content-Range': 'bytes 0-2/7' },
+        206,
+      ).response,
+      streamResponse(
+        { chunks: [Uint8Array.of(4), Uint8Array.of(5, 6)] },
+        { 'Content-Length': '3', 'Content-Range': 'bytes 3-5/7' },
+        206,
+      ).response,
+      streamResponse(
+        { chunks: [Uint8Array.of(7)] },
+        { 'Content-Length': '1', 'Content-Range': 'bytes 6-6/7' },
+        206,
+      ).response,
+    ];
+    const fetcher = vi.fn(async () => responses.shift()!);
+    const progress = vi.fn();
+
+    const bytes = await fetchModelBytes(
+      { file: 'tiny.onnx', bytes: 7 },
+      { fetch: fetcher, onProgress: progress, rangeChunkBytes: 3 },
+    );
+
+    expect(bytes).toEqual(Uint8Array.of(1, 2, 3, 4, 5, 6, 7));
+    expect(fetcher.mock.calls).toEqual([
+      ['/models/tiny.onnx', { headers: { Range: 'bytes=0-2' } }],
+      ['/models/tiny.onnx', { headers: { Range: 'bytes=3-5' } }],
+      ['/models/tiny.onnx', { headers: { Range: 'bytes=6-6' } }],
+    ]);
+    expect(progress.mock.calls.map(([value]) => value)).toEqual([
+      { loaded: 0, total: 7 },
+      { loaded: 3, total: 7 },
+      { loaded: 6, total: 7 },
+      { loaded: 7, total: 7 },
+    ]);
+  });
+
+  it('retries only an interrupted range without regressing reported progress', async () => {
+    const interrupted = streamResponse(
+      { chunks: [Uint8Array.of(1)], failure: new TypeError('network interrupted') },
+      { 'Content-Length': '3', 'Content-Range': 'bytes 0-2/5' },
+      206,
+    );
+    const responses = [
+      interrupted.response,
+      streamResponse(
+        { chunks: [Uint8Array.of(1, 2, 3)] },
+        { 'Content-Length': '3', 'Content-Range': 'bytes 0-2/5' },
+        206,
+      ).response,
+      streamResponse(
+        { chunks: [Uint8Array.of(4, 5)] },
+        { 'Content-Length': '2', 'Content-Range': 'bytes 3-4/5' },
+        206,
+      ).response,
+    ];
+    const fetcher = vi.fn(async () => responses.shift()!);
+    const progress = vi.fn();
+
+    await expect(fetchModelBytes(
+      { file: 'tiny.onnx', bytes: 5 },
+      { fetch: fetcher, onProgress: progress, rangeChunkBytes: 3 },
+    )).resolves.toEqual(Uint8Array.of(1, 2, 3, 4, 5));
+
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(fetcher.mock.calls[0]).toEqual(fetcher.mock.calls[1]);
+    expect(progress.mock.calls.map(([value]) => value)).toEqual([
+      { loaded: 0, total: 5 },
+      { loaded: 3, total: 5 },
+      { loaded: 5, total: 5 },
+    ]);
+    expect(interrupted.cancel).toHaveBeenCalledOnce();
+  });
+
+  it('rejects a server that ignores an online byte-range request', async () => {
+    const ignoredRange = streamResponse(
+      { chunks: [Uint8Array.of(1, 2, 3, 4, 5)] },
+      { 'Content-Length': '5' },
+      200,
+    );
+
+    await expect(fetchModelBytes(
+      { file: 'tiny.onnx', bytes: 5 },
+      { fetch: vi.fn().mockResolvedValue(ignoredRange.response), rangeChunkBytes: 3 },
+    )).rejects.toThrow(/206|partial|content-range/i);
+
+    expect(ignoredRange.read).not.toHaveBeenCalled();
+    expect(ignoredRange.cancel).toHaveBeenCalledOnce();
   });
 
   it('verifies the exact five streamed bytes and applies cache override only to the model', async () => {
