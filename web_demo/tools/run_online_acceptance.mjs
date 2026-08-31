@@ -1129,6 +1129,14 @@ async function main(arguments_ = process.argv.slice(2)) {
 export function sanitizeFailureMessage(value) {
   const credentialName = '(?:authorization|cookie|credential|password|secret|session|token|api[_-]?key|access[_-]?key)';
   return String(value)
+    .replace(
+      /(["']?\b(?:proxy-)?authorization\b["']?\s*:\s*)(.*?)(?=\s+\|\s+|\r?\n|$)/gim,
+      '$1[credential]',
+    )
+    .replace(
+      /(["']?\b(?:set-cookie|cookie)\b["']?\s*:\s*)(.*?)(?=\s+\|\s+|\r?\n|$)/gim,
+      '$1[credential]',
+    )
     .replace(/[\u0000-\u001f\u007f]+/g, ' ')
     .replace(/\b(?:https?|wss?|data|blob|file):[^\s]*/gi, (candidate) => {
       const punctuation = candidate.match(/[),.;]+$/)?.[0] ?? '';

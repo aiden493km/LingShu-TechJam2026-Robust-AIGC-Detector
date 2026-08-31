@@ -526,6 +526,20 @@ describe('bounded online evidence schema', () => {
     assert.match(sanitized, /\[credential\]/);
   });
 
+  it('redacts complete authentication and cookie header values', () => {
+    const cases = [
+      ['Authorization: Basic dXNlcjpwYXNzLWZha2U=', ['dXNlcjpwYXNzLWZha2U=']],
+      ['Proxy-Authorization: Basic cHJveHk6cHJpdmF0ZQ==', ['cHJveHk6cHJpdmF0ZQ==']],
+      ['Cookie: sessionid=judge-session-abc; csrftoken=judge-csrf-xyz', ['judge-session-abc', 'judge-csrf-xyz']],
+      ['Set-Cookie: sessionid=judge-cookie-abc; Path=/; HttpOnly; SameSite=Lax', ['judge-cookie-abc', 'Path=/', 'HttpOnly', 'SameSite=Lax']],
+    ];
+    for (const [message, secrets] of cases) {
+      const sanitized = sanitizeFailureMessage(message);
+      for (const secret of secrets) assert.equal(sanitized.includes(secret), false);
+      assert.match(sanitized, /\[credential\]/);
+    }
+  });
+
   it('requires exactly ten bounded parity rows per provider and valid header evidence', () => {
     const missingPrediction = validEvidence();
     missingPrediction.providerRuns[0].predictions.pop();
