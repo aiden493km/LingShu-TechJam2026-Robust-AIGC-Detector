@@ -21,7 +21,7 @@ Evidence-bounded, local-first detection of AI-generated images under real-world 
 [![macOS Apple Silicon](https://img.shields.io/badge/macOS-Apple_Silicon-111827?style=flat-square&logo=apple&logoColor=white)](.github/workflows/web-demo-portable.yml)
 [![TechJam 2026](https://img.shields.io/badge/TikTok_TechJam-2026-ff0050?style=flat-square&logo=tiktok&logoColor=white)](#tiktok-techjam-2026)
 
-[**Download / Release v1.2.0**](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.2.0) · [**Frozen Checkpoint v1.0.0**](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/download/v1.0.0/baseline2_njr_best.pt) · [**WebDemo Guide**](web_demo/README.md) · [**Results**](results/) · [**Demo Video**](https://youtu.be/ZVW3aux8mRs)
+[**Download / Release v1.2.0**](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/tag/v1.2.0) · [**Frozen Checkpoint v1.0.0**](https://github.com/aiden493km/LingShu-TechJam2026-Robust-AIGC-Detector/releases/download/v1.0.0/baseline2_njr_best.pt) · [**Online Web Demo**](https://lingshu-aigc-detector.vercel.app/) · [**Results**](results/) · [**Demo Video**](https://youtu.be/ZVW3aux8mRs)
 
 <table>
   <caption>Frozen evaluation highlights: the first two metrics are from the held-out robustness test; ROC-AUC is from the separate external demonstration benchmark.</caption>
@@ -221,7 +221,16 @@ The following visual shows the **intended presentation format** for representati
 
 ## Deployment and Web Demo
 
-### Judge quick start: bundled and offline
+### Online Web Demo
+
+Open the hosted [LingShu Online Web Demo](https://lingshu-aigc-detector.vercel.app/)
+to run the detector directly in a supported browser without installing or
+downloading the repository. The production site downloads the frozen FP32 ONNX
+model on first load, verifies its identity before creating the inference session,
+and then runs inference locally in the browser with WebGPU-first and WASM-fallback
+execution. Selected images remain in browser memory and are not uploaded.
+
+### Offline Web Demo: judge quick start
 
 | Windows x86-64 | macOS on Apple Silicon |
 |---|---|
