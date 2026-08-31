@@ -343,7 +343,7 @@ Dataset files are not redistributed in this repository. Obtain the datasets from
 |---|---|---|---|
 | Jingxuan Qian | Model Training & Analysis | Led model training, fine-tuning, checkpoint selection, and the B2-NJR error-analysis report. | [@aiden493km](https://github.com/aiden493km) |
 | Tianshi Bu | Dataset & Preprocessing | Prepared the Track5Data training and evaluation sets, 384 px preprocessing, and clean, robust, and ablation data support. | [@Tianshi-Bu](https://github.com/Tianshi-Bu) |
-| Zhiyi Li | Full-Stack Web Delivery | Built the end-to-end WebDemo and dual delivery stack: FP32 model conversion, WebGPU/WASM inference, product UI, offline packaging, Vercel deployment work, Blob-backed model delivery, integrity verification, and acceptance testing. | [@Awes0meE](https://github.com/Awes0meE) |
+| Zhiyi Li | Full-Stack Web Delivery | Built the end-to-end WebDemo and dual delivery stack: FP32 model conversion, WebGPU/WASM inference, product UI, offline packaging, Vercel deployment preparation, model-delivery integrity verification, and acceptance testing. | [@Awes0meE](https://github.com/Awes0meE) |
 | Mingxuan Chen | Video & Communications | Leads video editing, promotional storytelling, and submission media for the project. | [@CharlieC007](https://github.com/CharlieC007) |
 
 The About-page roster uses the four approved, user-supplied portraits stored

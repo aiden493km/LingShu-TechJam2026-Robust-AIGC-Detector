@@ -52,11 +52,11 @@ The roster order and visible English copy are fixed as follows.
 
 - Eyebrow: `03 / WEB DELIVERY`
 - Role: `FULL-STACK WEB DELIVERY`
-- Contribution: `Built the end-to-end WebDemo and dual delivery stack: FP32 model conversion, WebGPU/WASM inference, product UI, offline packaging, Vercel deployment, Blob-backed model delivery, integrity verification, and acceptance testing.`
+- Contribution: `Built the end-to-end WebDemo and dual delivery stack: FP32 model conversion, WebGPU/WASM inference, product UI, offline packaging, Vercel deployment preparation, model-delivery integrity verification, and acceptance testing.`
 - GitHub label: `@Awes0meE →`
 - GitHub URL: `https://github.com/Awes0meE`
 
-`FULL-STACK WEB DELIVERY` is deliberate. It communicates ownership across model integration, browser runtime, interface, packaging, hosting, and delivery without claiming a conventional application backend, remote inference API, database, or server function.
+`FULL-STACK WEB DELIVERY` is deliberate. It communicates ownership across model integration, browser runtime, interface, packaging, hosting preparation, and delivery tooling without claiming a completed public deployment, conventional application backend, remote inference API, database, or server function.
 
 ### 04 — Mingxuan Chen
 

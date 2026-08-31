@@ -37,9 +37,9 @@
       "sha256": "c56901f46f87a6b31dbcca9fc8db6ea9a69b5312b6d212aa650582b486aaa7ce"
     },
     {
-      "path": "assets/index-C9-mBZ1G.js",
-      "bytes": 429450,
-      "sha256": "e92826311256d43b59de9f036a5f034f4fda23ca75adbe08dffc7365679e1aca"
+      "path": "assets/index-CivUkRHw.js",
+      "bytes": 429449,
+      "sha256": "b6ae4d33b6dba0ca409c81d9f0dd30d79d58f7f3d3c74ce150cae7eb1dd1b77f"
     },
     {
       "path": "assets/jsquash_magic_kernel_bg-Cq4C4bH5.wasm",
@@ -109,7 +109,7 @@
     {
       "path": "index.html",
       "bytes": 572,
-      "sha256": "7b0375f906301ca104fb087ddf8e0745fbe449cc88c16fb0fa51dd44a1a37782"
+      "sha256": "e1bf873395df169d8015df379f247093e3bd3887d084853bd1f4cb3b0c825632"
     },
     {
       "path": "team/jingxuan-qian.png",

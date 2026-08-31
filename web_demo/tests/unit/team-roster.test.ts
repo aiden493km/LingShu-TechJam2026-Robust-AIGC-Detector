@@ -25,7 +25,7 @@ const members = [
     name: 'Zhiyi Li',
     eyebrow: '03 / WEB DELIVERY',
     role: 'FULL-STACK WEB DELIVERY',
-    contribution: 'Built the end-to-end WebDemo and dual delivery stack: FP32 model conversion, WebGPU/WASM inference, product UI, offline packaging, Vercel deployment, Blob-backed model delivery, integrity verification, and acceptance testing.',
+    contribution: 'Built the end-to-end WebDemo and dual delivery stack: FP32 model conversion, WebGPU/WASM inference, product UI, offline packaging, Vercel deployment preparation, model-delivery integrity verification, and acceptance testing.',
     label: '@Awes0meE →',
     url: 'https://github.com/Awes0meE',
   },

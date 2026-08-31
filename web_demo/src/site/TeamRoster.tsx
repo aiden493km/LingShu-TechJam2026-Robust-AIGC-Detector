@@ -34,7 +34,7 @@ const TEAM_MEMBERS = [
     eyebrow: '03 / WEB DELIVERY',
     name: 'Zhiyi Li',
     role: 'FULL-STACK WEB DELIVERY',
-    contribution: 'Built the end-to-end WebDemo and dual delivery stack: FP32 model conversion, WebGPU/WASM inference, product UI, offline packaging, Vercel deployment, Blob-backed model delivery, integrity verification, and acceptance testing.',
+    contribution: 'Built the end-to-end WebDemo and dual delivery stack: FP32 model conversion, WebGPU/WASM inference, product UI, offline packaging, Vercel deployment preparation, model-delivery integrity verification, and acceptance testing.',
     portraitSrc: '/team/zhiyi-li.png',
     portraitAlt: 'Zhiyi Li portrait',
     githubLabel: '@Awes0meE →',
