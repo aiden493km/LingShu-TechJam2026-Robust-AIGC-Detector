@@ -325,7 +325,7 @@ describe('image inference privacy window', () => {
       type: 'http', url: `${DEPLOYMENT_URL}assets/app.js`, method: 'GET', hasBody: false,
     }, DEPLOYMENT_URL);
     auditNetworkEvent(audit, {
-      type: 'http', url: `${DEPLOYMENT_URL.slice(0, -1)}${EXPECTED_MODEL_PATH}`, method: 'GET', hasBody: false,
+      type: 'http', url: `${DEPLOYMENT_URL.slice(0, -1)}${EXPECTED_MODEL_PATH}?range=0-8388607`, method: 'GET', hasBody: false,
     }, DEPLOYMENT_URL);
     markModelReady(audit);
 
@@ -336,6 +336,12 @@ describe('image inference privacy window', () => {
     assert.equal(auditNetworkEvent(audit, {
       type: 'http', url: `${DEPLOYMENT_URL}assets/app.js`, method: 'GET', hasBody: false,
     }, DEPLOYMENT_URL).allow, true);
+    assert.equal(auditNetworkEvent(audit, {
+      type: 'http', url: `${DEPLOYMENT_URL.slice(0, -1)}${EXPECTED_MODEL_PATH}?range=8388608-16777215`, method: 'GET', hasBody: false,
+    }, DEPLOYMENT_URL).allow, true);
+    assert.equal(auditNetworkEvent(audit, {
+      type: 'http', url: `${DEPLOYMENT_URL.slice(0, -1)}${EXPECTED_MODEL_PATH}?range=bad&token=hidden`, method: 'GET', hasBody: false,
+    }, DEPLOYMENT_URL).allow, false);
     assert.equal(auditNetworkEvent(audit, {
       type: 'http', url: `${DEPLOYMENT_URL}assets/app.js?late=1`, method: 'GET', hasBody: false,
     }, DEPLOYMENT_URL).allow, false);

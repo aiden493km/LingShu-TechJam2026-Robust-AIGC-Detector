@@ -655,6 +655,30 @@ function recordRequest(audit, method, kind, origin, pathname) {
   if (kind === 'model') audit.modelRequests += 1;
 }
 
+function isSafeModelRangeUrl(parsed, kind) {
+  if (
+    kind !== 'model' ||
+    parsed.username !== '' ||
+    parsed.password !== '' ||
+    parsed.hash !== ''
+  ) {
+    return false;
+  }
+  const entries = [...parsed.searchParams.entries()];
+  if (entries.length !== 1 || entries[0][0] !== 'range') return false;
+  const match = /^(0|[1-9]\d*)-(0|[1-9]\d*)$/.exec(entries[0][1]);
+  if (match === null) return false;
+  const start = Number(match[1]);
+  const end = Number(match[2]);
+  return (
+    Number.isSafeInteger(start) &&
+    Number.isSafeInteger(end) &&
+    start >= 0 &&
+    start <= end &&
+    end < EXPECTED_MODEL_BYTES
+  );
+}
+
 export function auditNetworkEvent(audit, event, deploymentUrl) {
   invariant(isRecord(audit) && audit.requests instanceof Map, 'Privacy audit is invalid');
   invariant(isRecord(event), 'Network event must be an object');
@@ -681,6 +705,8 @@ export function auditNetworkEvent(audit, event, deploymentUrl) {
     parsed.password === '' &&
     parsed.search === '' &&
     parsed.hash === '';
+  const safeModelRangeUrl = isSafeModelRangeUrl(parsed, kind);
+  const baselineUrl = cleanUrl || safeModelRangeUrl;
   const safeRequest = SAFE_METHODS.has(method) && !hasBody;
   if (!SAFE_METHODS.has(method) || hasBody) audit.disallowedMethods.add(method || 'UNKNOWN');
   if (kind === 'external') audit.externalOrigins.add(parsed.origin);
@@ -690,13 +716,13 @@ export function auditNetworkEvent(audit, event, deploymentUrl) {
     if (!safeRequest || parsed.username !== '' || parsed.password !== '' || parsed.hash !== '') {
       return { allow: false, code: 'blocked-method-or-body' };
     }
-    if (cleanUrl) audit.baselinePaths.add(parsed.pathname);
+    if (baselineUrl) audit.baselinePaths.add(parsed.pathname);
     return { allow: true, code: 'allowed-http' };
   }
   if (audit.phase === 'reload') {
     if (
       kind !== 'external' &&
-      cleanUrl &&
+      baselineUrl &&
       safeRequest &&
       audit.baselinePaths.has(parsed.pathname)
     ) {

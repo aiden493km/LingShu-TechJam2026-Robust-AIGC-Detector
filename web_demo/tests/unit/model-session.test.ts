@@ -392,9 +392,9 @@ describe('manifest and streamed model loading', () => {
 
     expect(bytes).toEqual(Uint8Array.of(1, 2, 3, 4, 5, 6, 7));
     expect(fetcher.mock.calls).toEqual([
-      ['/models/tiny.onnx', { headers: { Range: 'bytes=0-2' } }],
-      ['/models/tiny.onnx', { headers: { Range: 'bytes=3-5' } }],
-      ['/models/tiny.onnx', { headers: { Range: 'bytes=6-6' } }],
+      ['/models/tiny.onnx?range=0-2', { headers: { Range: 'bytes=0-2' } }],
+      ['/models/tiny.onnx?range=3-5', { headers: { Range: 'bytes=3-5' } }],
+      ['/models/tiny.onnx?range=6-6', { headers: { Range: 'bytes=6-6' } }],
     ]);
     expect(progress.mock.calls.map(([value]) => value)).toEqual([
       { loaded: 0, total: 7 },

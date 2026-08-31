@@ -536,12 +536,13 @@ async function fetchModelRange(
   options: ModelFetchOptions,
 ): Promise<Uint8Array> {
   const range = `bytes=${start}-${end}`;
+  const requestPath = `${path}?range=${start}-${end}`;
   let lastError: unknown;
   for (let attempt = 1; attempt <= MODEL_RANGE_ATTEMPTS; attempt += 1) {
     options.signal?.throwIfAborted();
     try {
       const response = await fetcher(
-        path,
+        requestPath,
         fetchInit(options.signal, options.modelCache, range),
       );
       if (typeof response !== 'object' || response === null || response.ok !== true) {
