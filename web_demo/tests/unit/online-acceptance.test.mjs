@@ -191,6 +191,21 @@ describe('online deployment URL', () => {
   });
 });
 
+describe('Vercel Preview protection bypass', () => {
+  it('maps an automation bypass secret to a request header without changing the deployment URL', async () => {
+    const module = await import('../../tools/run_online_acceptance.mjs');
+    assert.equal(typeof module.acceptanceProtectionHeaders, 'function');
+
+    const secret = 'test-automation-bypass-value';
+    assert.deepEqual(
+      module.acceptanceProtectionHeaders({ VERCEL_AUTOMATION_BYPASS_SECRET: secret }),
+      { 'x-vercel-protection-bypass': secret },
+    );
+    assert.deepEqual(module.acceptanceProtectionHeaders({}), {});
+    assert.equal(parseOnlineUrl(DEPLOYMENT_URL), DEPLOYMENT_URL);
+  });
+});
+
 describe('request classification', () => {
   it('distinguishes the exact model route, other same-origin requests, and external origins', () => {
     assert.equal(classifyRequest(`${DEPLOYMENT_URL.slice(0, -1)}${EXPECTED_MODEL_PATH}`, DEPLOYMENT_URL), 'model');

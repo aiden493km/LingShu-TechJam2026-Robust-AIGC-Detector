@@ -124,6 +124,13 @@ export function parseOnlineUrl(value) {
   return `${parsed.origin}/`;
 }
 
+export function acceptanceProtectionHeaders(environment = process.env) {
+  const secret = environment.VERCEL_AUTOMATION_BYPASS_SECRET;
+  if (typeof secret !== 'string' || secret.length === 0) return {};
+  invariant(secret === secret.trim(), 'Vercel automation bypass secret must not contain surrounding whitespace');
+  return { 'x-vercel-protection-bypass': secret };
+}
+
 export function parseCliArguments(arguments_) {
   invariant(Array.isArray(arguments_), 'CLI arguments must be an array');
   invariant(arguments_.length === 1, 'Expected exactly one HTTPS Preview or Production root URL');
@@ -462,6 +469,7 @@ function recordedHeaders(headers) {
 async function fetchChecked(url, fetchImplementation = globalThis.fetch) {
   invariant(typeof fetchImplementation === 'function', 'Fetch API is required for online acceptance');
   const response = await fetchImplementation(url, {
+    headers: acceptanceProtectionHeaders(),
     method: 'GET',
     redirect: 'error',
     signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
@@ -879,7 +887,10 @@ function observedResourcePaths(page) {
 
 async function runProviderCase(browser, deploymentUrl, repositoryRoot, references, mode) {
   const provider = mode;
-  const context = await browser.newContext({ serviceWorkers: 'block' });
+  const context = await browser.newContext({
+    extraHTTPHeaders: acceptanceProtectionHeaders(),
+    serviceWorkers: 'block',
+  });
   const audit = createPrivacyAudit();
   let operationError;
   let result;
