@@ -382,7 +382,7 @@ describe('manifest and streamed model loading', () => {
         206,
       ).response,
     ];
-    const fetcher = vi.fn(async () => responses.shift()!);
+    const fetcher = vi.fn(async (_input: string, _init?: RequestInit) => responses.shift()!);
     const progress = vi.fn();
 
     const bytes = await fetchModelBytes(
@@ -392,9 +392,18 @@ describe('manifest and streamed model loading', () => {
 
     expect(bytes).toEqual(Uint8Array.of(1, 2, 3, 4, 5, 6, 7));
     expect(fetcher.mock.calls).toEqual([
-      ['/models/tiny.onnx?range=0-2', { headers: { Range: 'bytes=0-2' } }],
-      ['/models/tiny.onnx?range=3-5', { headers: { Range: 'bytes=3-5' } }],
-      ['/models/tiny.onnx?range=6-6', { headers: { Range: 'bytes=6-6' } }],
+      [
+        expect.stringMatching(/^\/models\/tiny\.onnx\?range=0-2&request=[0-9a-f-]+$/),
+        { headers: { Range: 'bytes=0-2' } },
+      ],
+      [
+        expect.stringMatching(/^\/models\/tiny\.onnx\?range=3-5&request=[0-9a-f-]+$/),
+        { headers: { Range: 'bytes=3-5' } },
+      ],
+      [
+        expect.stringMatching(/^\/models\/tiny\.onnx\?range=6-6&request=[0-9a-f-]+$/),
+        { headers: { Range: 'bytes=6-6' } },
+      ],
     ]);
     expect(progress.mock.calls.map(([value]) => value)).toEqual([
       { loaded: 0, total: 7 },
@@ -404,7 +413,7 @@ describe('manifest and streamed model loading', () => {
     ]);
   });
 
-  it('retries only an interrupted range without regressing reported progress', async () => {
+  it('retries an interrupted range with a fresh cache key without regressing progress', async () => {
     const interrupted = streamResponse(
       { chunks: [Uint8Array.of(1)], failure: new TypeError('network interrupted') },
       { 'Content-Length': '3', 'Content-Range': 'bytes 0-2/5' },
@@ -423,7 +432,7 @@ describe('manifest and streamed model loading', () => {
         206,
       ).response,
     ];
-    const fetcher = vi.fn(async () => responses.shift()!);
+    const fetcher = vi.fn(async (_input: string, _init?: RequestInit) => responses.shift()!);
     const progress = vi.fn();
 
     await expect(fetchModelBytes(
@@ -432,7 +441,14 @@ describe('manifest and streamed model loading', () => {
     )).resolves.toEqual(Uint8Array.of(1, 2, 3, 4, 5));
 
     expect(fetcher).toHaveBeenCalledTimes(3);
-    expect(fetcher.mock.calls[0]).toEqual(fetcher.mock.calls[1]);
+    expect(fetcher.mock.calls[0]?.[0]).toMatch(
+      /^\/models\/tiny\.onnx\?range=0-2&request=[0-9a-f-]+$/,
+    );
+    expect(fetcher.mock.calls[1]?.[0]).toMatch(
+      /^\/models\/tiny\.onnx\?range=0-2&request=[0-9a-f-]+$/,
+    );
+    expect(fetcher.mock.calls[0]?.[0]).not.toBe(fetcher.mock.calls[1]?.[0]);
+    expect(fetcher.mock.calls[0]?.[1]).toEqual(fetcher.mock.calls[1]?.[1]);
     expect(progress.mock.calls.map(([value]) => value)).toEqual([
       { loaded: 0, total: 5 },
       { loaded: 3, total: 5 },
