@@ -205,19 +205,49 @@ Compact audit outputs are available under [`results/data_integrity/`](results/da
 
 ## Error Analysis
 
-The evaluation pipeline exports ranked B2 false-positive and false-negative candidates to:
+All error analysis uses the frozen B2-NJR checkpoint and the validation-selected threshold `0.55657113`. No model setting or threshold was retuned on the held-out test set.
 
-```text
-results/official_demo/b2_official_demo_error_candidates.csv
-```
+### Clean held-out errors
 
-The following visual shows the **intended presentation format** for representative error analysis.
+On the 4,485-image clean held-out test set, B2-NJR makes only **19 errors**: **6 false positives** and **13 false negatives**.
 
-> **Important:** the example images and qualitative categories in this current infographic are illustrative. Before final competition submission, they should be replaced or verified against actual FP/FN candidates from the exported CSV so that every displayed failure mode is evidence-backed.
+| Metric | Result |
+|---|---:|
+| Accuracy | 99.5764% |
+| False positives | 6 |
+| False negatives | 13 |
+| FPR | 0.2667% |
+| FNR | 0.5817% |
 
-![Representative error-analysis concept](assets/figures/error_analysis_concept.png)
+Representative cases were selected as confidence extremes and manually inspected. They are descriptive examples rather than a random sample, and should not be interpreted as causal evidence or as representative of all 19 errors.
 
----
+### Transformation-specific failure directions
+
+| Condition | Accuracy | FP | FN | FPR | FNR |
+|---|---:|---:|---:|---:|---:|
+| Clean | 99.58% | 6 | 13 | 0.27% | 0.58% |
+| JPEG q30 | 95.61% | 97 | 100 | 4.31% | 4.47% |
+| Blur σ=2.0 | 94.78% | 225 | 9 | 10.00% | 0.40% |
+| Resize ×0.25 | 94.45% | 11 | 238 | 0.49% | 10.65% |
+| Noise σ=0.10 | 92.71% | 204 | 123 | 9.07% | 5.50% |
+
+The error directions differ by transformation:
+
+- Strong blur is mainly **false-positive dominant**.
+- Severe downsampling is mainly **false-negative dominant**.
+- Strong Gaussian noise increases both error types.
+
+This asymmetric behavior explains why a single global threshold cannot independently optimize every corruption condition.
+
+Relative to the clean-only B1 model, B2-NJR reduces errors under noise σ=0.10 from **1,611 to 327**. It fixes 1,455 B1 failures while introducing 171 new errors, for a net reduction of **1,284 errors (79.7%)**. The clean-set trade-off is small: B1 makes 16 clean errors, while B2-NJR makes 19.
+
+A complete discussion, including representative high-confidence false positives and false negatives, is provided in **Section 8 of the technical report**.
+
+Machine-readable evaluation outputs are available in:
+
+- [`results/final_test/`](results/final_test/)
+- [`results/official_demo/`](results/official_demo/)
+- [`b2_official_demo_error_candidates.csv`](results/official_demo/b2_official_demo_error_candidates.csv)
 
 ## Deployment and Web Demo
 
